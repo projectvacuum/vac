@@ -1,4 +1,3 @@
-#!/bin/sh
 #
 #  Andrew McNab, University of Manchester.
 #  Copyright (c) 2013. All rights reserved.
@@ -35,9 +34,9 @@
 include VERSION
 
 INSTALL_FILES=vacd VAC.py vac-shutdown-vm vacd.init \
-          make-vac-virtualmachines-conf
+          make-vac-virtualmachines-conf VERSION
           
-TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec VERSION
+TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
 vac.tgz: $(TGZ_FILES)
 	mkdir -p TEMPDIR/vac
@@ -56,6 +55,8 @@ install: $(INSTALL_FILES)
 	cp vacd VAC.py vac-shutdown-vm vacd.init \
 	   make-vac-virtualmachines-conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
-
+	cp VERSION \
+	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
+	
 rpm: vac.tgz
 	export VAC_VERSION=$(VERSION) ; rpmbuild -ta vac.tgz
