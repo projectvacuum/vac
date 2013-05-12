@@ -32,10 +32,12 @@
 #  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
 #
 
+include VERSION
+
 INSTALL_FILES=vacd VAC.py vac-shutdown-vm vacd.init \
           make-vac-virtualmachines-conf
           
-TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
+TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec VERSION
 
 vac.tgz: $(TGZ_FILES)
 	mkdir -p TEMPDIR/vac
@@ -44,16 +46,16 @@ vac.tgz: $(TGZ_FILES)
 	rm -R TEMPDIR
 
 install: $(INSTALL_FILES)
-	mkdir -p /var/lib/vac/bin \
-	         /var/lib/vac/etc \
-	         /var/lib/vac/doc \
-	         /var/lib/vac/tmp \
-	         /var/lib/vac/images \
-	         /var/lib/vac/vmtypes \
-	         /var/lib/vac/machines
+	mkdir -p $(RPM_BUILD_ROOT)/var/lib/vac/bin \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/etc \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/doc \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
 	cp vacd VAC.py vac-shutdown-vm vacd.init \
 	   make-vac-virtualmachines-conf \
-	   /var/lib/vac/bin
+	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 
 rpm: vac.tgz
-	rpmbuild -ta vac.tgz
+	export VAC_VERSION=$(VERSION) ; rpmbuild -ta vac.tgz
