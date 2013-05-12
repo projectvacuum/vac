@@ -31,3 +31,4 @@ make install
 /var/lib/vac/images
 /var/lib/vac/vmtypes
 /var/lib/vac/machines
+/etc/rc.d/init.d/vacd

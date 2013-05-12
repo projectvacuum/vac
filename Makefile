@@ -52,9 +52,11 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
-	cp vacd VAC.py vac-shutdown-vm vacd.init \
+	cp vacd VAC.py vac-shutdown-vm \
 	   make-vac-virtualmachines-conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
+	cp vacd.init \
+	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	cp VERSION \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
 	
