@@ -55,10 +55,11 @@ install: $(INSTALL_FILES)
 	cp vacd VAC.py vac-shutdown-vm \
 	   make-vac-virtualmachines-conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
-	cp vacd.init \
-	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	cp VERSION \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
+	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d	
+	cp vacd.init \
+	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	
 rpm: vac.tgz
 	export VAC_VERSION=$(VERSION) ; rpmbuild -ta vac.tgz
