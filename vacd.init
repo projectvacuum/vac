@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# vacd		Start and stop vacd, a VM factory using the vacuum model
+#
+# chkconfig: 345 98 02
+# description: vacd is the Vac daemon. A VM factory using the vacuum model. \
+# Once started, vacd forks the Vac responder subprocess too.
+
+# Source function library.
+. /etc/init.d/functions
+
+start() {
+	[ "$EUID" != "0" ] && exit 1
+	[ -x /var/lib/vac/bin/vacd ] || exit 2
+
+        # Start daemon
+        echo -n $"Starting vacd: "
+        daemon /var/lib/vac/bin/vacd
+	RETVAL=$?
+        echo
+	return $RETVAL
+}
+
+stop() {
+	[ "$EUID" != "0" ] && exit 3
+
+        # Stop daemon
+        echo -n $"Shutting down vacd: "
+	killproc vacd
+	RETVAL=$?
+        echo
+	return $RETVAL
+}
+
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+	status vacd
+	;;
+  restart|force-reload|reload)
+	stop
+	start
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|force-reload|reload}"
+	exit 4
+esac

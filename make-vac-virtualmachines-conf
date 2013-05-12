@@ -1,0 +1,95 @@
+#!/bin/sh
+#
+#  make-vac-virtualmachines-conf
+#
+#  Make per-host /etc/vac-virtualmachines.conf for
+#  a Vac factory machine. 
+#
+#  VM hostnames are factory hostname plus 00, 01, 02, ...
+#  MAC address is prefix plus four bytes of the IP address
+#  in hex. (Prefix 0x56 0x4D is VM in ASCII)
+#
+#  This is just one way to do it. You can always write 
+#  /etc/vac-virtualmachines.conf yourself using any naming 
+#  scheme you want.
+#
+#
+#  Andrew McNab, University of Manchester.
+#  Copyright (c) 2013. All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or
+#  without modification, are permitted provided that the following
+#  conditions are met:
+#
+#    o Redistributions of source code must retain the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer. 
+#    o Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials
+#      provided with the distribution. 
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+#  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+#  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+#  BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+#  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+#  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+#  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+#  POSSIBILITY OF SUCH DAMAGE.
+#
+#  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
+#
+
+prefix=wn
+
+if [ -x /usr/bin/virsh ] ; then
+ # /proc/cpuinfo is misleading in Xen dom0; either ok for KVM
+ numcpu=`/usr/bin/virsh nodeinfo | grep '^CPU(s)' | sed 's/CPU(s): *//'`
+else
+ numcpu=`grep '^processor' /proc/cpuinfo | wc --lines`
+fi
+
+# look for command line overrides
+
+while [ "$*" != "" ] ; do
+ if [ `echo $1 | cut -c1-9` = '--numcpu=' ] ; then
+  numcpu=`echo $1 | cut -c10-`
+  shift
+ elif [ `echo $1 | cut -c1-9` = '--prefix=' ] ; then
+  prefix=`echo $1 | cut -c10-`
+  shift
+ fi
+done
+
+(
+
+i=0
+
+while [ "$i" -lt "$numcpu" ]
+do
+
+ vcname=`hostname -s | sed "s/^$prefix/vc/"``printf '%02d' $i`
+
+ vcip=`host $vcname | cut -d' ' -f4`
+ 
+ vcip1=`echo $vcip | cut -d. -f1`
+ vcip2=`echo $vcip | cut -d. -f2`
+ vcip3=`echo $vcip | cut -d. -f3`
+ vcip4=`echo $vcip | cut -d. -f4`
+
+ vcmac=56:4D:`printf '%02X:%02X:%02X:%02X' $vcip1 $vcip2 $vcip3 $vcip4`
+ 
+ echo "[virtualmachine $vcname.`hostname -d`]"
+ echo "mac=$vcmac"
+ 
+ i=`expr $i + 1`
+
+done
+
+) > /etc/vac-virtualmachines.conf
