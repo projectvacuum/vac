@@ -274,7 +274,7 @@ def vacOnePass():
 
      if vm.state == VAC.VacState.shutdown or vm.state == VAC.VacState.starting:
        # if VM is still starting and we've come round again, then starting failed!
-       VAC.logLine('Query factorys and try to recreate ' + vm.name)
+       VAC.logLine('Query factories and try to recreate ' + vm.name)
        preferredVmtypeName = pollFactories()
        
        if preferredVmtypeName:
