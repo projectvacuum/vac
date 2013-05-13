@@ -146,43 +146,6 @@ def cleanupVirtualmachineFiles():
            shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
            VAC.logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
    
-def queryFactories():
-   
-   salt = base64.b64encode(os.urandom(32))
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(5.0)
-
-   for factoryName in VAC.factories:
-      sock.sendto(json.dumps({'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
-                              'method':'status'}),(factoryName,995))
-   while True:
-   
-      try:
-           data, addr = sock.recvfrom(10240)
-                      
-           try:
-                response = json.loads(data)
-           except:
-              print 'json.loads failed for',data
-              continue
-           
-           print response
-                            
-           if 'vmname' 			in response and \
-              'cookie' 			in response and \
-              'factoryname'		in response and \
-              'method'			in response and \
-              'state'			in response and \
-              response['method'] == 'status' and \
-              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
-                if 'vmtype' in response:
-                  print response['factoryname'],response['vmname'],response['state'],response['vmtype']
-                else:
-                  print response['factoryname'],response['vmname'],response['state'],'-'
-     
-      except socket.error as msg:
-           break
-
 def pollFactories():
 
    factoryVmtypeTotals     = {}
