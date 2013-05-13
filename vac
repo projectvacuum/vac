@@ -1,0 +1,105 @@
+#!/usr/bin/python
+#
+#  vac - Vac command line utility
+#
+#  Andrew McNab, University of Manchester.
+#  Copyright (c) 2013. All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or
+#  without modification, are permitted provided that the following
+#  conditions are met:
+#
+#    o Redistributions of source code must retain the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer. 
+#    o Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials
+#      provided with the distribution. 
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+#  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+#  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+#  BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+#  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+#  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+#  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+#  POSSIBILITY OF SUCH DAMAGE.
+#
+#  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
+#
+
+import os, errno, sys
+import json
+import time
+import socket
+import shutil
+import hashlib,base64
+
+# so vac command can go in /usr/sbin
+sys.path.append('/var/lib/vac/bin')
+
+import VAC
+   
+def queryFactories():
+   
+   salt = base64.b64encode(os.urandom(32))
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.settimeout(4.0)
+
+   start = time.time()
+   count = 0
+
+   for factoryName in VAC.factories:
+      sock.sendto(json.dumps({'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
+                              'method':'status'}),(factoryName,995))
+   while True:
+   
+      try:
+           data, addr = sock.recvfrom(10240)
+                      
+           try:
+                response = json.loads(data)
+           except:
+              print 'json.loads failed for',data
+              continue
+                                       
+           if 'vmname' 			in response and \
+              'cookie' 			in response and \
+              'factoryname'		in response and \
+              'method'			in response and \
+              'state'			in response and \
+              response['method'] == 'status' and \
+              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
+                count += 1
+                if 'vmtype' in response:
+                  print response['factoryname'],response['vmname'],"%9s" % response['state'],response['vmtype'],"%.2f" % (time.time() - start)
+                else:
+                  print response['factoryname'],response['vmname'],"%9s" % response['state'],'-----',"%.2f" % (time.time() - start)
+     
+      except socket.error as msg:
+           break
+
+
+   print count,'replies in',"%.2f" % (time.time() - start),'seconds'
+#
+# PROGRAM MAIN !!!
+# 
+
+if __name__ == '__main__':
+
+    if len(sys.argv) > 1 and sys.argv[1]:
+    
+        if sys.argv[1] == '--query':
+            VAC.readConf()
+            queryFactories()
+            sys.exit(0)
+ 
+    print 'Must give --query argument to vac!'
+    sys.exit(1)        
+                                                                      

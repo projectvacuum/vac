@@ -22,8 +22,11 @@ machines
 
 %install
 make install
+mkdir -p $RPM_BUILD_ROOT/usr/sbin
+cp -f $RPM_BUILD_ROOT/var/lib/vac/bin/vac $RPM_BUILD_ROOT/usr/sbin
 
 %files
+/usr/sbin/vac
 /var/lib/vac/bin
 /var/lib/vac/etc
 /var/lib/vac/doc

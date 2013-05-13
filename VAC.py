@@ -264,8 +264,8 @@ fi\n''')
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
              ' -f qcow2 /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/sparse-root.qcow2 >/dev/null') != 0:
-          print 'creation of COW disk image fails!'
-          raise
+          logLine('creation of COW disk image fails!')
+          raise NameError('Creation of COW disk image fails!')
       elif domainType == 'xen':
          # Because Xen COW is broken, we unzip/copy the root.disk, overwriting 
          # any copy already in the top level directory of this virtualhostname
@@ -273,20 +273,20 @@ fi\n''')
           print 'gunzip from',vmtypes[self.vmtypeName]['root_image'],'to /var/lib/vac/machines/' + self.name + '/root.disk'
           if os.system('gunzip -c ' + vmtypes[self.vmtypeName]['root_image'] +
                        ' >/var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
-            print 'gunzip of disk image fails!'
-            raise
+            logLine('gunzip of disk image fails!')
+            raise NameError('gunzip of disk image fails!')
          else:
-          print 'copy from',vmtypes[self.vmtypeName]['root_image'],'to /var/lib/vac/machines/' + self.name + '/root.disk'
+          logLine('copy from' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
           if shutil.copy(vmtypes[self.vmtypeName]['root_image'], 
                          '/var/lib/vac/machines/' + self.name + '/root.disk') != 0:
-            print 'copy of disk image fails!'
-            raise
+            logLine('copy of disk image fails!')
+            raise NameError('copy of disk image fails!')
 
    def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
-          print 'Failed to open connection to the hypervisor'
-          raise
+          logLine('Failed to open connection to the hypervisor')
+          raise NameError('failed to open connection to the hypervisor')
 
       dom = conn.lookupByName(self.name)
       
