@@ -74,7 +74,8 @@ class VacVM:
           if not self.vmtypeName:
             self.state = VacState.zombie
             self.uuidStr = None
-          elif dom.info()[0] != libvirt.VIR_DOMAIN_RUNNING:
+          elif (dom.info()[0] != libvirt.VIR_DOMAIN_RUNNING and
+                dom.info()[0] != libvirt.VIR_DOMAIN_BLOCKED):
             self.state = VacState.paused
           else:
             self.state = VacState.running
