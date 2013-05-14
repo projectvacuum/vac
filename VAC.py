@@ -318,9 +318,9 @@ fi\n''')
                                   " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
           elif domainType == 'xen':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='block'/>\n" +
+                                  " <driver name='phy'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
-                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='xen'/>\n</disk>")
+                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
       else:
           scratch_volume_xml = ""
 
@@ -413,13 +413,13 @@ fi\n''')
     <disk type='file' device='disk'>
       <driver name='file'/>
       <source file='/var/lib/vac/machines/""" + self.name +  """/root.disk' />
-      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='xen'/>
+      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
+      <driver name='file'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
-      <driver name='file'/>
     </disk>
     <console type='pty'>
       <target type='xen' port='0'/>
