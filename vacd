@@ -236,7 +236,6 @@ def vacOnePass():
 
    VAC.createFile('/var/lib/vac/heartbeat', str(int(time.time())) + '\n')
                         
-   VAC.logLine('=============== Start cycle ===============')
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))
    VAC.logLine('Factories in the space: ' + str(VAC.factories))
    VAC.logLine('VM Types configuration: ' + str(VAC.vmtypes))
@@ -457,6 +456,8 @@ if __name__ == '__main__':
             except:
                print 'no factory.pid - exiting'
                break
+
+            VAC.logLine('=============== Start cycle ===============')
 
             if VAC.deleteOldFiles:
               cleanupVirtualmachineFiles()

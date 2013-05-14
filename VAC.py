@@ -283,6 +283,9 @@ fi\n''')
             logLine('copy of disk image fails!')
             raise NameError('copy of disk image fails!')
 
+   def makeScratchDisk(self):
+      os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])
+
    def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
@@ -305,6 +308,21 @@ fi\n''')
       self.makeISO()
       self.makeRootDisk()
       self.exportFileSystems()
+
+      if 'scratch_volume' in virtualmachines[self.name]:
+          self.makeScratchDisk()
+          if domainType == 'kvm':
+            scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
+                                  " <driver name='qemu' type='raw'/>\n" +
+                 " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
+                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
+          elif domainType == 'xen':
+            scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
+                                  " <driver name='block'/>\n" +
+                 " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
+                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='xen'/>\n</disk>")
+      else:
+          scratch_volume_xml = ""
 
       if not 'mac' in virtualmachines[self.name]:
           print 'No mac given in configuration for',self.name
@@ -345,13 +363,13 @@ fi\n''')
     <disk type='file' device='disk'>
      <driver name="qemu" type="qcow2" cache="none" />
      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/sparse-root.qcow2' />
-     <target dev='hda' bus='ide'/>
-    </disk>
+     <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
+    </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
-      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
-      <target dev='hdc'/>
-      <readonly/>
       <driver name='qemu' type='raw'/>
+      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
+      <target dev='hdd'/>
+      <readonly/>
     </disk>
     <controller type='usb' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
@@ -395,11 +413,11 @@ fi\n''')
     <disk type='file' device='disk'>
       <driver name='file'/>
       <source file='/var/lib/vac/machines/""" + self.name +  """/root.disk' />
-      <target dev='hda' bus='xen'/>
-    </disk>
+      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='xen'/>
+    </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
-      <target dev='hdc'/>
+      <target dev='hdd'/>
       <readonly/>
       <driver name='file'/>
     </disk>
@@ -522,6 +540,16 @@ def readConf():
              if parser.has_option('targetshares', sectionNameSplit[1]):
                  vmtype['share'] = float(parser.get('targetshares', sectionNameSplit[1]))
 
+             if parser.has_option(sectionName, 'root_device'):
+                 vmtype['root_device'] = parser.get(sectionName, 'root_device')
+             else:
+                 vmtype['root_device'] = 'hda'
+             
+             if parser.has_option(sectionName, 'scratch_device'):
+                 vmtype['scratch_device'] = parser.get(sectionName, 'scratch_device')
+             else:
+                 vmtype['scratch_device'] = 'hdb'
+             
              if parser.has_option(sectionName, 'hostcert'):
                  vmtype['hostcert'] = parser.get(sectionName, 'hostcert')
              
@@ -572,6 +600,9 @@ def readConf():
          elif sectionNameSplit[0] == 'virtualmachine':
              virtualmachine = {}
              virtualmachine['mac'] = parser.get(sectionName, 'mac')
+
+             if parser.has_option(sectionName, 'scratch_volume'):
+                 virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
              
              virtualmachines[sectionNameSplit[1]] = virtualmachine
              try:
