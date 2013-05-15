@@ -47,6 +47,7 @@
 #
 
 prefix=wn
+vgname=vac_volume_group
 
 if [ -x /usr/bin/virsh ] ; then
  # /proc/cpuinfo is misleading in Xen dom0; either ok for KVM
@@ -64,8 +65,20 @@ while [ "$*" != "" ] ; do
  elif [ `echo $1 | cut -c1-9` = '--prefix=' ] ; then
   prefix=`echo $1 | cut -c10-`
   shift
+ elif [ `echo $1 | cut -c1-9` = '--vgname=' ] ; then
+  vgname=`echo $1 | cut -c10-`
+  shift
  fi
 done
+
+if [ "$vgname" ] ; then
+ vgdisplay "$vgname" >/dev/null 2>/dev/null
+ 
+ if [ $? != 0 ] ; then
+  echo "Volume group $vgname doesn't exist" >&2
+  exit
+ fi
+fi
 
 (
 
@@ -87,6 +100,15 @@ do
  
  echo "[virtualmachine $vcname.`hostname -d`]"
  echo "mac=$vcmac"
+ 
+ if [ "$vgname" != "" ] ; then
+ 
+  if [ ! -b "/dev/$vgname/${vcname}_scratch" ] ; then
+   lvcreate --name "${vcname}_scratch" -L 25G "$vgname" >/dev/null 2>/dev/null
+  fi
+ 
+  echo "scratch_volume=/dev/$vgname/${vcname}_scratch"
+ fi
  
  i=`expr $i + 1`
 
