@@ -74,12 +74,13 @@ class VacVM:
           if not self.vmtypeName:
             self.state = VacState.zombie
             self.uuidStr = None
-          elif (dom.info()[0] != libvirt.VIR_DOMAIN_RUNNING and
-                dom.info()[0] != libvirt.VIR_DOMAIN_BLOCKED):
-            self.state = VacState.paused
-          else:
+          elif (dom.info()[0] == libvirt.VIR_DOMAIN_RUNNING or
+                (dom.info()[0] == libvirt.VIR_DOMAIN_NOSTATE and domainType == 'xen') or
+                dom.info()[0] == libvirt.VIR_DOMAIN_BLOCKED):
             self.state = VacState.running
             self.cpuSeconds = dom.info()[4] / 1000000000.0
+          else:
+            self.state = VacState.paused
 
       except:
           self.state = VacState.shutdown
