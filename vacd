@@ -246,7 +246,10 @@ def vacOnePass():
    
      vm = VAC.VacVM(vmname)
 
-     VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' ' + str(vm.uuidStr) + ' ' + str(vm.shutdownMessage) + ')')
+     if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage:
+      VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
+     else:
+      VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "" ' + str(vm.uuidStr) + ')')
      
      if vm.state == VAC.VacState.running:
        # happily running so we redo the heartbeat file
