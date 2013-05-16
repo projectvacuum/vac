@@ -91,6 +91,19 @@ class VacVM:
           if self.uuidStr and self.vmtypeName and \
              not os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/started') :
             self.state = VacState.starting
+            
+          try: 
+            f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                         + '/shared/machineoutputs/shutdown_message')
+            self.shutdownMessage = f.readline().strip()
+            f.close()
+
+            self.timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
+                                            '/' + self.uuidStr + '/shared/machineoutputs/shutdown_message').st_ctime)            
+          except:
+            self.shutdownMessage = None
+            self.timeShutdownMessage = None
+            pass
 
       conn.close()
       

@@ -245,8 +245,8 @@ def vacOnePass():
    for vmname in VAC.virtualmachines:
    
      vm = VAC.VacVM(vmname)
-     
-     VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' ' + str(vm.uuidStr) + ')')
+
+     VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' ' + str(vm.uuidStr) + ' ' + str(vm.shutdownMessage) + ')')
      
      if vm.state == VAC.VacState.running:
        # happily running so we redo the heartbeat file
@@ -370,10 +370,11 @@ def vacResponder():
                   timeHeartbeat = None
 
                 try:
-                  f = open('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + '/shared/machineoutputs/shutdown-message')
+                  f = open('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + '/shared/machineoutputs/shutdown_message')
                   shutdownMessage = f.readline().strip()
                   f.close()
-                  timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr).st_ctime)
+                  timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + 
+                                                    '/shared/machineoutputs/shutdown_message').st_ctime)
                 except:
                   shutdownMessage     = None                                    
                   timeShutdownMessage = None

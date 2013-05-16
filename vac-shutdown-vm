@@ -54,7 +54,7 @@ if [ ! -d /etc/machineoutputs ] ; then
 fi
 
 if [ "$USER" = "root" ] ; then
-  echo "$*" >/etc/machineoutputs/shutdown-message
+  echo "$*" >/etc/machineoutputs/shutdown_message
   /sbin/shutdown -h now "$*"
 else
   sudo /etc/vmtypefiles/vac-shutdown-vm "$*"
