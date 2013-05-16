@@ -79,34 +79,36 @@ def cleanupByNameUUID(name, uuidStr):
    
 def cleanupExports():
 
+   conn = libvirt.open(None)
+   if conn == None:
+        print 'Failed to open connection to the hypervisor'
+        raise
+
    f = os.popen('exportfs', 'r')
    pathname  = f.readline().strip()
    pathsplit = pathname.split('/')
    
    while pathname:
 
-      if (len(pathsplit) > 7) and pathsplit[0] == '' and pathsplit[1] == 'var' and \
-         pathsplit[2] == 'lib' and pathsplit[3] == 'vac' and pathsplit[4] == 'machines' and \
-         pathsplit[7] == 'shared':
-     
-            conn = libvirt.open(None)
-            if conn == None:
-              print 'Failed to open connection to the hypervisor'
-              raise
+      #  /var/lib/vac/machines/f.q.d.n/vmtype/UUID/shared
+      # 0  1   2   3      4       5      6     7     8
 
+      if (len(pathsplit) > 8) and pathsplit[0] == '' and pathsplit[1] == 'var' and \
+         pathsplit[2] == 'lib' and pathsplit[3] == 'vac' and pathsplit[4] == 'machines' and \
+         pathsplit[8] == 'shared':
+     
             try:
-              dom = conn.lookupByUUIDString(pathsplit[6])
+              dom = conn.lookupByUUIDString(pathsplit[7])
 
             except: 
               print 'Remove now unused export of',pathname
               os.system('exportfs -u ' + pathsplit[5] + ':' + pathname) 
     
-            conn.close()
-
       pathname  = f.readline().strip()
       pathsplit = pathname.split('/')
 
    f.close()
+   conn.close()
    
 def cleanupVirtualmachineFiles():
    #

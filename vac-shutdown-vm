@@ -2,7 +2,7 @@
 #
 #  Simple shutdown command to be executed by root in a VM
 #
-#  This stores the shutdown message in the vacshared area
+#  This stores the shutdown message in the NFS shared area
 #  where vac on the hypervisor host can access it
 #
 #  Can be run by root or by a normal user if enabled in
@@ -10,15 +10,11 @@
 # 
 #  Defaults:dirac !requiretty
 #  Defaults:dirac visiblepw
-#  dirac ALL = NOPASSWD: /etc/vac/vac-shutdown-vm
+#  dirac ALL = NOPASSWD: /etc/vmtypefiles/vac-shutdown-vm
 #
 #  If the vmtype has the option shutdown_command_user set,
-#  then vac will use prolog.sh to append lines like this in
+#  then vac will use prolog.sh to append lines like that in
 #  /etc/sudoers
-#
-#  It is safe to leave this file UNexecutable on the 
-#  hypervisor/factory machine!
-#
 #
 #  Andrew McNab, University of Manchester.
 #  Copyright (c) 2013. All rights reserved.
@@ -61,5 +57,5 @@ if [ "$USER" = "root" ] ; then
   echo "$*" >/etc/machineoutputs/shutdown-message
   /sbin/shutdown -h now "$*"
 else
-  sudo /etc/vac/vac-shutdown-vm "$*"
+  sudo /etc/vmtypefiles/vac-shutdown-vm "$*"
 fi

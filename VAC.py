@@ -163,24 +163,21 @@ class VacVM:
       f.close()
                                      
       f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
-      f.write('mkdir -p /etc/vac /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs\n')
+      f.write('mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')
       
-#      f.write('cat <<EOF >/etc/rc.d/rc3.d/S11vacmounts\n#!/bin/sh\n')
-      f.write('mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac /etc/vac\n')
       f.write('mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
       f.write('mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
+      f.write('mount ' + os.uname()[1] + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
       f.write('mount -o rw ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
-#      f.write('EOF\n')
-#      f.write('chmod +x /etc/rc.d/rc3.d/S11vacmounts\n')
 
-      if 'shutdown_command' in vmtypes[self.vmtypeName] and \
-         'shutdown_command_user' in vmtypes[self.vmtypeName]:
+      if ('shutdown_command' in vmtypes[self.vmtypeName]
+          and 'shutdown_command_user' in vmtypes[self.vmtypeName]):
             f.write('''grep "^# Enable shutdown_command mechanism" /etc/sudoers 2>/dev/null >/dev/null
 if [ $? != 0 ] ; then
 echo "# Enable shutdown_command mechanism" >>/etc/sudoers
 echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' !requiretty" >>/etc/sudoers
 echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' visiblepw" >>/etc/sudoers
-echo ''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' ALL = NOPASSWD: /etc/vac/vac-shutdown-vm >> /etc/sudoers
+echo ''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' ALL = NOPASSWD: ''' + vmtypes[self.vmtypeName]['shutdown_command'] + ''' >> /etc/sudoers
 fi\n''')
 
       f.write('# end of vac prolog.sh\n\n')
@@ -202,6 +199,7 @@ fi\n''')
   
       f.close()
       
+      # we include any specified epilog in the CD-ROM image without modification
       if 'epilog' in vmtypes[self.vmtypeName]:
 
           if vmtypes[self.vmtypeName]['epilog'][0] == '/':
@@ -215,47 +213,44 @@ fi\n''')
                 + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d')
              
    def exportFileSystems(self):
-      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures')
 
-      # We share this via NFS rather than in the CDROM image so only root can see the key!
-      if 'hostkey' in vmtypes[self.vmtypeName]:
-        if vmtypes[self.vmtypeName]['hostkey'][0] == '/':
-            hostkey_file = vmtypes[self.vmtypeName]['hostkey']
-        else:
-            hostkey_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['hostkey']
+# THIS JUST GOES IN /etc/vmtypefiles NOW AND THE CONTEXTUALIZATION DOES WHAT IT WANTS
+#      # We share this via NFS rather than in the CDROM image so only root can see the key!
+#      if 'hostkey' in vmtypes[self.vmtypeName]:
+#        if vmtypes[self.vmtypeName]['hostkey'][0] == '/':
+#            hostkey_file = vmtypes[self.vmtypeName]['hostkey']
+#        else:
+#            hostkey_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['hostkey']
                     
         # Enforce root-only read permission on the factory machine, used by NFS too
-        os.chmod(hostkey_file, S_IRUSR)
-        shutil.copy2(hostkey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/hostkey.pem')
+#        os.chmod(hostkey_file, S_IRUSR)
+#        shutil.copy2(hostkey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/hostkey.pem')
              
-      if 'hostcert' in vmtypes[self.vmtypeName]:
-        if vmtypes[self.vmtypeName]['hostcert'][0] == '/':
-            hostcert_file = vmtypes[self.vmtypeName]['hostcert']
-        else:
-            hostcert_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['hostcert']
-
-        shutil.copy2(hostcert_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/hostcert.pem')
+#      if 'hostcert' in vmtypes[self.vmtypeName]:
+#        if vmtypes[self.vmtypeName]['hostcert'][0] == '/':
+#            hostcert_file = vmtypes[self.vmtypeName]['hostcert']
+#        else:
+#            hostcert_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['hostcert']
+#
+#        shutil.copy2(hostcert_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/hostcert.pem')
        
-      if 'shutdown_command' in vmtypes[self.vmtypeName]:
-        if vmtypes[self.vmtypeName]['shutdown_command'][0] == '/':
-            shutdown_file = vmtypes[self.vmtypeName]['shutdown_command']
-        else:
-            shutdown_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['shutdown_command']
-
-        shutil.copy2(shutdown_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/vac-shutdown-vm')
-             
-        os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/vac-shutdown-vm', 
-                 S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH )
-
-        createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command', 
-                   '/etc/vac/vac-shutdown-vm\n')
-
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime', 
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n')
-                                                     
+      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+
+      if 'shutdown_command' in vmtypes[self.vmtypeName]:
+        createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command',
+                   vmtypes[self.vmtypeName]['shutdown_command'] + '\n')
+        os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command', 
+                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+
+      if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
+         os.system('exportfs ' + self.name + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
+
       os.system('exportfs ' + self.name + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
       os.system('exportfs -o rw,no_root_squash ' + self.name + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
@@ -332,14 +327,14 @@ fi\n''')
       if conn == None:
           print 'Failed to open connection to the hypervisor'
           raise
-
+                
       if domainType == 'kvm':
           xmldesc="""<domain type='kvm'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
-  <memory unit='GiB'>2</memory>
-  <currentMemory unit='GiB'>2</currentMemory>
-  <vcpu>""" + str(conn.getInfo()[2]) + """</vcpu>
+  <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
+  <currentMemory unit='MiB'>"""  + str(mbPerMachine) + """</currentMemory>
+  <vcpu>""" + str(vcpuPerMachine) + """</vcpu>
   <os>
     <type arch='x86_64' machine='rhel6.2.0'>hvm</type>
     <boot dev='network'/>
@@ -398,9 +393,9 @@ fi\n''')
           xmldesc="""<domain type='xen'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
-  <memory unit='MiB'>768</memory>
-  <currentMemory unit='MiB'>768</currentMemory>
-  <vcpu>""" + str(conn.getInfo()[2]) + """</vcpu>
+  <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
+  <currentMemory unit='MiB'>""" + str(mbPerMachine) + """</currentMemory>
+  <vcpu>""" + str(vcpuPerMachine) + """</vcpu>
   <bootloader>/usr/bin/pygrub</bootloader>
   <os>
     <type arch='x86_64' machine='xenpv'>linux</type>
@@ -475,8 +470,8 @@ virtualmachines = {}
 factories = []
 vmtypes = {}
 domainType = 'kvm'
-vcpuPerMachine = None
-mbPerMachine = None
+vcpuPerMachine = 1
+mbPerMachine = 2048
 deleteOldFiles = True
 
 def readConf():
@@ -514,13 +509,11 @@ def readConf():
            deleteOldFiles = True
              
       if parser.has_option('settings', 'vcpu_per_machine'):
-          # if this isn't set, then we will share cores by number
-          # of virtual machines defined
+          # if this isn't set, then we allocate one vcpu per VM
           vcpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
              
       if parser.has_option('settings', 'mb_per_machine'):
-          # if this isn't set, then we will share physical by number
-          # of virtual machines defined
+          # if this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
              
       # all other sections are VM types or Virtual Machines or Factories
@@ -607,8 +600,10 @@ def readConf():
              virtualmachines[sectionNameSplit[1]] = virtualmachine
              try:
               os.makedirs('/var/lib/vac/machines/' + sectionNameSplit[1])
-             except OSError as exc: # Python >2.5
-              if exc.errno == errno.EEXIST and os.path.isdir('/var/lib/vac/machines/' + sectionNameSplit[1]):
+             except:
+              if os.path.isdir('/var/lib/vac/machines/' + sectionNameSplit[1]):
                 pass
               else: raise
 
+        
+        
