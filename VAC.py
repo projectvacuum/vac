@@ -70,17 +70,20 @@ class VacVM:
                if os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + vmtypeName + '/' + self.uuidStr):
                    self.vmtypeName = vmtypeName
                    break
+                  
+          domState = dom.info()[0]
           
           if not self.vmtypeName:
             self.state = VacState.zombie
             self.uuidStr = None
-          elif (dom.info()[0] == libvirt.VIR_DOMAIN_RUNNING or
-                (dom.info()[0] == libvirt.VIR_DOMAIN_NOSTATE and domainType == 'xen') or
-                dom.info()[0] == libvirt.VIR_DOMAIN_BLOCKED):
+          elif (domState == libvirt.VIR_DOMAIN_RUNNING or
+                (domState == libvirt.VIR_DOMAIN_NOSTATE and domainType == 'xen') or
+                domState == libvirt.VIR_DOMAIN_BLOCKED):
             self.state = VacState.running
             self.cpuSeconds = dom.info()[4] / 1000000000.0
           else:
             self.state = VacState.paused
+            logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
 
       except:
           self.state = VacState.shutdown
