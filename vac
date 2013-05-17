@@ -53,7 +53,9 @@ def queryFactories():
    sock.settimeout(4.0)
 
    start = time.time()
-   count = 0
+   totalcount    = 0
+   runningcount  = 0
+   startingcount = 0
 
    for factoryName in VAC.factories:
       sock.sendto(json.dumps({'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
@@ -76,7 +78,13 @@ def queryFactories():
               'state'			in response and \
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
-                count += 1
+                
+                if response['state'] == 'Running':
+                                       runningcount += 1
+                elif response['state'] == 'Starting':
+                                       startingcount += 1
+                totalcount += 1
+
                 if 'vmtype' in response:
                   print response['factoryname'],response['vmname'],"%9s" % response['state'],response['vmtype'],"%.2f" % (time.time() - start)
                 else:
@@ -86,7 +94,7 @@ def queryFactories():
            break
 
 
-   print count,'replies in',"%.2f" % (time.time() - start),'seconds'
+   print totalcount,'replies in',"%.2f" % (time.time() - start),'seconds;',runningcount,'running;',startingcount,'starting.'
 #
 # PROGRAM MAIN !!!
 # 

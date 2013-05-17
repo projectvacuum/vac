@@ -123,11 +123,11 @@ def cleanupVirtualmachineFiles():
      # we delete the disk images if the VM is shutdown
      if vm.state == VAC.VacState.shutdown:
        try:
-          os.remove('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + vm.uuidStr + '/root.disk')
-          VAC.logLine('Deleting /var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + vm.uuidStr + '/root.disk')
+          os.remove('/var/lib/vac/machines/' + vm.name + '/root.disk')
+          VAC.logLine('Deleting /var/lib/vac/machines/' + vm.name + '/root.disk')
        except:
           pass
-                    
+   
      # we go through the vmtypes, looking for directory
      # hierarchies that aren't the current VM instance.
      # 'current' includes the last used hierarchy if the

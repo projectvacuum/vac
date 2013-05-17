@@ -276,22 +276,22 @@ fi\n''')
          # With kvm we can make a small QEMU qcow2 disk for each instance of 
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
-             ' -f qcow2 /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk >/dev/null') != 0:
+             ' -f qcow2 /var/lib/vac/machines/' + self.name + '/root.disk >/dev/null') != 0:
           logLine('creation of COW disk image fails!')
           raise NameError('Creation of COW disk image fails!')
       elif domainType == 'xen':
          # Because Xen COW is broken, we unzip/copy the root.disk, overwriting 
          # any copy already in the top level directory of this virtualhostname
          if vmtypes[self.vmtypeName]['root_image'][-3:] == '.gz':
-          print 'gunzip from',vmtypes[self.vmtypeName]['root_image'],'to /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk'
+          print 'gunzip from',vmtypes[self.vmtypeName]['root_image'],'to /var/lib/vac/machines/' + self.name + '/root.disk'
           if os.system('gunzip -c ' + vmtypes[self.vmtypeName]['root_image'] +
-                       ' >/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk 2>/dev/null') != 0:
+                       ' >/var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
             logLine('gunzip of disk image fails!')
             raise NameError('gunzip of disk image fails!')
          else:
-          logLine('copy from' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+          logLine('copy from' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
           if shutil.copy(vmtypes[self.vmtypeName]['root_image'], 
-                         '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk') != 0:
+                         '/var/lib/vac/machines/' + self.name + '/root.disk') != 0:
             logLine('copy of disk image fails!')
             raise NameError('copy of disk image fails!')
 
@@ -374,7 +374,7 @@ fi\n''')
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='file' device='disk'>
      <driver name="qemu" type="qcow2" cache="none" />
-     <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
+     <source file='/var/lib/vac/machines/""" + self.name +  """/root.disk' />
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
@@ -424,7 +424,7 @@ fi\n''')
   <devices>
     <disk type='file' device='disk'>
       <driver name='file'/>
-      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
+      <source file='/var/lib/vac/machines/""" + self.name +  """/root.disk' />
       <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
