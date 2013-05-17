@@ -103,11 +103,11 @@ do
  
  if [ "$vgname" != "" ] ; then
  
-  if [ ! -b "/dev/$vgname/${vcname}_scratch" ] ; then
-   lvcreate --name "${vcname}_scratch" -L 25G "$vgname" >/dev/null 2>/dev/null
+  if [ ! -b "/dev/$vgname/${vcname}`hostname -d`_scratch" ] ; then
+   lvcreate --name "${vcname}`hostname -d`_scratch" -L 25G "$vgname" >/dev/null 2>/dev/null
   fi
  
-  echo "scratch_volume=/dev/$vgname/${vcname}_scratch"
+  echo "scratch_volume=/dev/$vgname/${vcname}`hostname -d`_scratch"
  fi
  
  i=`expr $i + 1`
