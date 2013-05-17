@@ -123,12 +123,8 @@ def cleanupVirtualmachineFiles():
      # we delete the disk images if the VM is shutdown
      if vm.state == VAC.VacState.shutdown:
        try:
-          if VAC.domainType == 'kvm':
-            os.remove('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + vm.uuidStr + '/sparse-root.qcow2')
-            VAC.logLine('Deleting /var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + vm.uuidStr + '/sparse-root.qcow2')
-          elif VAC.domainType == 'xen':
-            os.remove('/var/lib/vac/machines/' + vm.name + '/root.disk')
-            VAC.logLine('Deleting /var/lib/vac/machines/' + vm.name + '/root.disk')
+          os.remove('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + vm.uuidStr + '/root.disk')
+          VAC.logLine('Deleting /var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + vm.uuidStr + '/root.disk')
        except:
           pass
                     
