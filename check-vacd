@@ -1,0 +1,85 @@
+#!/usr/bin/python
+#
+#  check-vacd - Nagios monitor for vacd
+#
+#  Andrew McNab, University of Manchester.
+#  Copyright (c) 2013. All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or
+#  without modification, are permitted provided that the following
+#  conditions are met:
+#
+#    o Redistributions of source code must retain the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer. 
+#    o Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials
+#      provided with the distribution. 
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+#  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+#  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+#  BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+#  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+#  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+#  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+#  POSSIBILITY OF SUCH DAMAGE.
+#
+#  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
+#
+
+import os, errno, sys
+import time
+import libvirt
+
+import VAC
+
+def vacLibvirtErrorHandler(ctxt, err):
+    global errno    
+    errno = err    
+
+libvirt.registerErrorHandler(vacLibvirtErrorHandler, 'context')
+
+VAC.readConf()
+
+totalcount=0
+runningcount=0
+startingcount=0
+
+for vmname in VAC.virtualmachines:
+      vm = VAC.VacVM(vmname)
+       
+      totalcount += 1 
+       
+      if vm.state == VAC.VacState.running:
+          runningcount += 1
+      elif vm.state == VAC.VacState.starting:
+          startingcount += 1
+
+vm_status_line='(total=%d: running=%d starting=%d)' % (totalcount,runningcount,startingcount)
+
+try:
+   timeout_seconds = int(sys.argv[1])
+except:
+   timeout_seconds = 600
+
+try:
+   heartbeat_seconds = int(os.stat('/var/lib/vac/heartbeat').st_ctime)
+
+   if heartbeat_seconds < int(time.time()) - timeout_seconds:
+          print 'No vacd heartbeat in %.2f hours\n' % ((time.time() - heartbeat_seconds) / 3600),vm_status_line
+          sys.exit(2)        
+
+except:
+   print 'No vacd heartbeat file',vm_status_line
+   sys.exit(2)        
+
+print 'vacd ok',vm_status_line
+sys.exit(0)   
+                                                                      
