@@ -272,7 +272,14 @@ fi\n''')
       os.system('exportfs -o rw,no_root_squash ' + self.name + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def makeRootDisk(self):
-      if domainType == 'kvm':
+      if rootDiskCommand:
+         # Custom root.disk creation command. Takes two arguments like cp.
+         # Should be silent on success; must return 0 if succeeds.
+         if os.system(rootDiskCommand + ' ' + vmtypes[self.vmtypeName]['root_image'] + 
+             ' /var/lib/vac/machines/' + self.name + '/root.disk') != 0:
+          logLine('creation of root.disk with "' + rootDiskCommand + '" fails!')
+          raise NameError('Creation of root disk image fails!')
+      elif domainType == 'kvm':
          # With kvm we can make a small QEMU qcow2 disk for each instance of 
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
@@ -490,9 +497,10 @@ domainType = 'kvm'
 vcpuPerMachine = 1
 mbPerMachine = 2048
 deleteOldFiles = True
+rootDiskCommand = None
 
 def readConf():
-      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles
+      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, rootDiskCommand
       
       parser = RawConfigParser()
 
@@ -532,6 +540,10 @@ def readConf():
       if parser.has_option('settings', 'mb_per_machine'):
           # if this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
+             
+      if parser.has_option('settings', 'root_disk_command'):
+          # command to create a root disk, overriding built-in defaults
+          rootDiskCommand = parser.get('settings','root_disk_command').strip()
              
       # all other sections are VM types or Virtual Machines or Factories
       for sectionName in parser.sections():

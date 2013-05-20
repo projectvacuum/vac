@@ -249,7 +249,6 @@ def vacOnePass():
      
      if vm.state == VAC.VacState.running:
        # happily running so we redo the heartbeat file
-       # eventually move this to a watcher process?
        VAC.createFile('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + 
                       vm.uuidStr + '/heartbeat', str(vm.cpuSeconds) + '\n')
        try:
