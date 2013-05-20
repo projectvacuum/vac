@@ -297,8 +297,8 @@ fi\n''')
             raise NameError('gunzip of disk image fails!')
          else:
           logLine('copy from' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
-          if shutil.copy(vmtypes[self.vmtypeName]['root_image'], 
-                         '/var/lib/vac/machines/' + self.name + '/root.disk') != 0:
+          if os.system('cp --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
+                       ' /var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
             logLine('copy of disk image fails!')
             raise NameError('copy of disk image fails!')
 
