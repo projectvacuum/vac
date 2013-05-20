@@ -302,7 +302,7 @@ fi\n''')
       
       if dom:
           dom.destroy()
-          self.state = VAC.VacState.shutdown
+          self.state = VacState.shutdown
 
       conn.close()
 
@@ -455,7 +455,7 @@ fi\n''')
       
       try:
            dom = conn.createXML(xmldesc, 0)
-           self.state = VAC.VacState.running
+           self.state = VacState.running
       except:
            logLine('Failed trying to create VM domain for ' + self.name)
 

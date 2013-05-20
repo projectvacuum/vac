@@ -232,6 +232,7 @@ def vacOnePass():
 
    # Update factory heartbeat file
    VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
+   os.chmod('/var/lib/vac/factory-heartbeat', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
 
    VAC.readConf()
 
@@ -291,10 +292,11 @@ def vacOnePass():
          # we update heartbeat after creating a VM in case that took a while
          # (several minutes for Xen, without COW disk images)
          VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
+         os.chmod('/var/lib/vac/factory-heartbeat', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
        else:
          VAC.logLine('No vmtype suitable for creation in this cycle')
 
-     # finished with this vm, update counts used by check-vacd for Nagios etc
+     # finished with this vm, update counts
      totalCount += 1
 
      # the createVM and destroyVM methods update VacVM.state          
@@ -303,7 +305,9 @@ def vacOnePass():
      elif vm.state == VAC.VacState.starting:
        startingCount += 1
 
-     VAC.createFile('/var/lib/vac/counts', 'total=%d: running=%d starting=%d\n' % (totalCount,runningCount,startingCount))
+   # finished with all VMs, so output counts for Nagios etc
+   VAC.createFile('/var/lib/vac/counts', 'total=%d: running=%d starting=%d\n' % (totalCount,runningCount,startingCount))
+   os.chmod('/var/lib/vac/counts', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
 
 def vacResponder():
  
