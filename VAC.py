@@ -272,14 +272,7 @@ fi\n''')
       os.system('exportfs -o rw,no_root_squash ' + self.name + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def makeRootDisk(self):
-      if rootDiskCommand:
-         # Custom root.disk creation command. Takes two arguments like cp.
-         # Should be silent on success; must return 0 if succeeds.
-         if os.system(rootDiskCommand + ' ' + vmtypes[self.vmtypeName]['root_image'] + 
-             ' /var/lib/vac/machines/' + self.name + '/root.disk') != 0:
-          logLine('creation of root.disk with "' + rootDiskCommand + '" fails!')
-          raise NameError('Creation of root disk image fails!')
-      elif domainType == 'kvm':
+      if domainType == 'kvm':
          # With kvm we can make a small QEMU qcow2 disk for each instance of 
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
@@ -287,20 +280,14 @@ fi\n''')
           logLine('creation of COW disk image fails!')
           raise NameError('Creation of COW disk image fails!')
       elif domainType == 'xen':
-         # Because Xen COW is broken, we unzip/copy the root.disk, overwriting 
-         # any copy already in the top level directory of this virtualhostname
-         if vmtypes[self.vmtypeName]['root_image'][-3:] == '.gz':
-          print 'gunzip from',vmtypes[self.vmtypeName]['root_image'],'to /var/lib/vac/machines/' + self.name + '/root.disk'
-          if os.system('gunzip -c ' + vmtypes[self.vmtypeName]['root_image'] +
-                       ' >/var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
-            logLine('gunzip of disk image fails!')
-            raise NameError('gunzip of disk image fails!')
-         else:
-          logLine('copy from' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
-          if os.system('cp --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
+         # Because Xen COW is broken, we copy the root.disk, overwriting 
+         # any copy already in the top level directory of this virtualhostname.
+         # To avoid long startups, the source should be a sparse file too.
+         logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
+         if os.system('cp --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
                        ' /var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
-            logLine('copy of disk image fails!')
-            raise NameError('copy of disk image fails!')
+          logLine('copy of disk image fails!')
+          raise NameError('copy of disk image fails!')
 
    def makeScratchDisk(self):
       os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])
@@ -315,6 +302,7 @@ fi\n''')
       
       if dom:
           dom.destroy()
+          self.state = VAC.VacState.shutdown
 
       conn.close()
 
@@ -467,6 +455,7 @@ fi\n''')
       
       try:
            dom = conn.createXML(xmldesc, 0)
+           self.state = VAC.VacState.running
       except:
            logLine('Failed trying to create VM domain for ' + self.name)
 
@@ -497,10 +486,9 @@ domainType = 'kvm'
 vcpuPerMachine = 1
 mbPerMachine = 2048
 deleteOldFiles = True
-rootDiskCommand = None
 
 def readConf():
-      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, rootDiskCommand
+      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles
       
       parser = RawConfigParser()
 
@@ -540,10 +528,6 @@ def readConf():
       if parser.has_option('settings', 'mb_per_machine'):
           # if this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
-             
-      if parser.has_option('settings', 'root_disk_command'):
-          # command to create a root disk, overriding built-in defaults
-          rootDiskCommand = parser.get('settings','root_disk_command').strip()
              
       # all other sections are VM types or Virtual Machines or Factories
       for sectionName in parser.sections():

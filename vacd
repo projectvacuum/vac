@@ -230,13 +230,20 @@ def pollFactories():
 
 def vacOnePass():
 
+   # Update factory heartbeat file
+   VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
+
    VAC.readConf()
 
-   VAC.createFile('/var/lib/vac/heartbeat', str(int(time.time())) + '\n')
-                        
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))
    VAC.logLine('Factories in the space: ' + str(VAC.factories))
    VAC.logLine('VM Types configuration: ' + str(VAC.vmtypes))
+   
+   # These are updated at the END of each cycle of the for loop
+   # --> So we do not use  continue  within this loop! <--
+   totalCount    = 0
+   runningCount  = 0
+   startingCount = 0
    
    for vmname in VAC.virtualmachines:
    
@@ -248,30 +255,31 @@ def vacOnePass():
       VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "" ' + str(vm.uuidStr) + ')')
      
      if vm.state == VAC.VacState.running:
-       # happily running so we redo the heartbeat file
-       VAC.createFile('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' + 
+       # VM is happily running so we redo the machine's heartbeat file
+       VAC.createFile('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' +      
                       vm.uuidStr + '/heartbeat', str(vm.cpuSeconds) + '\n')
+
+       # ah, but are WE happy that it is still running?
        try:
            if int(time.time()) > vm.shutdownTime:
              VAC.logLine('VM ' + vm.name + ' has passed shutdowntime without stopping - destroying!')
              vm.destroyVM()
-             vm.state = VAC.VacState.shutdown
        except:
            pass
                                                        
      elif vm.state == VAC.VacState.zombie:
        # VM running but no corresponding vac directory structure
-       # We kill zombies on sight!
+       # We kill zombies on sight! 
        VAC.logLine('VM ' + vm.name + ' running without vac directories - destroying!')
        vm.destroyVM()
-       vm.state = VAC.VacState.shutdown
        
      elif vm.state == VAC.VacState.paused:
+       # suspended internally somehow? kill it to be safe
        VAC.logLine('VM ' + vm.name + ' paused without shutting down - destroying!')
        vm.destroyVM()
-       vm.state = VAC.VacState.shutdown
 
      if vm.state == VAC.VacState.shutdown or vm.state == VAC.VacState.starting:
+       # if VM is shutdown, then we see if we can restart it
        # if VM is still starting and we've come round again, then starting failed!
        VAC.logLine('Query factories and try to recreate ' + vm.name)
        preferredVmtypeName = pollFactories()
@@ -282,9 +290,20 @@ def vacOnePass():
          
          # we update heartbeat after creating a VM in case that took a while
          # (several minutes for Xen, without COW disk images)
-         VAC.createFile('/var/lib/vac/heartbeat', str(int(time.time())) + '\n')
+         VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
        else:
          VAC.logLine('No vmtype suitable for creation in this cycle')
+
+     # finished with this vm, update counts used by check-vacd for Nagios etc
+     totalCount += 1
+
+     # the createVM and destroyVM methods update VacVM.state          
+     if vm.state == VAC.VacState.running:
+       runningCount += 1
+     elif vm.state == VAC.VacState.starting:
+       startingCount += 1
+
+     VAC.createFile('/var/lib/vac/counts', 'total=%d: running=%d starting=%d\n' % (totalCount,runningCount,startingCount))
 
 def vacResponder():
  

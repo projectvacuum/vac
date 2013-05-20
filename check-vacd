@@ -36,54 +36,29 @@
 
 import os, errno, sys
 import time
-import libvirt
 
-import VAC
-
-def vacLibvirtErrorHandler(ctxt, err):
-    global errno    
-    errno = err    
-
-libvirt.registerErrorHandler(vacLibvirtErrorHandler, 'context')
-
-VAC.readConf()
-
-totalcount=0
-runningcount=0
-startingcount=0
-
-for vmname in VAC.virtualmachines:
-
-      try:
-       vm = VAC.VacVM(vmname)
-      except:
-       break
-       
-      totalcount += 1 
-       
-      if vm.state == VAC.VacState.running:
-          runningcount += 1
-      elif vm.state == VAC.VacState.starting:
-          startingcount += 1
-
-vm_status_line='(total=%d: running=%d starting=%d)' % (totalcount,runningcount,startingcount)
-
+try:
+  f = open('/var/lib/vac/counts','r')
+  vm_status_line = ' (' + f.readline().strip() + ')'
+  f.close()
+except:
+  vm_status_line = ''
+  
 try:
    timeout_seconds = int(sys.argv[1])
 except:
    timeout_seconds = 600
 
 try:
-   heartbeat_seconds = int(os.stat('/var/lib/vac/heartbeat').st_ctime)
+   heartbeat_seconds = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
 
    if heartbeat_seconds < int(time.time()) - timeout_seconds:
-          print 'No vacd heartbeat in %.2f hours\n' % ((time.time() - heartbeat_seconds) / 3600),vm_status_line
+          print 'No vacd heartbeat in %.2f hours' % ((time.time() - heartbeat_seconds) / 3600) + vm_status_line
           sys.exit(2)        
 
 except:
-   print 'No vacd heartbeat file',vm_status_line
+   print 'No vacd heartbeat file' + vm_status_line
    sys.exit(2)        
 
-print 'vacd ok',vm_status_line
-sys.exit(0)   
-                                                                      
+print 'vacd ok' + vm_status_line
+sys.exit(0)

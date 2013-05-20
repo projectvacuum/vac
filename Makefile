@@ -34,7 +34,7 @@
 include VERSION
 
 INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
-          make-vac-virtualmachines-conf VERSION
+          make-vac-virtualmachines-conf check-vacd VERSION
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
@@ -52,7 +52,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
-	cp vacd vac VAC.py vac-shutdown-vm \
+	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
 	   make-vac-virtualmachines-conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION \

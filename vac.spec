@@ -23,6 +23,8 @@ machines
 %install
 make install
 mkdir -p $RPM_BUILD_ROOT/usr/sbin
+
+# we are rpm so we can put files in /usr/sbin etc too
 cp -f $RPM_BUILD_ROOT/var/lib/vac/bin/vac $RPM_BUILD_ROOT/usr/sbin
 
 %files
