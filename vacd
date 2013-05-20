@@ -54,17 +54,21 @@ def vacLibvirtErrorHandler(ctxt, err):
       
 def pollFactories():
 
-   factoryVmtypeTotals     = {}
-   factoryVmtypeLastAborts = {}
+   factoryVmtypeTotals             = {}
+   factoryVmtypeLastAborts         = {}
+#   factoryVmtypeNumberPastFizzle   = {}
+#   factoryVmtypeNumberBeforeFizzle = {}
 
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
       if (vmtype['share'] > 0.0):
-        factoryVmtypeTotals[vmtypeName]     = 0.0
-        factoryVmtypeLastAborts[vmtypeName] = 0
+        factoryVmtypeTotals[vmtypeName]             = 0.0
+        factoryVmtypeLastAborts[vmtypeName]         = 0
+#        factoryVmtypeNumberPastFizzle[vmtypeName]   = 0
+#        factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(5.0)
+   sock.settimeout(10.0)
 
    for factoryName in VAC.factories:
       sock.sendto(json.dumps({'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
@@ -87,14 +91,33 @@ def pollFactories():
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest() :
 
               if 'state'		in response and \
+                 'vmname'		in response and \
                  'vmtype'		in response and \
                  response['vmtype']	in VAC.vmtypes and \
                  (response['state'] == VAC.VacState.starting or response['state'] == VAC.VacState.running) and \
                  VAC.vmtypes[response['vmtype']]['share'] > 0.0:
+
                    # we only have to add 1.0/share for this vmtype to get normalisation at the end automatically
                    factoryVmtypeTotals[response['vmtype']] += 1.0 / VAC.vmtypes[response['vmtype']]['share']           
                    VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] + 
                                ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
+                               
+#                   if response['state'] == VAC.VacState.starting:
+#                           # starting counts as before fizzle point
+#                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
+#                           VAC.logLine('   ' + response['vmname'] + ' is before fizzle (starting)')
+#                   elif response['state'] == VAC.VacState.running:
+#                       try:
+#                           if int(time.time()) > response['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+#                                # this one has passed the fizzle point successfully
+#                                factoryVmtypeNumberPastFizzle[response['vmtype']] += 1
+#                                VAC.logLine('   ' + response['vmname'] + ' is past fizzle (running %d seconds)' % int(time.time()) - response['started'])
+#                           else:
+#                                # this one hasn't got there yet
+#                                factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
+#                                VAC.logLine('   ' + response['vmname'] + ' is before fizzle (running %d seconds)' % int(time.time()) - response['started'])
+#                       except:
+#                           pass
                    
               if 'vmtypeslist' in response:
                 for vmtypeOutcome in response['vmtypeslist']:
@@ -128,10 +151,12 @@ def pollFactories():
    preferredVmtypeName = None
       
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
-      if vmtype['share'] > 0.0 and factoryVmtypeLastAborts[vmtypeName] < int(time.time()) - vmtype['backoff_seconds']:          
-          if not preferredVmtypeName:
+      if vmtype['share'] > 0.0 and \
+         factoryVmtypeLastAborts[vmtypeName] < int(time.time()) - vmtype['backoff_seconds']:
+#         (factoryVmtypeNumberPastFizzle[vmtypeName] > 0 or factoryVmtypeNumberBeforeFizzle[vmtypeName] == 0) and \
+             if not preferredVmtypeName:
                 preferredVmtypeName = vmtypeName
-          elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
+             elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
                 preferredVmtypeName = vmtypeName
                 
    return preferredVmtypeName
@@ -246,6 +271,10 @@ def vacResponder():
      sys.stdout.flush()
      sys.stderr.flush()
 
+     # Update factory heartbeat file
+     VAC.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
+     os.chmod('/var/lib/vac/responder-heartbeat', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+
      data, addr = sock.recvfrom(1024)
      
      try:
@@ -321,6 +350,7 @@ def vacResponder():
                 'vmname'	: vm.name, 
                 'uuid'		: vm.uuidStr, 
                 'state'		: vm.state,
+                'started'	: vm.started,
                 'vmtype'	: vm.vmtypeName,
                 'cookie'	: query['cookie'],
                 'method'	: query['method'],

@@ -50,7 +50,7 @@ def queryFactories():
    
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(4.0)
+   sock.settimeout(10.0)
 
    start = time.time()
    totalcount    = 0
@@ -85,10 +85,10 @@ def queryFactories():
                                        startingcount += 1
                 totalcount += 1
 
-                if 'vmtype' in response:
-                  print response['factoryname'],response['vmname'],"%9s" % response['state'],response['vmtype'],"%.2f" % (time.time() - start)
-                else:
+                if not 'vmtype' in response:
                   print response['factoryname'],response['vmname'],"%9s" % response['state'],'-----',"%.2f" % (time.time() - start)
+                else:
+                  print response['factoryname'],response['vmname'],"%9s" % response['state'],response['vmtype'],"%.2f" % (time.time() - start)
      
       except socket.error as msg:
            break
