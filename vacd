@@ -56,15 +56,11 @@ def pollFactories():
 
    factoryVmtypeTotals             = {}
    factoryVmtypeLastAborts         = {}
-#   factoryVmtypeNumberPastFizzle   = {}
-#   factoryVmtypeNumberBeforeFizzle = {}
 
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
       if (vmtype['share'] > 0.0):
         factoryVmtypeTotals[vmtypeName]             = 0.0
         factoryVmtypeLastAborts[vmtypeName]         = 0
-#        factoryVmtypeNumberPastFizzle[vmtypeName]   = 0
-#        factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -101,24 +97,7 @@ def pollFactories():
                    factoryVmtypeTotals[response['vmtype']] += 1.0 / VAC.vmtypes[response['vmtype']]['share']           
                    VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] + 
                                ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
-                               
-#                   if response['state'] == VAC.VacState.starting:
-#                           # starting counts as before fizzle point
-#                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-#                           VAC.logLine('   ' + response['vmname'] + ' is before fizzle (starting)')
-#                   elif response['state'] == VAC.VacState.running:
-#                       try:
-#                           if int(time.time()) > response['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
-#                                # this one has passed the fizzle point successfully
-#                                factoryVmtypeNumberPastFizzle[response['vmtype']] += 1
-#                                VAC.logLine('   ' + response['vmname'] + ' is past fizzle (running %d seconds)' % int(time.time()) - response['started'])
-#                           else:
-#                                # this one hasn't got there yet
-#                                factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-#                                VAC.logLine('   ' + response['vmname'] + ' is before fizzle (running %d seconds)' % int(time.time()) - response['started'])
-#                       except:
-#                           pass
-                   
+                                                  
               if 'vmtypeslist' in response:
                 for vmtypeOutcome in response['vmtypeslist']:
                   try:
@@ -153,7 +132,6 @@ def pollFactories():
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
       if vmtype['share'] > 0.0 and \
          factoryVmtypeLastAborts[vmtypeName] < int(time.time()) - vmtype['backoff_seconds']:
-#         (factoryVmtypeNumberPastFizzle[vmtypeName] > 0 or factoryVmtypeNumberBeforeFizzle[vmtypeName] == 0) and \
              if not preferredVmtypeName:
                 preferredVmtypeName = vmtypeName
              elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
