@@ -455,9 +455,10 @@ fi\n''')
       
       try:
            dom = conn.createXML(xmldesc, 0)
-           self.state = VacState.running
       except:
            logLine('Failed trying to create VM domain for ' + self.name)
+      else:
+           self.state = VacState.running
 
       conn.close()
      
@@ -617,6 +618,97 @@ def readConf():
               if os.path.isdir('/var/lib/vac/machines/' + sectionNameSplit[1]):
                 pass
               else: raise
+        
+def cleanupByNameUUID(name, uuidStr):
+   conn = libvirt.open(None)
+   if conn == None:
+      print 'Failed to open connection to the hypervisor'
+      raise
+          
+   try:
+      dom = conn.lookupByUUIDString(uuidStr)
+      dom.destroy()
+   except:
+      pass
 
-        
-        
+   f = os.popen('exportfs', 'r')
+   pathname = f.readline().strip()
+
+   while pathname and name:
+      if ('/var/lib/vac/machines/' + name + '/' + self.vmtypeName + '/' + uuidStr + '/shared' == pathname):
+         os.system('exportfs -u ' + name + ':' + pathname)
+
+      pathname = f.readline().strip()
+
+   f.close()
+
+   shutil.rmtree('/var/lib/vac/machines/' + name + '/' + uuidStr, 1)
+   
+def cleanupExports():
+
+   conn = libvirt.open(None)
+   if conn == None:
+        print 'Failed to open connection to the hypervisor'
+        raise
+
+   f = os.popen('exportfs', 'r')
+   pathname  = f.readline().strip()
+   pathsplit = pathname.split('/')
+   
+   while pathname:
+
+      #  /var/lib/vac/machines/f.q.d.n/vmtype/UUID/shared
+      # 0  1   2   3      4       5      6     7     8
+
+      if (len(pathsplit) > 8) and pathsplit[0] == '' and pathsplit[1] == 'var' and \
+         pathsplit[2] == 'lib' and pathsplit[3] == 'vac' and pathsplit[4] == 'machines' and \
+         pathsplit[8] == 'shared':
+     
+            try:
+              dom = conn.lookupByUUIDString(pathsplit[7])
+
+            except: 
+              print 'Remove now unused export of',pathname
+              os.system('exportfs -u ' + pathsplit[5] + ':' + pathname) 
+    
+      pathname  = f.readline().strip()
+      pathsplit = pathname.split('/')
+
+   f.close()
+   conn.close()
+   
+def cleanupVirtualmachineFiles():
+   #
+   # IN vacd THIS FUNCTION CAN ONLY BE RUN INSIDE THE MAIN LOOP
+   # ie the same level as where VacVM.createVM() is
+   # called. Otherwise active directories may be deleted!
+   # 
+
+   for vmname in virtualmachines:
+     vm = VacVM(vmname)
+
+     # we delete the disk images if the VM is shutdown
+     if vm.state == VacState.shutdown:
+       try:
+          os.remove('/var/lib/vac/machines/' + vm.name + '/root.disk')
+          logLine('Deleting /var/lib/vac/machines/' + vm.name + '/root.disk')
+       except:
+          pass
+   
+     # we go through the vmtypes, looking for directory
+     # hierarchies that aren't the current VM instance.
+     # 'current' includes the last used hierarchy if the
+     # VM state is shutdown
+     for vmtypeName, vmtype in vmtypes.iteritems():
+       try:
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName)
+       except:
+         continue
+
+       for onedir in dirslist:
+         if (os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir) 
+             and (not vm.uuidStr or vm.uuidStr != onedir)):
+           shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+           logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+   
+                  
