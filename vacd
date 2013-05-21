@@ -54,20 +54,28 @@ def vacLibvirtErrorHandler(ctxt, err):
       
 def pollFactories():
 
+   # Number of running/starting VMs per vmtype
    factoryVmtypeTotals             = {}
+   
+   # Time in Unix seconds of the most recent abort, for each vmtype
    factoryVmtypeLastAborts         = {}
+   
+   # Number of VMs starting or not yet running for at least fizzle_seconds, for each vmtype
+   factoryVmtypeNumberBeforeFizzle = {}
 
+   # Initialise
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
       if (vmtype['share'] > 0.0):
         factoryVmtypeTotals[vmtypeName]             = 0.0
         factoryVmtypeLastAborts[vmtypeName]         = 0
+        factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(10.0)
+   sock.settimeout(VAC.udpTimeoutSeconds)
 
    for factoryName in VAC.factories:
-      sock.sendto(json.dumps({'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
+      sock.sendto(json.dumps({'space':VAC.spaceName, 'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
                               'method':'status'}),(factoryName,995))
    while True:
    
@@ -80,9 +88,11 @@ def pollFactories():
               VAC.logLine('json.loads failed for ' + data)
               continue
 
-           if 'cookie' 			in response and \
+           if 'space' 			in response and \
+              'cookie' 			in response and \
               'factoryname'		in response and \
               'method'			in response and \
+              response['space']  == VAC.spaceName and \
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest() :
 
@@ -96,8 +106,18 @@ def pollFactories():
                    # we only have to add 1.0/share for this vmtype to get normalisation at the end automatically
                    factoryVmtypeTotals[response['vmtype']] += 1.0 / VAC.vmtypes[response['vmtype']]['share']           
                    VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] + 
-                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
-                                                  
+                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))                                                   
+                               
+                   if response['state'] == VAC.VacState.starting:
+                           # starting counts as before fizzle point
+                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
+                           VAC.logLine('   ' + response['vmname'] + ' is before fizzle (starting)')
+                   elif response['state'] == VAC.VacState.running and 'started' in response and \
+                        int(time.time()) < response['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+                           # running for less than fizzle_seconds counts too
+                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
+                           VAC.logLine('   ' + response['vmname'] + ' is before fizzle (running %d seconds)' % (int(time.time()) - response['started']))
+                   
               if 'vmtypeslist' in response:
                 for vmtypeOutcome in response['vmtypeslist']:
                   try:
@@ -128,18 +148,36 @@ def pollFactories():
    VAC.logLine('Final totals ' + str(factoryVmtypeTotals))
 
    preferredVmtypeName = None
+
+   # Go through the vmtypes, trying to pick the best one to start:
+   # - Target share must be > 0.0
+   # - If there has been an abort, it must be at least backoff_second ago
+   # - We extend this backoff by fizzle_seconds if any other VMs of this
+   #     vmtype are starting or not yet running for fizzle_seconds
+   #
+   # This procedure aims to give one VM the chance to try a vmtype when the
+   # initial backoff_seconds following an abort expires. Rather than have
+   # many VMs all trying to run as vmtype immediately. In practice, more 
+   # than one may win the race to be the "first" to try, but this should
+   # still be a manageable number for the experiment's Matcher/Task Queue. 
       
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
-      if vmtype['share'] > 0.0 and \
-         factoryVmtypeLastAborts[vmtypeName] < int(time.time()) - vmtype['backoff_seconds']:
-             if not preferredVmtypeName:
-                preferredVmtypeName = vmtypeName
-             elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
-                preferredVmtypeName = vmtypeName
-                
+      VAC.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+                  str(int(time.time()) - vmtype['backoff_seconds'] - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
+                  ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
+      if (vmtype['share'] > 0.0 and 
+          factoryVmtypeLastAborts[vmtypeName] 
+              < int(time.time()) 
+                - vmtype['backoff_seconds'] 
+                - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)):
+                      if not preferredVmtypeName:
+                        preferredVmtypeName = vmtypeName
+                      elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
+                        preferredVmtypeName = vmtypeName
+
    return preferredVmtypeName
 
-def vacOnePass():
+def vacOneCycle():
 
    # Update factory heartbeat file
    VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
@@ -148,14 +186,13 @@ def vacOnePass():
    VAC.readConf()
 
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))
-   VAC.logLine('Factories in the space: ' + str(VAC.factories))
    VAC.logLine('VM Types configuration: ' + str(VAC.vmtypes))
+   VAC.logLine('Factories in the space ' + VAC.spaceName + ': ' + str(VAC.factories))
    
    # These are updated at the END of each cycle of the for loop
    # --> So we do not use  continue  within this loop! <--
    totalCount    = 0
    runningCount  = 0
-   startingCount = 0
    
    for vmname in VAC.virtualmachines:
    
@@ -190,9 +227,22 @@ def vacOnePass():
        VAC.logLine('VM ' + vm.name + ' paused without shutting down - destroying!')
        vm.destroyVM()
 
-     if vm.state == VAC.VacState.shutdown or vm.state == VAC.VacState.starting:
-       # if VM is shutdown, then we see if we can restart it
-       # if VM is still starting and we've come round again, then starting failed!
+     if vm.state == VAC.VacState.starting and vm.vmtypeName:
+       VAC.logLine('VM ' + vm.name + ' still in starting state in a new cycle - cleaning up!')
+       # If VM is still starting and we've come round again, then starting failed!
+       vm.state = VAC.VacState.shutdown
+       # Something has gone wrong, so we clean up
+       VAC.cleanupByNameUUID(vm.name, vm.vmtypeName, vm.uuidStr)
+
+     if vm.state == VAC.VacState.shutdown:
+       # create the finished file for the responder if not already there
+       if vm.started and not vm.finishedFile:
+               VAC.logLine('Create finished file for ' + vm.name)
+               vm.createFinishedFile()
+       elif not vm.finishedFile:
+               VAC.logLine('No finished file but no started time for ' + vm.name)
+  
+       # as VM is shutdown, we see if we can restart it
        VAC.logLine('Query factories and try to recreate ' + vm.name)
        preferredVmtypeName = pollFactories()
        
@@ -213,11 +263,9 @@ def vacOnePass():
      # the createVM and destroyVM methods update VacVM.state          
      if vm.state == VAC.VacState.running:
        runningCount += 1
-     elif vm.state == VAC.VacState.starting:
-       startingCount += 1
 
    # finished with all VMs, so output counts for Nagios etc
-   VAC.createFile('/var/lib/vac/counts', 'total=%d: running=%d starting=%d\n' % (totalCount,runningCount,startingCount))
+   VAC.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount))
    os.chmod('/var/lib/vac/counts', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
 
 def vacResponder():
@@ -260,76 +308,108 @@ def vacResponder():
      except:
         continue
      
-     if 'cookie' in query and 'method' in query and query['method'] == 'status':
+     if ('space'  in query and 
+         'cookie' in query and 
+         'method' in query and 
+         query['space']  == VAC.spaceName and
+         query['method'] == 'status'):
           
          VAC.readConf()
      
          VAC.logLine("Received " + data + " from " + str(addr))
     
-         for vmname in VAC.virtualmachines:
-     
-           vm = VAC.VacVM(vmname)
-           VAC.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' ' + str(vm.uuidStr) + ')')
+         for vmName in VAC.virtualmachines:
+         
+           # initialise defaults in case no vmtype directories for this vmName
+           vmState      = VAC.VacState.shutdown
+           vmUUIDStr    = None
+           vmCtime      = None
+           vmStarted    = None
+           vmVmtypeName = None
 
            vmtypesList = []
            
            for vmtypeName, vmtype in VAC.vmtypes.iteritems():
 
               try:
-                   dirslist = os.listdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName)
+                  dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
               except:
-                   continue
+                  continue
 
-              newestUUIDStr = None
+              newestUUIDByVmtype = None
+              newestCtime        = None
 
               for onedir in dirslist:
-                 if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir):
-                   if newestUUIDStr:
-                       if os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime > \
-                          os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr).st_ctime:
-                           newestUUIDStr = onedir
-                   else:
-                       newestUUIDStr = onedir
+                 if os.path.isdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir):
+                   if (not newestUUIDByVmtype or
+                       os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir).st_ctime > newestCtime):
+                           newestUUIDByVmtype = onedir
+                           newestCtime = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir).st_ctime 
                    
-              if newestUUIDStr:
+              if newestUUIDByVmtype:
                 
                 try:
-                  startedStat = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + '/started')
+                  startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/started')
                   timeStarted = int(startedStat.st_ctime)
                 except:
                   timeStarted = None
                                     
                 try:
-                  heartbeatStat = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + '/heartbeat')
+                  heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat')
                   timeHeartbeat = int(heartbeatStat.st_ctime)
                 except:
                   timeHeartbeat = None
 
+                hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
+
+                # some hardcoded timeouts in case old files are left lying around 
+                if (timeStarted and 
+                    timeHeartbeat and 
+                    timeHeartbeat > int(time.time()) - 600 and
+                    not hasFinished):
+                          newestVmState = VAC.VacState.running
+                elif (not timeStarted and newestCtime > int(time.time()) - 3600):
+                          newestVmState = VAC.VacState.starting
+                else:
+                          newestVmState = VAC.VacState.shutdown
+
                 try:
-                  f = open('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + '/shared/machineoutputs/shutdown_message')
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
                   shutdownMessage = f.readline().strip()
                   f.close()
-                  timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + newestUUIDStr + 
+                  timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + 
                                                     '/shared/machineoutputs/shutdown_message').st_ctime)
                 except:
                   shutdownMessage     = None                                    
                   timeShutdownMessage = None
                                 
                 vmtypesList.append({
+                                     'uuid'		: newestUUIDByVmtype,
                                      'vmtype'		: vmtypeName,
                                      'started'		: timeStarted,
                                      'heartbeat'	: timeHeartbeat,
                                      'message'		: shutdownMessage,
                                      'messagetime'	: timeShutdownMessage,
-                                     'state'		: vm.state if newestUUIDStr == vm.uuidStr else VAC.VacState.shutdown
+                                     'state'		: newestVmState
                                   })
-              
+                                  
+                # if this is also the newest one for the whole VM, then save for late
+                if not vmUUIDStr or newestCtime > vmCtime:
+                    vmCtime      = vmUUIDStr
+                    vmUUIDStr    = newestUUIDByVmtype
+                    vmState      = newestVmState
+                    vmStarted    = timeStarted
+                    vmVmtypeName = vmtypeName
+                                  
+           VAC.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ' ' + str(vmUUIDStr) + ')')
+
            sock.sendto(json.dumps({
-                'vmname'	: vm.name, 
-                'uuid'		: vm.uuidStr, 
-                'state'		: vm.state,
-                'started'	: vm.started,
-                'vmtype'	: vm.vmtypeName,
+                'space'		: VAC.spaceName,
+                'vmname'	: vmName,
+                'uuid'		: vmUUIDStr,
+                'state'		: vmState,
+                'started'	: vmStarted,
+                'vmtype'	: vmVmtypeName,
                 'cookie'	: query['cookie'],
                 'method'	: query['method'],
                 'vmtypeslist'	: vmtypesList,
@@ -404,11 +484,11 @@ if __name__ == '__main__':
 
             VAC.cleanupExports() 
 
-            vacOnePass()
+            vacOneCycle()
 
             sys.stdout.flush()
             sys.stderr.flush()
-            time.sleep(10)
+            time.sleep(VAC.cycleSeconds)
  
           sys.exit(0) # if we break out of the while loop, then we exit
           

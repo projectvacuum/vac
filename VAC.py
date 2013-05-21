@@ -56,6 +56,7 @@ class VacVM:
       self.state=VacState.unknown
       self.uuidStr=None
       self.vmtypeName=None
+      self.finishedFile=None
 
       conn = libvirt.open(None)
       if conn == None:
@@ -125,9 +126,22 @@ class VacVM:
           self.shutdownTime = int(f.read().strip())
           f.close()
       
+      if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                         + '/finished') :
+          self.finishedFile = True
+      else:
+          self.finishedFile = False
+      
+   def createFinishedFile(self):
+      try:
+        f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished', 'w')
+        f.close()
+      except:
+        logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
+   
    def uuidFromLatestVM(self):
 
-      self.uuidStr     = None
+      self.uuidStr    = None
       self.vmtypeName = None
       
       for vmtypeName, vmtype in vmtypes.iteritems():
@@ -491,13 +505,16 @@ def logLine(text):
 virtualmachines = {}
 factories = []
 vmtypes = {}
+spaceName = None
+cycleSeconds = 60
+udpTimeoutSeconds = 5.0
 domainType = 'kvm'
 vcpuPerMachine = 1
 mbPerMachine = 2048
 deleteOldFiles = True
 
 def readConf():
-      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles
+      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, spaceName
       
       parser = RawConfigParser()
 
@@ -517,9 +534,24 @@ def readConf():
       # general settings from [Settings] section
 
       if not parser.has_section('settings'):
-        print 'Must have a settings section!'
+        print 'Must have a [settings] section!'
         raise NameError('Must have a settings section!')
       
+      if not parser.has_option('settings', 'vac_space'):
+        print 'Must give a vac_space in [settings]!'
+        raise NameError('Must give a vac_space in [settings]!')
+        
+      spaceName = parser.get('settings','vac_space').strip()
+             
+      if parser.has_option('settings', 'cycle_seconds'):
+          # How long to wait before re-evaluating state of VMs in the
+          # main loop again. Defaults to 60 seconds.
+          cycleSeconds = int(parser.get('settings','cycle_seconds').strip())
+             
+      if parser.has_option('settings', 'udp_timeout_seconds'):
+          # How long to wait before giving up on more UDP replies          
+          udpTimeoutSeconds = int(parser.get('settings','udp_timeout_seconds').strip())
+             
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
           domainType = parser.get('settings','domain_type').strip()
@@ -627,7 +659,7 @@ def readConf():
                 pass
               else: raise
         
-def cleanupByNameUUID(name, uuidStr):
+def cleanupByNameUUID(name, vmtypeName, uuidStr):
    conn = libvirt.open(None)
    if conn == None:
       print 'Failed to open connection to the hypervisor'
@@ -643,14 +675,14 @@ def cleanupByNameUUID(name, uuidStr):
    pathname = f.readline().strip()
 
    while pathname and name:
-      if ('/var/lib/vac/machines/' + name + '/' + self.vmtypeName + '/' + uuidStr + '/shared' == pathname):
+      if ('/var/lib/vac/machines/' + name + '/' + vmtypeName + '/' + uuidStr + '/shared' == pathname):
          os.system('exportfs -u ' + name + ':' + pathname)
 
       pathname = f.readline().strip()
 
    f.close()
 
-   shutil.rmtree('/var/lib/vac/machines/' + name + '/' + uuidStr, 1)
+   shutil.rmtree('/var/lib/vac/machines/' + name + '/' + vmtypeName + '/' + uuidStr, 1)
    
 def cleanupExports():
 
