@@ -58,7 +58,7 @@ def queryFactories():
    startingcount = 0
 
    for factoryName in VAC.factories:
-      sock.sendto(json.dumps({'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
+      sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
                               'method':'status'}),(factoryName,995))
    while True:
    
@@ -71,11 +71,13 @@ def queryFactories():
               print 'json.loads failed for',data
               continue
                                        
-           if 'vmname' 			in response and \
+           if 'space' 			in response and \
+              'vmname' 			in response and \
               'cookie' 			in response and \
               'factoryname'		in response and \
               'method'			in response and \
               'state'			in response and \
+              response['space']  == VAC.spaceName and \
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
                 

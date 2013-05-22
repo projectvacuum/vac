@@ -550,7 +550,7 @@ def readConf():
              
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
-          udpTimeoutSeconds = int(parser.get('settings','udp_timeout_seconds').strip())
+          udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
              
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
@@ -597,11 +597,11 @@ def readConf():
              else:
                  vmtype['scratch_device'] = 'hdb'
              
-             if parser.has_option(sectionName, 'hostcert'):
-                 vmtype['hostcert'] = parser.get(sectionName, 'hostcert')
-             
-             if parser.has_option(sectionName, 'hostkey'):
-                 vmtype['hostkey'] = parser.get(sectionName, 'hostkey')
+#             if parser.has_option(sectionName, 'hostcert'):
+#                 vmtype['hostcert'] = parser.get(sectionName, 'hostcert')
+#             
+#             if parser.has_option(sectionName, 'hostkey'):
+#                 vmtype['hostkey'] = parser.get(sectionName, 'hostkey')
 
              if parser.has_option(sectionName, 'rootpublickey'):
                  vmtype['rootpublickey'] = parser.get(sectionName, 'rootpublickey')

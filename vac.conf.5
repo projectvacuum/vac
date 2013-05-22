@@ -1,0 +1,196 @@
+.TH vac.conf 5 "May 2013" "vac.conf" "Vac Manual"
+.SH NAME
+.B vac.conf
+\- Vac configuration file
+.SH DESCRIPTION
+.B vacd
+is a daemon which implements the Vacuum model on a factory (hypervisor)
+machine. vacd reads its configuration from
+.B /etc/vac.conf
+and this file is also read by the
+.B vac
+utility command to find default values.
+
+vac.conf uses the Python ConfigParser syntax, which is similar to MS
+Windows INI files. The file is divided into sections, with each section
+name in square brackets. For example: [settings]. Each section contains
+a series of option=value pairs.
+
+For ease of management, three more optional files are read if they exist:
+.br
+"/etc/vac-virtualmachines.conf"
+.br 
+"/etc/vac-factories.conf"
+.br 
+"/etc/vac-targetshares.conf"
+.PP
+These files are named after important sections, but sections can be placed
+in any of the four files, or all placed in /etc/vac.conf
+
+.SH [SETTINGS] OPTIONS
+
+The [settings] section is required and has options which apply to all virtual
+machines. 
+
+.B vac_space
+is a required and gives the name of this Vac space. A single space will be
+sufficient for many sites. The space name should be a fully qualified domain
+name, like vac.example.com and may be treated as space's CE name in some
+monitoring and accounting systems.
+
+.B cycle_seconds
+is how long to wait before re-evaluating state of VMs in the main loop again.
+Defaults to 60 seconds.
+
+.B udp_timeout_seconds
+is how long to wait before giving up on more UDP replies. Defaults to 5.0
+seconds.
+
+.B domain_type
+gives the type of hypervisor used, and can be either kvm or xen. kvm is the
+default and is the preferred choice for production use.
+
+.B delete_old_files
+can be set to False to disable the normal behaviour where old files associated
+with transient VMs which have finished are deleted. This can be useful for
+debugging but can easily allow disks to fill up.
+
+.B vcpu_per_machine
+sets the number of virtual CPUs to assign to each VM. Defaults to 1.
+
+.B mb_per_machine
+sets the memory allocated to each VM in MiB. Defaults to 2048.
+
+.SH [VMTYPE ...] SECTIONS
+
+One [vmtype ...] section must exist for each vmtype in the system, with
+the name of the vmtype given in the section name, such as [vmtype example].
+Each of these sections contain option=value pairs that are specific to
+that vmtype.
+
+.B backoff_seconds
+is the delay after a VM of this vmtype aborts. If a VM aborts, then no new
+VMs of this type will be created for this amount of time. This can be used 
+to prevent the unnecessary creation of many VMs when no work is available,
+and avoid overloading the matcher or task queue of the VO. 
+
+.B fizzle_seconds
+is in three places within the backoff algorithm. First, if a VM finishes
+without producing a shutdown message code and has lasted less than 
+fizzle_seconds, then it is treated as aborted. Secondly, after the 
+backoff_seconds time has expired for a VM abort, once at least one VM has
+been started in this Vac space, then no more new VMs can be started for 
+another fizzle_seconds. Thirdly, these new VMs are identified because
+they are still in the starting phase of creating files, or because they
+have been running for less than fizzle_seconds.
+
+.B max_wallclock_seconds
+gives the maximum lifetime of a VM. Vac will destroy the VM if it is still
+running after this amount of time, and will create 
+/etc/machinefeatures/shutdowntime using this value to communicate it to the
+VM. Default 86400.
+
+.B shutdown_command
+is the path to a file inside the VM which the VM can use to shut itself down.
+This value is written to /etc/machinefeatures/shutdown_command. The script
+/var/lib/vac/bin/vac-shutdown-vm is suitable for this, but it must be 
+included in the contextualization or copied to 
+/var/lib/vac/vmtypes/VMTYPE/shared (where VMTYPE is the vmtype name) which
+is NFS-exported into the VM as /etc/vmtypefiles. The value of shutdown_command
+is also used in the /etc/sudoers modification if the
+.B shutdown_command_user 
+option is given.
+
+.B shutdown_command_user
+gives the name of a Unix user within the VM who will be able to issue the 
+shutdown command. For example, with USER as the user name, and SHUTDOWN_COMMAND
+as the full path of the command:
+
+.br
+Defaults:USER !requiretty
+.br
+Defaults:USER visiblepw
+.br
+USER ALL = NOPASSWD: SHUTDOWN_COMMAND
+
+.B root_device
+is the device name exposed to the VM that is associated with the root
+disk image. Default hda.
+
+.B scratch_device
+is the device name exposed to the VM that is associated with the scratch
+logical volume. Default hdb.
+
+For the remaining options, if the file name begins with '/', then it
+will be used as an absolute path; otherwise the path will be interpreted
+relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
+
+.B rootpublickey
+is the file name of a public key supplied to the contextualization which
+will be allowed root ssh access. If the file begins with '/', then it
+will be used as an absolute path; otherwise the path will be interpreted
+relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
+
+.B user_data
+is a contextualization file provided by the VO and perhaps modified by
+the site. 
+
+.B prolog
+and
+.B epilog
+are file names of optional prolog.sh and epilog.sh scripts as defined in
+the CERNVM contextualization documentation.
+
+.SH [TARGETSHARES] SECTION
+
+The [targetshares] section contains a list of vmtype=share pairs giving
+the desired share of the total VMs available in this space for each
+vmtype. The shares do not need to add up to 1.0, and if a share is not given
+for a vmtype, then it is set to 0. Vac factories consult these shares
+when deciding which vmtype to start as VMs become available.
+
+.SH [FACTORIES] SECTION
+
+The [factories] section contains the single required option 
+.B name
+which has a space separated list of the fully qualified domain names of all
+the factories in this Vac space, including this factory. The factories are
+queried using UDP when a factory needs to decide which vmtype to start.
+The Vac responder process on the factories replies to these queries with
+a summary of the VM and the outcome of recent attempts to run a VM of each
+vmtype.
+
+.SH [VIRTUALMACHINE ...] SECTIONS
+
+One [virtualmachine ...] section must exist for each virtual machine assigned
+to this factory machine, with its fully qualified domain name 
+given in the section name, such as [virtualmachine vm1.example.com].
+Each of these sections contain one or two option=value pairs that are 
+specific to that virtualmachine.
+
+.B mac
+is the MAC address of the virtual network interface used by the VM. You can
+allocate MAC addresses from the locally administered range. This must be 
+unique across the local network. A convenient way to achieve this is to
+convert the 4 bytes of the virtual machine's IP address into hexadecimal 
+and use them as the final 8 hex digits of the MAC address. For the first 4
+digits a prefix in the locally administered range, such as 56:4D, must be
+used. For example, 192.168.1.80 maps to 56:4D:C0:A8:01:50 (0x56 0x4D is 
+VM in ASCII.)
+
+.B scratch_volume
+is optional and if given will be used by Vac as a logical volume which can
+be attached to the VM. The scratch_volume option will be a device file, 
+similar to /dev/vac_volume_group/vm1.example.com_scratch
+Vac will first format the volume as ext3, and then 
+attach it the VM using the value of 
+.B scratch_device
+for the vmtype.                  
+
+.SH AUTHOR
+Andrew McNab <Andrew.McNab@cern.ch>
+
+vacd is part of VAC: http://www.gridpp.ac.uk/vac/
+.SH "SEE ALSO"
+.BR vacd(8), 
+.BR vac(1)
