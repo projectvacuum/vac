@@ -255,30 +255,25 @@ fi\n''')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures')
-
-# THIS JUST GOES IN /etc/vmtypefiles NOW AND THE CONTEXTUALIZATION DOES WHAT IT WANTS
-#      # We share this via NFS rather than in the CDROM image so only root can see the key!
-#      if 'hostkey' in vmtypes[self.vmtypeName]:
-#        if vmtypes[self.vmtypeName]['hostkey'][0] == '/':
-#            hostkey_file = vmtypes[self.vmtypeName]['hostkey']
-#        else:
-#            hostkey_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['hostkey']
-                    
-        # Enforce root-only read permission on the factory machine, used by NFS too
-#        os.chmod(hostkey_file, S_IRUSR)
-#        shutil.copy2(hostkey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/hostkey.pem')
-             
-#      if 'hostcert' in vmtypes[self.vmtypeName]:
-#        if vmtypes[self.vmtypeName]['hostcert'][0] == '/':
-#            hostcert_file = vmtypes[self.vmtypeName]['hostcert']
-#        else:
-#            hostcert_file = '/var/lib/vac/vmtypes' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['hostcert']
-#
-#        shutil.copy2(hostcert_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/vac/hostcert.pem')
        
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory_name',
+                 os.uname()[1] + '\n')
+      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory_name',
+                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space_name',
+                 spaceName + '\n')
+      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space_name',
+                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
+                 self.uuidStr + '\n')
+      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
                  S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
 
       if 'shutdown_command' in vmtypes[self.vmtypeName]:
