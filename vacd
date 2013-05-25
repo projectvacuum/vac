@@ -162,9 +162,10 @@ def pollFactories():
    # still be a manageable number for the experiment's Matcher/Task Queue. 
       
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
-      VAC.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
-                  str(int(time.time()) - vmtype['backoff_seconds'] - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
-                  ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
+      if vmtype['share'] > 0.0:
+                      VAC.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+                          str(int(time.time()) - vmtype['backoff_seconds'] - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
+                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
       if (vmtype['share'] > 0.0 and 
           factoryVmtypeLastAborts[vmtypeName] 
               < int(time.time()) 

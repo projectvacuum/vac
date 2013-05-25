@@ -596,12 +596,6 @@ def readConf():
                  vmtype['scratch_device'] = parser.get(sectionName, 'scratch_device')
              else:
                  vmtype['scratch_device'] = 'hdb'
-             
-#             if parser.has_option(sectionName, 'hostcert'):
-#                 vmtype['hostcert'] = parser.get(sectionName, 'hostcert')
-#             
-#             if parser.has_option(sectionName, 'hostkey'):
-#                 vmtype['hostkey'] = parser.get(sectionName, 'hostkey')
 
              if parser.has_option(sectionName, 'rootpublickey'):
                  vmtype['rootpublickey'] = parser.get(sectionName, 'rootpublickey')
