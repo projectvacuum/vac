@@ -11,8 +11,7 @@ Vendor: GridPP
 Packager: Andrew McNab <Andrew.McNab@cern.ch>
 
 %description
-Vac implements the Vacuum model for running virtual
-machines
+Vac implements the Vacuum model for running virtual machines.
 
 %prep
 
@@ -29,7 +28,9 @@ cp -f $RPM_BUILD_ROOT/var/lib/vac/bin/vac $RPM_BUILD_ROOT/usr/sbin
 
 mkdir -p $RPM_BUILD_ROOT/usr/man/man5 $RPM_BUILD_ROOT/usr/man/man8
 cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vac.conf.5 $RPM_BUILD_ROOT/usr/man/man5
-cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 $RPM_BUILD_ROOT/usr/man/man8
+cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
+      $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
+           $RPM_BUILD_ROOT/usr/man/man8
 
 %files
 /usr/sbin/vac

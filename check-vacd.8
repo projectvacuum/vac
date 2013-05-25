@@ -1,0 +1,32 @@
+.TH VACD 8 "May 2013" "check-vacd" "Vac Manual"
+.SH NAME
+.B check-vacd
+\- Nagios monitor for the Vac daemon
+.SH SYNOPSIS
+.B chec-vacd
+.SH DESCRIPTION
+.B vacd
+is a daemon which implements the Vacuum model on a factory (hypervisor) machine.
+.B check-vacd
+is a Nagios monitor which uses the vacd factory-heartbeat and responder-heartbeat
+files in /var/lib/vac check that vacd is still running. The counts file is used
+to include the total number of virtual machines and the number that are running
+in the Nagios status message.
+
+.SH USAGE
+
+check-vacd is run from the Nagios nrpe dameon on the factory machine. A line
+like this in nrpe.cfg will cause NRPE to run check-vacd, and asks check-vacd
+to raise an alarm if more than 600 seconds has passed without a heartbeat:
+
+.IP
+command[check-vacd]=/var/lib/vac/bin/check-vacd 600
+
+.SH AUTHOR
+Andrew McNab <Andrew.McNab@cern.ch>
+
+check-vacd is part of Vac: http://www.gridpp.ac.uk/vac/
+.SH "SEE ALSO"
+vacd(8),
+vac.conf(5),
+vac(1)
