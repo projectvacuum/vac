@@ -46,7 +46,7 @@ import hashlib,base64
 import multiprocessing
 import libvirt
 import VAC
-from stat import *
+import stat
 
 def vacLibvirtErrorHandler(ctxt, err):
     global errno    
@@ -182,7 +182,7 @@ def vacOneCycle():
 
    # Update factory heartbeat file
    VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
-   os.chmod('/var/lib/vac/factory-heartbeat', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+   os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
    VAC.readConf()
 
@@ -254,7 +254,7 @@ def vacOneCycle():
          # we update heartbeat after creating a VM in case that took a while
          # (several minutes for Xen, without COW disk images)
          VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
-         os.chmod('/var/lib/vac/factory-heartbeat', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+         os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
        else:
          VAC.logLine('No vmtype suitable for creation in this cycle')
 
@@ -267,7 +267,7 @@ def vacOneCycle():
 
    # finished with all VMs, so output counts for Nagios etc
    VAC.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount))
-   os.chmod('/var/lib/vac/counts', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+   os.chmod('/var/lib/vac/counts', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
 def vacResponder():
  
@@ -302,7 +302,7 @@ def vacResponder():
 
      # Update factory heartbeat file
      VAC.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
-     os.chmod('/var/lib/vac/responder-heartbeat', S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+     os.chmod('/var/lib/vac/responder-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
      data, addr = sock.recvfrom(1024)
      

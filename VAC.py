@@ -42,8 +42,9 @@ import base64
 import shutil
 import libvirt
 import tempfile
+import stat
 
-from stat import *
+#from stat import *
 
 from ConfigParser import RawConfigParser
 
@@ -259,28 +260,28 @@ fi\n''')
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
-                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory_name',
                  os.uname()[1] + '\n')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory_name',
-                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space_name',
                  spaceName + '\n')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space_name',
-                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
                  self.uuidStr + '\n')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
-                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       if 'shutdown_command' in vmtypes[self.vmtypeName]:
         createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command',
                    vmtypes[self.vmtypeName]['shutdown_command'] + '\n')
         os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command', 
-                 S_IWUSR + S_IRUSR + S_IRGRP + S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
          os.system('exportfs ' + self.name + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
