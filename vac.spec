@@ -35,6 +35,7 @@ cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
 
 %files
 /usr/sbin/vac
+/usr/man/man1
 /usr/man/man5
 /usr/man/man8
 /var/lib/vac/bin
