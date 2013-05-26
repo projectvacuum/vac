@@ -37,39 +37,41 @@
 import os, errno, sys
 import time
 
-try:
+if __name__ == '__main__':
+
+ try:
   f = open('/var/lib/vac/counts','r')
   vm_status_line = ' (' + f.readline().strip() + ')'
   f.close()
-except:
+ except:
   vm_status_line = ''
   
-try:
+ try:
    timeout_seconds = int(sys.argv[1])
-except:
+ except:
    timeout_seconds = 600
 
-# first we check the factory and give an error if there's a problem
-try:
+ # first we check the factory and give an error if there's a problem
+ try:
    factory_heartbeat_seconds = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
 
    if factory_heartbeat_seconds < int(time.time()) - timeout_seconds:
           print 'No vacd factory heartbeat in %.2f hours' % ((time.time() - factory_heartbeat_seconds) / 3600) + vm_status_line
           sys.exit(2)        
-except:
+ except:
    print 'No vacd factory heartbeat file' + vm_status_line
    sys.exit(2)
 
-# then we check the responder and give an error if there's a problem
-try:
+ # then we check the responder and give an error if there's a problem
+ try:
    responder_heartbeat_seconds = int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime)
 
    if responder_heartbeat_seconds < int(time.time()) - timeout_seconds:
           print 'No vacd responder heartbeat in %.2f hours' % ((time.time() - responder_heartbeat_seconds) / 3600) + vm_status_line
           sys.exit(2)        
-except:
+ except:
    print 'No vacd responder heartbeat file' + vm_status_line
    sys.exit(2)
 
-print 'Factory + responder ok' + vm_status_line
-sys.exit(0)
+ print 'Factory + responder ok' + vm_status_line
+ sys.exit(0)

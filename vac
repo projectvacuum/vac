@@ -40,6 +40,7 @@ import time
 import socket
 import shutil
 import hashlib,base64
+import optparse
 
 # so vac command can go in /usr/sbin
 sys.path.append('/var/lib/vac/bin')
@@ -103,13 +104,42 @@ def queryFactories():
 
 if __name__ == '__main__':
 
-    if len(sys.argv) > 1 and sys.argv[1]:
+    parser = optparse.OptionParser(usage="usage: %prog [options] command [target]\n\nCommands:\n  scan")
+
+    parser.add_option("-s", 
+                      "--space",
+                      dest="spaceName",
+                      help="override Vac space given in configuration file")
+
+    parser.add_option("-t", 
+                      "--timeout",
+                      dest="udpTimeoutSeconds", 
+                      help="set timeout in seconds for UDP queries")
+
+    parser.add_option("-f", 
+                      "--factories",
+                      dest="factories", 
+                      help="comma separated list of factory names")
+
+    (options, args) = parser.parse_args()
+
+    if len(args) > 0 and args[0]:
     
-        if sys.argv[1] == '--query':
-            VAC.readConf()
+        VAC.readConf()
+        
+        if options.spaceName:
+             VAC.spaceName = options.spaceName.strip()
+
+        if options.udpTimeoutSeconds:
+             VAC.udpTimeoutSeconds = float(options.udpTimeoutSeconds.strip())
+
+        if options.factories:
+             VAC.factories = options.factories.strip().split(',')
+
+        if args[0] == 'scan':
             queryFactories()
             sys.exit(0)
  
-    print 'Must give --query argument to vac!'
+    print 'Must give scan argument to vac!'
     sys.exit(1)        
                                                                       

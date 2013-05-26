@@ -1,0 +1,45 @@
+.TH VAC  "May 2013" "vac" "Vac Manual"
+.SH NAME
+.B vac
+\- Vac utility command
+.SH SYNOPSIS
+.B vac [options] command [target]
+.SH DESCRIPTION
+.B vac
+is a command line utility for use with the vacd(8)
+daemon.
+
+.SH COMMANDS
+
+.IP
+scan
+
+.SH OPTIONS
+
+  -h, --help            show this help message and exit
+
+  -s SPACENAME, --space=SPACENAME
+                        override Vac space given in configuration file
+
+  -t UDPTIMEOUTSECONDS, --timeout=UDPTIMEOUTSECONDS
+                        set timeout in seconds for UDP queries
+
+  -f FACTORIES, --factories=FACTORIES
+                        comma separated list of factory names
+
+
+.SH CONFIGURATION FILES
+
+The vac command uses the
+.B
+vac.conf(5)
+configuration by default, unless overriden by the command line options
+described above.
+
+.SH AUTHOR
+Andrew McNab <Andrew.McNab@cern.ch>
+
+vac and vacd are part of Vac: http://www.gridpp.ac.uk/vac/
+.SH "SEE ALSO"
+vacd(8),
+vac.conf(5)
