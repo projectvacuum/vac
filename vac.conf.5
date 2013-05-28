@@ -65,10 +65,10 @@ sets the memory allocated to each VM in MiB. Defaults to 2048.
 
 One [vmtype ...] section must exist for each vmtype in the system, with
 the name of the vmtype given in the section name, such as [vmtype example].
-A vmtype must only consist of lowercase letters, numbers, underscores, 
-hyphens, and periods.
-Each of these sections contain option=value pairs that are specific to
-that vmtype.
+A vmtype name must only consist of lowercase letters, numbers, and 
+hyphens. (This is so vmtypes can be used as DNS subdomains in host
+certificate-based identities.) Each of these sections contain option=value
+pairs that are specific to that vmtype.
 
 .B backoff_seconds
 is the delay after a VM of this vmtype aborts. If a VM aborts, then no new

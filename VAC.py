@@ -302,7 +302,7 @@ fi\n''')
          # any copy already in the top level directory of this virtualhostname.
          # To avoid long startups, the source should be a sparse file too.
          logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
-         if os.system('cp --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
+         if os.system('cp --force --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
                        ' /var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
           logLine('copy of disk image fails!')
           raise NameError('copy of disk image fails!')
