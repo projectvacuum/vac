@@ -613,9 +613,6 @@ def readConf():
              if parser.has_option(sectionName, 'shutdown_command'):
                  vmtype['shutdown_command'] = parser.get(sectionName, 'shutdown_command')
 
-             if parser.has_option(sectionName, 'shutdown_command_user'):
-                 vmtype['shutdown_command_user'] = parser.get(sectionName, 'shutdown_command_user')
-
              if parser.has_option(sectionName, 'backoff_seconds'):
                  vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
              else:
