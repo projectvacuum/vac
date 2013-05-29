@@ -12,10 +12,6 @@
 #  Defaults:dirac visiblepw
 #  dirac ALL = NOPASSWD: /etc/vmtypefiles/vac-shutdown-vm
 #
-#  If the vmtype has the option shutdown_command_user set,
-#  then vac will use prolog.sh to append lines like that in
-#  /etc/sudoers
-#
 #  Andrew McNab, University of Manchester.
 #  Copyright (c) 2013. All rights reserved.
 #

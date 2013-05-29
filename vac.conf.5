@@ -98,15 +98,11 @@ This value is written to /etc/machinefeatures/shutdown_command. The script
 /var/lib/vac/bin/vac-shutdown-vm is suitable for this, but it must be 
 included in the contextualization or copied to 
 /var/lib/vac/vmtypes/VMTYPE/shared (where VMTYPE is the vmtype name) which
-is NFS-exported into the VM as /etc/vmtypefiles. The value of shutdown_command
-is also used in the /etc/sudoers modification if the
-.B shutdown_command_user 
-option is given.
+is NFS-exported into the VM as /etc/vmtypefiles. 
 
-.B shutdown_command_user
-gives the name of a Unix user within the VM who will be able to issue the 
-shutdown command. For example, with USER as the user name, and SHUTDOWN_COMMAND
-as the full path of the command:
+Running the vac-shutdown-vm command from a non-root use can be accomplished
+by appending lines like this to /etc/sudoers, with USER as the user name,
+and SHUTDOWN_COMMAND as the full path of the command:
 
 .br
 Defaults:USER !requiretty

@@ -210,15 +210,15 @@ class VacVM:
       f.write('mount ' + os.uname()[1] + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
       f.write('mount -o rw ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
 
-      if ('shutdown_command' in vmtypes[self.vmtypeName]
-          and 'shutdown_command_user' in vmtypes[self.vmtypeName]):
-            f.write('''grep "^# Enable shutdown_command mechanism" /etc/sudoers 2>/dev/null >/dev/null
-if [ $? != 0 ] ; then
-echo "# Enable shutdown_command mechanism" >>/etc/sudoers
-echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' !requiretty" >>/etc/sudoers
-echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' visiblepw" >>/etc/sudoers
-echo ''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' ALL = NOPASSWD: ''' + vmtypes[self.vmtypeName]['shutdown_command'] + ''' >> /etc/sudoers
-fi\n''')
+#      if ('shutdown_command' in vmtypes[self.vmtypeName]
+#          and 'shutdown_command_user' in vmtypes[self.vmtypeName]):
+#            f.write('''grep "^# Enable shutdown_command mechanism" /etc/sudoers 2>/dev/null >/dev/null
+#if [ $? != 0 ] ; then
+#echo "# Enable shutdown_command mechanism" >>/etc/sudoers
+#echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' !requiretty" >>/etc/sudoers
+#echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' visiblepw" >>/etc/sudoers
+#echo ''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' ALL = NOPASSWD: ''' + vmtypes[self.vmtypeName]['shutdown_command'] + ''' >> /etc/sudoers
+#fi\n''')
 
       f.write('# end of vac prolog.sh\n\n')
 
@@ -294,16 +294,16 @@ fi\n''')
          # With kvm we can make a small QEMU qcow2 disk for each instance of 
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
-             ' -f qcow2 /var/lib/vac/machines/' + self.name + '/root.disk >/dev/null') != 0:
+             ' -f qcow2 /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk >/dev/null') != 0:
           logLine('creation of COW disk image fails!')
           raise NameError('Creation of COW disk image fails!')
       elif domainType == 'xen':
          # Because Xen COW is broken, we copy the root.disk, overwriting 
          # any copy already in the top level directory of this virtualhostname.
          # To avoid long startups, the source should be a sparse file too.
-         logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/root.disk')
+         logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
          if os.system('/bin/cp --force --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
-                       ' /var/lib/vac/machines/' + self.name + '/root.disk 2>/dev/null') != 0:
+                       ' /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk') != 0:
           logLine('copy of disk image fails!')
           raise NameError('copy of disk image fails!')
 
@@ -387,7 +387,7 @@ fi\n''')
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='file' device='disk'>
      <driver name="qemu" type="qcow2" cache="none" />
-     <source file='/var/lib/vac/machines/""" + self.name +  """/root.disk' />
+     <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
@@ -437,7 +437,7 @@ fi\n''')
   <devices>
     <disk type='file' device='disk'>
       <driver name='file'/>
-      <source file='/var/lib/vac/machines/""" + self.name +  """/root.disk' />
+      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
       <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + """
     <disk type='file' device='cdrom'>
@@ -717,14 +717,6 @@ def cleanupVirtualmachineFiles():
    for vmname in virtualmachines:
      vm = VacVM(vmname)
 
-     # we delete the disk images if the VM is shutdown
-     if vm.state == VacState.shutdown:
-       try:
-          os.remove('/var/lib/vac/machines/' + vm.name + '/root.disk')
-          logLine('Deleting /var/lib/vac/machines/' + vm.name + '/root.disk')
-       except:
-          pass
-   
      # we go through the vmtypes, looking for directory
      # hierarchies that aren't the current VM instance.
      # 'current' includes the last used hierarchy if the
