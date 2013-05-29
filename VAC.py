@@ -725,9 +725,18 @@ def cleanupVirtualmachineFiles():
          continue
 
        for onedir in dirslist:
-         if (os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir) 
-             and (not vm.uuidStr or vm.uuidStr != onedir)):
-           shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-           logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+         if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir):
+           
+           # delete the current VM instance's big root.disk image file IF VM IS SHUTDOWN 
+           if vm.uuidStr and vm.uuidStr == onedir and vm.state == VacState.shutdown:
+             try:
+               os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir + '/root.disk')
+             except:
+               pass
+
+           # delete everything if not the current VM instance
+           elif not vm.uuidStr or vm.uuidStr != onedir:
+             shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
    
                   
