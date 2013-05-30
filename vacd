@@ -304,6 +304,7 @@ def vacResponder():
      VAC.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
      os.chmod('/var/lib/vac/responder-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
+     sock.settimeout(60.0)
      data, addr = sock.recvfrom(1024)
      
      try:
