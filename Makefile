@@ -35,7 +35,8 @@ include VERSION
 
 INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
           make-vac-virtualmachines-conf check-vacd VERSION \
-          vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES
+          vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
+          example.vac.conf
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
@@ -51,15 +52,17 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/doc \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
 	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
 	   make-vac-virtualmachines-conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES \
-	   check-vacd.8 vac.1 \
+	   check-vacd.8 vac.1 example.vac.conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
-	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d	
+	cp example.README \
+           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/README
+	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	
