@@ -36,7 +36,7 @@ include VERSION
 INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
           make-vac-virtualmachines-conf check-vacd VERSION \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
-          example.vac.conf
+          example.vac.conf example.README
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
