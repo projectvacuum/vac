@@ -36,7 +36,8 @@ include VERSION
 INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
           make-vac-virtualmachines-conf check-vacd VERSION \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
-          example.vac.conf example.README
+          example.vac.conf example.README example.user_data \
+          example.prolog.sh example.epilog.sh
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
@@ -52,7 +53,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/doc \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
 	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
 	   make-vac-virtualmachines-conf \
@@ -62,6 +63,12 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
 	cp example.README \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/README
+	cp example.user_data \
+           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/user_data
+	cp example.prolog.sh \
+           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/prolog.sh
+	cp example.epilog.sh \
+           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/epilog.sh
 	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
