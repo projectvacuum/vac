@@ -54,24 +54,23 @@ if __name__ == '__main__':
  # first we check the factory and give an error if there's a problem
  try:
    factory_heartbeat_seconds = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
-
-   if factory_heartbeat_seconds < int(time.time()) - timeout_seconds:
-          print 'No vacd factory heartbeat in %.2f hours' % ((time.time() - factory_heartbeat_seconds) / 3600) + vm_status_line
-          sys.exit(2)        
  except:
    print 'No vacd factory heartbeat file' + vm_status_line
    sys.exit(2)
-
+ else:
+   if factory_heartbeat_seconds < (int(time.time()) - timeout_seconds):
+          print 'No vacd factory heartbeat in %.2f hours' % ((time.time() - factory_heartbeat_seconds) / 3600) + vm_status_line
+          sys.exit(2)        
  # then we check the responder and give an error if there's a problem
  try:
    responder_heartbeat_seconds = int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime)
-
-   if responder_heartbeat_seconds < int(time.time()) - timeout_seconds:
-          print 'No vacd responder heartbeat in %.2f hours' % ((time.time() - responder_heartbeat_seconds) / 3600) + vm_status_line
-          sys.exit(2)        
  except:
    print 'No vacd responder heartbeat file' + vm_status_line
    sys.exit(2)
+ else:
+   if responder_heartbeat_seconds < (int(time.time()) - timeout_seconds):
+          print 'No vacd responder heartbeat in %.2f hours' % ((time.time() - responder_heartbeat_seconds) / 3600) + vm_status_line
+          sys.exit(2)        
 
  print 'Factory + responder ok' + vm_status_line
  sys.exit(0)
