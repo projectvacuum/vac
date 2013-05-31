@@ -274,7 +274,7 @@ def vacResponder():
    VAC.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n')
 
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   
+   sock.settimeout(60.0)
    sock.bind(('', 995))
    
    VAC.logLine('vac responder starts')
@@ -304,9 +304,11 @@ def vacResponder():
      VAC.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
      os.chmod('/var/lib/vac/responder-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-     sock.settimeout(60.0)
-     data, addr = sock.recvfrom(1024)
-     
+     try:
+        data, addr = sock.recvfrom(1024)
+     except socket.error as msg:
+        continue;
+
      try:
         query = json.loads(data)
      except:
