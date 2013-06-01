@@ -59,14 +59,14 @@ fi
 # look for command line overrides
 
 while [ "$*" != "" ] ; do
- if [ `echo $1 | cut -c1-9` = '--num-machines=' ] ; then
-  num_machines=`echo $1 | cut -c10-`
+ if [ `echo $1 | cut -c1-15` = '--num-machines=' ] ; then
+  num_machines=`echo $1 | cut -d= -f2`
   shift
  elif [ `echo $1 | cut -c1-9` = '--prefix=' ] ; then
-  prefix=`echo $1 | cut -c10-`
+  prefix=`echo $1 | cut -d= -f2`
   shift
  elif [ `echo $1 | cut -c1-9` = '--vgname=' ] ; then
-  vgname=`echo $1 | cut -c10-`
+  vgname=`echo $1 | cut -d= -f2`
   shift
  fi
 done
@@ -103,11 +103,11 @@ do
  
  if [ "$vgname" != "" ] ; then
  
-  if [ ! -b "/dev/$vgname/${vcname}`hostname -d`_scratch" ] ; then
-   lvcreate --name "${vcname}`hostname -d`_scratch" -L 25G "$vgname" >/dev/null 2>/dev/null
+  if [ ! -b "/dev/$vgname/${vcname}.`hostname -d`_scratch" ] ; then
+   lvcreate --name "${vcname}.`hostname -d`_scratch" -L 25G "$vgname" >/dev/null 2>/dev/null
   fi
  
-  echo "scratch_volume=/dev/$vgname/${vcname}`hostname -d`_scratch"
+  echo "scratch_volume=/dev/$vgname/${vcname}.`hostname -d`_scratch"
  fi
  
  i=`expr $i + 1`

@@ -97,8 +97,11 @@ def queryFactories():
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
 
-                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']]:
+                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
+                  
+                else:
+                  hoursStr = 22 * ' '
 
                 print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],(response['state'] + 10 * ' ')[0:9],hoursStr[0:21],"%.2fs" % (time.time() - start), \
                        response['vmtype'] if 'vmtype' in response else '------'
