@@ -88,17 +88,16 @@ def queryFactories():
                                        startingcount += 1
                 totalcount += 1
 
-                hoursStr = 22 * ' '
-                if response['state'] == VAC.VacState.running:
-                  try:
-                      hoursStr = '%0.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0) + 22 * ' '
-                  except:
-                      pass
+                
+                if not response['vmtype']:                
+                  hoursStr = 22 * ' '
+
+                elif response['state'] == VAC.VacState.running:
+                  hoursStr = '%0.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0) + 22 * ' '
+
                 elif response['state'] == VAC.VacState.starting:
-                  try:
-                      hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
-                  except:
-                      pass
+                  hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
+
                 elif response['state'] == VAC.VacState.shutdown and response['vmtype']:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
 
