@@ -711,6 +711,12 @@ def cleanupVirtualmachineFiles():
    # called. Otherwise active directories may be deleted!
    # 
 
+# should go through the directories present (VM and vmtype)
+# rather than through the ones we know about. ones we don't
+# know about should be deleted as they will be ones that are 
+# no longer supported in this space (config file changed?)
+# otherwise they may never be got rid of
+
    for vmname in virtualmachines:
      vm = VacVM(vmname)
 

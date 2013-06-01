@@ -82,16 +82,23 @@ def queryFactories():
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
                 
-                if response['state'] == 'Running':
+                if response['state'] == VAC.VacState.running:
                                        runningcount += 1
-                elif response['state'] == 'Starting':
+                elif response['state'] == VAC.VacState.starting:
                                        startingcount += 1
                 totalcount += 1
-
+                                                
+                hoursStr = '      '
+                if response['state'] == VAC.VacState.running:
+                  try:
+                      hoursStr = '%5.1fh' % ((time.time() - response['started']) / 3600.0)
+                  except:
+                      pass
+                     
                 if not 'vmtype' in response:
-                  print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],"%9s" % response['state'],"9s" % response['started'],'-----',"%.2f" % (time.time() - start)
+                  print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],"%9s" % response['state'],hoursStr,"%.2f" % (time.time() - start),'-----' 
                 else:
-                  print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],"%9s" % response['state'],"9s" % response['started'],response['vmtype'],"%.2f" % (time.time() - start)
+                  print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],"%9s" % response['state'],hoursStr,"%.2f" % (time.time() - start),response['vmtype']
      
       except socket.error as msg:
            break

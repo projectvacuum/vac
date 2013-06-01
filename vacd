@@ -104,19 +104,17 @@ def pollFactories():
                  VAC.vmtypes[response['vmtype']]['share'] > 0.0:
 
                    # we only have to add 1.0/share for this vmtype to get normalisation at the end automatically
-                   factoryVmtypeTotals[response['vmtype']] += 1.0 / VAC.vmtypes[response['vmtype']]['share']           
-                   VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] + 
-                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))                                                   
+                   factoryVmtypeTotals[response['vmtype']] += 1.0 / VAC.vmtypes[response['vmtype']]['share']
+                   VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
+                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
                                
                    if response['state'] == VAC.VacState.starting:
                            # starting counts as before fizzle point
                            factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-#                           VAC.logLine('   ' + response['vmname'] + ' is before fizzle (starting)')
                    elif response['state'] == VAC.VacState.running and 'started' in response and \
                         int(time.time()) < response['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
                            # running for less than fizzle_seconds counts too
                            factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-#                           VAC.logLine('   ' + response['vmname'] + ' is before fizzle (running %d seconds)' % (int(time.time()) - response['started']))
                    
               if 'vmtypeslist' in response:
                 for vmtypeOutcome in response['vmtypeslist']:
