@@ -3,7 +3,7 @@
 .B vac
 \- Vac utility command
 .SH SYNOPSIS
-.B vac [options] command [target]
+.B vac [options] command
 .SH DESCRIPTION
 .B vac
 is a command line utility for use with the vacd(8)
@@ -11,28 +11,33 @@ daemon.
 
 .SH COMMANDS
 
-.IP
-scan
+The
+.B scan
+command uses the Vac UDP protocol to contact the factory machines in this
+Vac space and outputs a summary of their responses. It can be used to get
+a quick overview of the status of a Vac space, including which vmtypes are
+running and where, and the outcomes of virtual machines that are currently
+shut down. 
 
 .SH OPTIONS
 
-  -h, --help            show help message and exit
+.IP "-h, --help"
+show help message and exit
 
-  -s SPACENAME, --space=SPACENAME
-                        override Vac space given in configuration file
+.IP "-s SPACENAME, --space=SPACENAME"
+override Vac space given in configuration file
 
-  -t UDPTIMEOUTSECONDS, --timeout=UDPTIMEOUTSECONDS
-                        set timeout in seconds for UDP queries
+.IP "-t UDPTIMEOUTSECONDS, --timeout=UDPTIMEOUTSECONDS"
+set timeout in seconds for UDP queries
 
-  -f FACTORIES, --factories=FACTORIES
-                        comma separated list of factory names
-
+.IP "-f FACTORIES, --factories=FACTORIES"
+comma separated list of the fully qualified domain names of the factories to
+query.
 
 .SH CONFIGURATION FILES
 
-The vac command uses the
-.B
-vac.conf(5)
+The vac command uses the settings of the
+.B vac.conf(5)
 configuration by default, unless overriden by the command line options
 described above.
 

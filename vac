@@ -102,7 +102,7 @@ def queryFactories():
                 elif response['state'] == VAC.VacState.shutdown and response['vmtype']:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
 
-                print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],(response['state'] + 10 * ' ')[0:9],hoursStr[0:21],"%.2f" % (time.time() - start), \
+                print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],(response['state'] + 10 * ' ')[0:9],hoursStr[0:21],"%.2fs" % (time.time() - start), \
                        response['vmtype'] if 'vmtype' in response else '------'
 
       except socket.error as msg:
