@@ -203,24 +203,15 @@ class VacVM:
       f.close()
                                      
       f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
-      f.write('mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')
-      
-      f.write('mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
-      f.write('mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
-      f.write('mount ' + os.uname()[1] + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
-      f.write('mount -o rw ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
 
-#      if ('shutdown_command' in vmtypes[self.vmtypeName]
-#          and 'shutdown_command_user' in vmtypes[self.vmtypeName]):
-#            f.write('''grep "^# Enable shutdown_command mechanism" /etc/sudoers 2>/dev/null >/dev/null
-#if [ $? != 0 ] ; then
-#echo "# Enable shutdown_command mechanism" >>/etc/sudoers
-#echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' !requiretty" >>/etc/sudoers
-#echo "Defaults:''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' visiblepw" >>/etc/sudoers
-#echo ''' + vmtypes[self.vmtypeName]['shutdown_command_user'] + ''' ALL = NOPASSWD: ''' + vmtypes[self.vmtypeName]['shutdown_command'] + ''' >> /etc/sudoers
-#fi\n''')
-
-      f.write('# end of vac prolog.sh\n\n')
+      f.write('#!/bin/sh\n')
+      f.write('if [ "$1" = "start" ] ; then\n')
+      f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')      
+      f.write('  mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
+      f.write('  mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
+      f.write('  mount ' + os.uname()[1] + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
+      f.write('  mount -o rw ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
+      f.write('fi\n# end of vac prolog.sh\n\n')
 
       # if a prolog is given for this vmtype, we append that to vac's part of the script
       if 'prolog' in vmtypes[self.vmtypeName]:
