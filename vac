@@ -88,8 +88,7 @@ def queryFactories():
                                        startingcount += 1
                 totalcount += 1
 
-                
-                if not response['vmtype']:                
+                if not response['vmtype'] or not response['vmtypes']:
                   hoursStr = 22 * ' '
 
                 elif response['state'] == VAC.VacState.running:
@@ -98,7 +97,7 @@ def queryFactories():
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
 
-                elif response['state'] == VAC.VacState.shutdown and response['vmtype']:
+                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']]:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
 
                 print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],(response['state'] + 10 * ' ')[0:9],hoursStr[0:21],"%.2fs" % (time.time() - start), \

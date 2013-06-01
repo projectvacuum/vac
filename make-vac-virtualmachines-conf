@@ -51,16 +51,16 @@ vgname=vac_volume_group
 
 if [ -x /usr/bin/virsh ] ; then
  # /proc/cpuinfo is misleading in Xen dom0; either ok for KVM
- numcpu=`/usr/bin/virsh nodeinfo | grep '^CPU(s)' | sed 's/CPU(s): *//'`
+ num_machines=`/usr/bin/virsh nodeinfo | grep '^CPU(s)' | sed 's/CPU(s): *//'`
 else
- numcpu=`grep '^processor' /proc/cpuinfo | wc --lines`
+ num_machines=`grep '^processor' /proc/cpuinfo | wc --lines`
 fi
 
 # look for command line overrides
 
 while [ "$*" != "" ] ; do
- if [ `echo $1 | cut -c1-9` = '--numcpu=' ] ; then
-  numcpu=`echo $1 | cut -c10-`
+ if [ `echo $1 | cut -c1-9` = '--num-machines=' ] ; then
+  num_machines=`echo $1 | cut -c10-`
   shift
  elif [ `echo $1 | cut -c1-9` = '--prefix=' ] ; then
   prefix=`echo $1 | cut -c10-`
@@ -84,7 +84,7 @@ fi
 
 i=0
 
-while [ "$i" -lt "$numcpu" ]
+while [ "$i" -lt "$num_machines" ]
 do
 
  vcname=`hostname -s | sed "s/^$prefix/vc/"``printf '%02d' $i`
