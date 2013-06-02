@@ -111,10 +111,12 @@ def pollFactories():
                    if response['state'] == VAC.VacState.starting:
                            # starting counts as before fizzle point
                            factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-                   elif response['state'] == VAC.VacState.running and 'started' in response and \
-                        int(time.time()) < response['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+#                           VAC.logLine(response['vmname']+' BeforeFizzle because starting')
+                   elif response['state'] == VAC.VacState.running and 'vmtypes' in response and \
+                        int(time.time()) < (response['vmtypes'][response['vmtype']]['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']):
                            # running for less than fizzle_seconds counts too
                            factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
+#                           VAC.logLine(response['vmname']+' BeforeFizzle because started at '+str(response['vmtypes'][response['vmtype']]['started'])+' '+str(time.time()))
                    
               if 'vmtypes' in response:
                 for vmtypeName, vmtypeOutcome in response['vmtypes'].iteritems():
@@ -359,12 +361,14 @@ def vacResponder():
                 try:
                   heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat')
                   timeHeartbeat = int(heartbeatStat.st_ctime)
-                  
+                except:
+                  timeHeartbeat = None
+
+                try:                  
                   f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat', 'r')
                   cpuSeconds = int(f.readline().strip())
                   f.close()
                 except:
-                  timeHeartbeat = None
                   cpuSeconds    = None
 
                 hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
@@ -380,6 +384,8 @@ def vacResponder():
                           newestVmState = VAC.VacState.starting
                 else:
                           newestVmState = VAC.VacState.shutdown
+
+#                print int(time.time()),'newestVmState=',newestVmState,'timeStarted=',timeStarted,'timeHeartbeat=',timeHeartbeat,'cpuSeconds=',cpuSeconds,'hasFinished=',hasFinished,
 
                 try:
                   f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
