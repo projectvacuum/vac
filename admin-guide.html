@@ -4,7 +4,9 @@
 </head>
 <body>
 
-<h1>Vac Site Admin Guide</h1>
+<h1 align=center>Vac Site Admin Guide</h1>
+
+<p align=center><b>Andrew McNab &lt;Andrew.McNab&nbsp;AT&nbsp;cern.ch&gt;</b>
 
 <h2>Quick start</h2>
 
@@ -13,7 +15,9 @@ By following this quick start recipe you can verify that your installation
 will work with Vac and see it creating and destroying virtual machines. You
 will almost certainly want to start again from scratch by following the
 step-by-step part of the Admin Guide so don't invest a lot of time here.
-If you're already familiar with VMs, you could just skip straight there.
+If you're already familiar with VMs, you could just skip straight there
+but it's safest to go through the quick start to make sure the requirements
+are all there.
 
 <p>
 To follow the quick start, you need an x86_64 Intel or AMD machine 
@@ -28,8 +32,7 @@ running.)
 Install the vac RPM, and download a recent compressed kvm-style CernVM batch 
 image from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
 downloads page</a> to /tmp. Use zcat to extract the image itself to a
-file in /tmp. 
-It will be a large file: more than 9GB, although it's very sparse.
+file in /tmp. It will be a large file: more than 9GB.
 
 <p>
 Copy the file /var/lib/vac/doc/testkvm.xml to /tmp as well, and edit the
@@ -69,18 +72,122 @@ and they are much quicker to read and copy around.
 <p>
 Now you need to create the /etc/vac.conf configuration file. Copy
 /var/lib/vac/doc/example.vac.conf to /etc/vac.conf and read through its
-comments.
+comments. There are 6 lines you need to check and probably change.
 
+<dl>
+<dt><b>vac_space =</b> in [settings]
+<dd>Set this to vac01 in your site's domain. So if your site is .example.com
+then set it to vac01.example.com . A Vac space is a group of factory
+machines that communicate with each other, and is equivalent to a subcluster
+or subsite. A space's name is a fully qualified domain name (FQDN), and can be 
+used as a virtual CE name where necessary in other systems.
 
+<dt><b>names =</b> in [factories]
+<dd>Since we're creating a space that contains a single factory machine, 
+    set this to be the FQDN of the factory machine you're workng on.
 
-<h2>Step-by-step</h2>
-- Xen vs kvm
-- CERNVM images
-- DNS, IP, MAC
-- logical volumes 
-- installation: tar vs RPM
-- configuration of factory and virtualmachines
-- setting up vmtypes
+<dt><b>[virtualmachine ...]</b>
+<dd>The virtualmachine section names contain the FQDN of the virtual 
+    machines assigned to this factory. Replace the vm01.example.com value
+    with a FQDN you can use for a VM on this factory. You should register
+    this in your local DNS too.
+
+<dt><b>mac =</b> in [virtualmachine ...]
+<dd>Each VM needs a unique MAC address, and these should be chosen from the
+    locally administered range - the MAC equivalent of private IP address
+    ranges. One way to choose a unique address is to use 56:4D as the
+    first two hex bytes, then the hexadecimal representation of the four
+    bytes of the VM's IP address. For example, 192.168.0.1 would have a
+    MAC of 56:4D:C0:A8:00:01, as you could discover with the shell command
+    <pre>
+    printf "56:4D:%02X:%02X:%02X:%02X\n" 192 168 0 1
+    </pre>
+    
+<dt><b>root_image =</b> in [vmtype example]
+<dd>The path and filename given in this setting must point to the CernVM
+    image you created for Vac in /var/lib/vac/images. Double check the
+    version numbers are correct.
+  
+<dt><b>rootpublickey =</b> in [vmtype example]
+<dd>This setting is not strictly necessary but is very useful. By copying
+    an RSA key pair to /root/.ssh on the factory machine, or creating
+    one with ssh-keygen you will be able to ssh into the VM as root and
+    see how it is laid out and how it is running. If you don't
+    place a public key at the location given in this setting, you need 
+    to comment out this setting.
+</dl>
+
+<p>
+The files needed for the example vmtype are installed by the RPM in
+/var/lib/vac/vmtypes/example and with /etc/vac.conf done and the CernVM
+image in place you're ready to go. Just do <b>service vacd restart</b>
+to make sure vacd is running and look in the log files.
+
+<p>
+When vacd starts it forks a factory process that watches the VMs and
+creates or destroys them as necessary; and a responder process that
+replies to queries from factories about what is running on this host.
+These two processes have separate log files as /var/log/vacd-factory
+and /var/log/vacd-responder . 
+
+<p>
+In its log file, you should be able to see the factory
+daemon trying to decide what to do and then creating the example
+VM which runs for 10 minutes then shuts itself down. When deciding
+what to do, the factory queries its own responder via UDP and this
+should be visible in the responder's log file.
+
+<p>
+You should also be able to see the state of the VM using the
+command <b>vac scan</b>, where vac is a command line tool that the
+RPM installs in /usr/sbin.
+
+<h2>Configuration step-by-step</h2>
+
+<p>
+This part of the guide covers the same groud as the quick start
+guide but in a lot more detail. It's intended to help you choose
+how best to configure your site.
+
+<h3>Xen vs kvm</h3>
+
+<p>
+We recommend that hardware virtualization (eg Intel VT-x features)
+with kvm is used for production. Vac also supports Xen 
+paravirtualization which can run on old machines without hardware
+virtualization but this is not supported on RHEL6/SL6. (6.x RPMs
+are <a href="http://xen.crc.id.au/support/guides/install/">available
+from Steven Haigh</a>.)
+
+<h3>CernVM images</h3>
+
+<p>
+Vac currently requires the use of CernVM images with HEPiX 
+contexualization based on EC2/ISO (&quot;CD-ROM&quot;) images.
+
+<p>
+You can download a recent compressed kvm-style CernVM batch 
+image from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
+downloads page</a>. You can use gunzip or zcat to extract the image
+itself. It will be a large file: more than 9GB. gunzip creates
+non-sparse files but you can convert the image to sparse with cp:
+<pre>
+cd /tmp
+zcat cernvm-batch-node-2.6.0-4-1-x86_64.hdd.gz >cernvm-batch-node-2.6.0-4-1-x86_64.hdd
+cp --sparse=always cernvm-batch-node-2.6.0-4-1-x86_64.hdd /var/lib/vac/images
+</pre>
+Sparse files not only use less disk space and are quicker to 
+copy, but they are also quicker to read.
+
+<h3>DNS, IP, MAC</h3>
+
+<h3>Logical volumes</h3>
+
+<h3>Installation: tar vs RPM</h3>
+
+<h3>Cnfiguration of factory and virtualmachines</h3>
+
+<h3>Setting up vmtypes</h3>
 
 <h2>Using vac command</h2>
 
