@@ -65,7 +65,7 @@ def pollFactories():
 
    # Initialise
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
-      if (vmtype['share'] > 0.0):
+      if vmtype['share'] > 0.0:
         factoryVmtypeTotals[vmtypeName]             = 0.0
         factoryVmtypeLastAborts[vmtypeName]         = 0
         factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
@@ -207,7 +207,7 @@ def vacOneCycle():
      if vm.state == VAC.VacState.running:
        # VM is happily running so we redo the machine's heartbeat file
        VAC.createFile('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' +      
-                      vm.uuidStr + '/heartbeat', str(vm.cpuSeconds) + '\n')
+                      vm.uuidStr + '/heartbeat', str(int(vm.cpuSeconds)) + '\n')
 
        # ah, but are WE happy that it is still running?
        try:
@@ -359,8 +359,13 @@ def vacResponder():
                 try:
                   heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat')
                   timeHeartbeat = int(heartbeatStat.st_ctime)
+                  
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat', 'r')
+                  cpuSeconds = int(f.readline().strip())
+                  f.close()
                 except:
                   timeHeartbeat = None
+                  cpuSeconds    = None
 
                 hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
 
@@ -368,10 +373,10 @@ def vacResponder():
                 # this means that old files are ignored when working out the state
                 if (timeStarted and 
                     timeHeartbeat and 
-                    timeHeartbeat > int(time.time()) - 600 and
+                    timeHeartbeat > int(time.time() - 3600) and
                     not hasFinished):
                           newestVmState = VAC.VacState.running
-                elif (not timeStarted and newestCtime > int(time.time()) - 3600):
+                elif not timeStarted and newestCtime > int(time.time() - 3600):
                           newestVmState = VAC.VacState.starting
                 else:
                           newestVmState = VAC.VacState.shutdown
@@ -391,6 +396,7 @@ def vacResponder():
                                             'created'		: newestCtime,
                                             'started'		: timeStarted,
                                             'heartbeat'		: timeHeartbeat,
+                                            'cpuseconds'	: cpuSeconds,
                                             'message'		: shutdownMessage,
                                             'messagetime'	: timeShutdownMessage
                                           }

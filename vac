@@ -92,7 +92,12 @@ def queryFactories():
                   hoursStr = 22 * ' '
 
                 elif response['state'] == VAC.VacState.running:
-                  hoursStr = '%0.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0) + 22 * ' '
+                  hoursStr = '%0.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0)
+
+                  if response['vmtypes'][response['vmtype']]['heartbeat'] > response['vmtypes'][response['vmtype']]['started']:
+                    hoursStr += ' %0.1f%%' % (100.0 * response['vmtypes'][response['vmtype']]['cpuseconds'] / float(response['vmtypes'][response['vmtype']]['heartbeat'] - response['vmtypes'][response['vmtype']]['started']))
+                    
+                  hoursStr +=  22 * ' '
 
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
