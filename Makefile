@@ -61,8 +61,10 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES \
 	   check-vacd.8 vac.1 example.vac.conf \
-	   admin-guide.html testkvm.xml \
+	   testkvm.xml \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
+	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
+	 > $(RPM_BUILD_ROOT)/var/lib/vac/doc/admin-guide.html
 	cp example.README \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/README
 	cp example.user_data \
