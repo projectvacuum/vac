@@ -179,6 +179,18 @@ cp --sparse=always cernvm-batch-node-2.6.0-4-1-x86_64.hdd /var/lib/vac/images
 Sparse files not only use less disk space and are quicker to 
 copy, but they are also quicker to read.
 
+<p>
+The cernvm-batch-node-2.6.0-4-1-x86_64 image has been distributed with a
+filesystem check interval of 6 months, and after 3rd April 2013 a check
+automatically happens when it is used as a Linux root partition. You
+can disable this with the following procedure:
+<pre>
+losetup /dev/loop7 cernvm-batch-node-2.6.0-4-1-x86_64.hdd
+tune2fs -i 0 -c -1 /dev/loop7
+losetup -d /dev/loop7
+</pre>
+(If loop7 is in use on your system, replace it with a different number.)
+
 <h3>DNS, IP, MAC</h3>
 
 <h3>Logical volumes</h3>
