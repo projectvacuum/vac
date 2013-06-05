@@ -321,6 +321,9 @@ class VacVM:
 
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr)
 
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/created', 
+                  str(int(time.time())) + '\n')
+
       self.makeISO()
       self.makeRootDisk()
       self.exportFileSystems()
