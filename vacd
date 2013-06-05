@@ -344,7 +344,7 @@ def vacResponder():
               newestCtime        = None
 
               for onedir in dirslist:
-                 if os.path.isdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created'):
+                 if os.path.isdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir):
                    if (not newestUUIDByVmtype or
                        os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime > newestCtime):
                            newestUUIDByVmtype = onedir
