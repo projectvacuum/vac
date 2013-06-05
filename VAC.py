@@ -44,8 +44,6 @@ import libvirt
 import tempfile
 import stat
 
-#from stat import *
-
 from ConfigParser import RawConfigParser
 
 class VacState:
