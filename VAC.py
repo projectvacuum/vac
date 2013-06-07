@@ -626,12 +626,17 @@ def readConf():
              
          elif sectionNameSplit[0] == 'virtualmachine':
              virtualmachine = {}
+             
+             # ordinal of the VM, counting from 0
+             virtualmachine['ordinal'] = len(virtualmachines)
+          
              virtualmachine['mac'] = parser.get(sectionName, 'mac')
 
              if parser.has_option(sectionName, 'scratch_volume'):
                  virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
              
              virtualmachines[sectionNameSplit[1]] = virtualmachine
+             
 #             try:
 #              os.makedirs('/var/lib/vac/machines/' + sectionNameSplit[1])
 #             except:
