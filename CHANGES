@@ -1,4 +1,7 @@
-* Sat May 25 2013 Andrew McNab <Andrew.McNab@cern.ch>
-- CHANGES will be maintained once 0.9.0 is released.
-* Sat May 25 2013 Andrew McNab <Andrew.McNab@cern.ch>
-- =============== Start prerelease of Vac version 0.9.0 ===============
+* Fri Jun  7 2013 Andrew McNab <Andrew.McNab@cern.ch>
+- Mistakes in configuration file(s) now produce an error rather than a
+  traceback. vacd now just skips the cycle if the configuration is bad,
+  in the hope of it being fixed in the future.  
+* Fri Jun  7 2013 Andrew McNab <Andrew.McNab@cern.ch>
+- We log user/developer visible changes now, relative to 0.9.0
+- =============== Start prerelease of Vac version 0.10.0 ===============

@@ -143,8 +143,16 @@ if __name__ == '__main__':
 
     if len(args) > 0 and args[0]:
     
-        VAC.readConf()
+        readConfError = VAC.readConf()
         
+        if readConfError:
+# Perhaps we should try to ignore these errors in case the command
+# line arguments supplement missing info in vac.conf etc? Anyway,
+# for now it's treated as with vacd and bad config means we do
+# nothing.
+          print 'Reading configuration fails with error: ' + readConfError
+          sys.exit(1)
+                
         if options.spaceName:
              VAC.spaceName = options.spaceName.strip()
 

@@ -186,8 +186,12 @@ def vacOneCycle():
    VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
    os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-   VAC.readConf()
-
+   readConfError = VAC.readConf()
+   
+   if readConfError:
+     VAC.logLine('Reading configuration fails with: ' + readConfError)
+     return
+     
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))
    VAC.logLine('VM Types configuration: ' + str(VAC.vmtypes))
    VAC.logLine('Factories in the space ' + VAC.spaceName + ': ' + str(VAC.factories))
@@ -283,8 +287,13 @@ def vacResponder():
    
    while True:
    
-     VAC.readConf()
-     
+     readConfError = VAC.readConf()
+
+     if readConfError:
+       VAC.logLine('Reading configuration fails with: ' + readConfError)
+       time.sleep(60.0)
+       continue
+          
      try:
        pr = open('/var/lib/vac/responder.pid', 'r')
        pid = int(pr.read().strip())

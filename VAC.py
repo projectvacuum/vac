@@ -489,7 +489,8 @@ def createFile(targetname, contents):
 def logLine(text):
    print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
    sys.stdout.flush()
-          
+
+numVirtualmachines = None
 virtualmachines = {}
 factories = []
 vmtypes = {}
@@ -522,12 +523,12 @@ def readConf():
       # general settings from [Settings] section
 
       if not parser.has_section('settings'):
-        print 'Must have a [settings] section!'
-        raise NameError('Must have a settings section!')
+#        print 'Must have a [settings] section!'
+        return 'Must have a settings section!'
       
       if not parser.has_option('settings', 'vac_space'):
-        print 'Must give a vac_space in [settings]!'
-        raise NameError('Must give a vac_space in [settings]!')
+#        print 'Must give a vac_space in [settings]!'
+        return 'Must give a vac_space in [settings]!'
         
       spaceName = parser.get('settings','vac_space').strip()
              
@@ -631,12 +632,16 @@ def readConf():
                  virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
              
              virtualmachines[sectionNameSplit[1]] = virtualmachine
-             try:
-              os.makedirs('/var/lib/vac/machines/' + sectionNameSplit[1])
-             except:
-              if os.path.isdir('/var/lib/vac/machines/' + sectionNameSplit[1]):
-                pass
-              else: raise
+#             try:
+#              os.makedirs('/var/lib/vac/machines/' + sectionNameSplit[1])
+#             except:
+#              if os.path.isdir('/var/lib/vac/machines/' + sectionNameSplit[1]):
+#                pass
+#              else:
+#                raise
+
+      # Finished successfully, with no error to return
+      return None
         
 def cleanupByNameUUID(name, vmtypeName, uuidStr):
    conn = libvirt.open(None)
