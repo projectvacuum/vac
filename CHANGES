@@ -1,3 +1,7 @@
+* Mon Jun 10 2013 Andrew McNab <Andrew.McNab@cern.ch>
+- virtualmachines option added to configuration files, so the number
+  of VMs desired can be given rather then listing them as virtualmachine
+  sections of the file.
 * Fri Jun  7 2013 Andrew McNab <Andrew.McNab@cern.ch>
 - Mistakes in configuration file(s) now produce an error rather than a
   traceback. vacd now just skips the cycle if the configuration is bad,

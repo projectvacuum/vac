@@ -61,6 +61,23 @@ sets the number of virtual CPUs to assign to each VM. Defaults to 1.
 .B mb_per_machine
 sets the memory allocated to each VM in MiB. Defaults to 2048.
 
+.B virtualmachines
+gives the number of VMs to be defined by Vac rather than in 
+[virtualmachine ...] sections in the configuration file(s). These two
+mechanisms cannot be used on the same factory. The VM names are formed by
+adding a hyphen and the VM number to the hostname component of its fully
+qualified domain name. For example, factory1.example.com would have
+factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
+addresses are formed with the prefix 56:4D as the first two bytes, and
+the four bytes of the IP address as the remaining four bytes.
+
+.B volume_group
+can be used to set the volume group to be searched for a logical volume
+which can be used by a particular VM. The logical volumes must have the
+VMs fully qualified domain names as their names. For example, 
+/dev/vac_volume_group/facory1-00.example.com/ would used by the VM
+factory1-00.example.com. Defaults to vac_volume_group.
+
 .SH [VMTYPE ...] SECTIONS
 
 One [vmtype ...] section must exist for each vmtype in the system, with
@@ -159,7 +176,8 @@ vmtype.
 
 .SH [VIRTUALMACHINE ...] SECTIONS
 
-One [virtualmachine ...] section must exist for each virtual machine assigned
+If the virtualmachines option is not given in [settings], then 
+one [virtualmachine ...] section must exist for each virtual machine assigned
 to this factory machine, with its fully qualified domain name 
 given in the section name, such as [virtualmachine vm1.example.com].
 Each of these sections contain one or two option=value pairs that are 

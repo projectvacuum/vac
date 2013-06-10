@@ -359,6 +359,8 @@ class VacVM:
 
       else:
           return 'No mac given in configuration for ' + self.name
+          
+      logLine('Using MAC ' + mac + ' when creating ' + self.name)
 
       conn = libvirt.open(None)
       if conn == None:
