@@ -350,9 +350,9 @@ class VacVM:
         except:
           return 'Failed to get IP address of ' + self.name
 
-        ip_bytes = ip.split('.')
+        ipBytes = ip.split('.')
         
-        mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ip_bytes[0]), int(ip_bytes[1]), int(ip_bytes[2]), int(ip_bytes[3]))
+        mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
          
       else if not 'mac' in virtualmachines[self.name]:
           return 'No mac given in configuration for ' + self.name
@@ -687,7 +687,10 @@ def readConf():
            virtualmachine = {}
            
            virtualmachine['ordinal'] = ordinal
-           vmname = os.uname()[1] + '%02d' % ordinal
+           
+           nameParts = os.uname()[1].split('.',1)
+           
+           vmname = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
                       
            if os.exists('/dev/' + volumeGroup + '/' + vmname) and \           
               stat.S_IFBLK(os.stat('/dev/' + volumeGroup + '/' + vmname).st_mode):
