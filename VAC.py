@@ -345,10 +345,16 @@ class VacVM:
       if numVirtualmachines:
         # if auto defining VMs, MACs are done here
 
-        try:
-          ip = socket.getaddrinfo(self.name, None)[1][4][0]
-        except:
-          return 'Failed to get IP address of ' + self.name
+        if networkType == 'nat':
+          try:
+            ip = natNetwork.rsplit('.',1)[0] + str(100 + virtualmachines[self.name][ordinal])
+          except:
+            return 'Failed to make NAT address'
+        else:
+          try:
+            ip = socket.getaddrinfo(self.name, None)[1][4][0]
+          except:
+            return 'Failed to get IP address of ' + self.name
 
         ipBytes = ip.split('.')
         
@@ -509,21 +515,23 @@ def logLine(text):
    print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
    sys.stdout.flush()
 
-numVirtualmachines = None
-virtualmachines = {}
-factories = []
-vmtypes = {}
-spaceName = None
 cycleSeconds = 60
-udpTimeoutSeconds = 5.0
-domainType = 'kvm'
-vcpuPerMachine = 1
-mbPerMachine = 2048
 deleteOldFiles = True
+domainType = 'kvm'
+factories = []
+mbPerMachine = 2048
+natNetwork = '192.168.86.0'
+networkType = 'bridge'
+numVirtualmachines = None
+spaceName = None
+udpTimeoutSeconds = 5.0
+vcpuPerMachine = 1
+virtualmachines = {}
+vmtypes = {}
 volumeGroup = 'vac_volume_group'
 
 def readConf():
-      global numVirtualmachines, factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, spaceName, volumeGroup
+      global deleteOldFiles, domainType, factories, mbPerMachine, networkType, numVirtualmachines, spaceName, vcpuPerMachine, volumeGroup
       
       parser = RawConfigParser()
 
@@ -556,6 +564,8 @@ def readConf():
           numVirtualmachines = int(parser.get('settings','virtualmachines').strip())
                           
       if parser.has_option('settings', 'volume_group'):
+          if not numVirtualmachines:
+              return 'volume_group can only be used with the virtualmachines option'
           # Volume group to search for logical volumes if automatic VM definitions
           volumeGroup = parser.get('settings','volume_group').strip()
              
@@ -563,7 +573,17 @@ def readConf():
           # How long to wait before re-evaluating state of VMs in the
           # main loop again. Defaults to 60 seconds.
           cycleSeconds = int(parser.get('settings','cycle_seconds').strip())
-             
+
+      if parser.has_option('settings', 'network_type'):
+          # bridge or nat
+          networkType = parser.get('settings','network_type').strip().lower()
+          
+      if parser.has_option('settings', 'nat_network'):
+          if networkType != 'nat':
+              return 'nat_network can only be used with network_type = nat'
+          # network to use for NAT addresses
+          natNetwork = parser.get('settings','nat_network').strip()
+                       
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
@@ -655,6 +675,9 @@ def readConf():
            
              if not numVirtualmachines is None:
                return 'Cannot mix virtualmachines setting and [virtualmachine ...] sections'
+         
+             if networkType == 'nat':
+               return 'Cannot use NAT working and [virtualmachine ...] sections'
          
              virtualmachine = {}
              
