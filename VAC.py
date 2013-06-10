@@ -354,11 +354,11 @@ class VacVM:
         
         mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
          
-      else if not 'mac' in virtualmachines[self.name]:
-          return 'No mac given in configuration for ' + self.name
+      elif 'mac' in virtualmachines[self.name]:
+          mac = virtualmachines[self.name]['mac']
 
       else:
-          mac = virtualmachines[self.name]['mac']
+          return 'No mac given in configuration for ' + self.name
 
       conn = libvirt.open(None)
       if conn == None:
@@ -521,7 +521,7 @@ deleteOldFiles = True
 volumeGroup = 'vac_volume_group'
 
 def readConf():
-      global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, spaceName
+      global numVirtualmachines, factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, spaceName, volumeGroup
       
       parser = RawConfigParser()
 
@@ -552,12 +552,7 @@ def readConf():
           # Optional number of VMs for Vac to auto-define.
           # Cannot be used if there are [virtualmachine ...] sections!
           numVirtualmachines = int(parser.get('settings','virtualmachines').strip())
-             
-      if parser.has_option('settings', 'virtualmachines'):
-          # Optional number of VMs for Vac to auto-define.
-          # Cannot be used if there are [virtualmachine ...] sections!
-          numVirtualmachines = int(parser.get('settings','virtualmachines').strip())
-             
+                          
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes if automatic VM definitions
           volumeGroup = parser.get('settings','volume_group').strip()
@@ -690,13 +685,13 @@ def readConf():
            
            nameParts = os.uname()[1].split('.',1)
            
-           vmname = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
+           vmName = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
                       
-           if os.exists('/dev/' + volumeGroup + '/' + vmname) and \           
-              stat.S_IFBLK(os.stat('/dev/' + volumeGroup + '/' + vmname).st_mode):
-                virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmname
+           if os.path.exists('/dev/' + volumeGroup + '/' + vmName) and \
+              stat.S_IFBLK(os.stat('/dev/' + volumeGroup + '/' + vmName).st_mode):
+                virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
            
-           virtualmachines[vmname] = virtualmachine
+           virtualmachines[vmName] = virtualmachine
            ordinal += 1
 
       # Finished successfully, with no error to return
