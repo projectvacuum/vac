@@ -42,6 +42,7 @@ import base64
 import shutil
 import libvirt
 import tempfile
+import socket
 import stat
 
 from ConfigParser import RawConfigParser
@@ -341,14 +342,27 @@ class VacVM:
       else:
           scratch_volume_xml = ""
 
-      if not 'mac' in virtualmachines[self.name]:
-          print 'No mac given in configuration for',self.name
-          raise
+      if numVirtualmachines:
+        # if auto defining VMs, MACs are done here
+
+        try:
+          ip = socket.getaddrinfo(self.name, None)[1][4][0]
+        except:
+          return 'Failed to get IP address of ' + self.name
+
+        ip_bytes = ip.split('.')
+        
+        mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ip_bytes[0]), int(ip_bytes[1]), int(ip_bytes[2]), int(ip_bytes[3]))
+         
+      else if not 'mac' in virtualmachines[self.name]:
+          return 'No mac given in configuration for ' + self.name
+
+      else:
+          mac = virtualmachines[self.name]['mac']
 
       conn = libvirt.open(None)
       if conn == None:
-          print 'Failed to open connection to the hypervisor'
-          raise
+          return 'Failed to open connection to the hypervisor'
                 
       if domainType == 'kvm':
           xmldesc="""<domain type='kvm'>
@@ -392,7 +406,7 @@ class VacVM:
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
     </controller>
     <interface type='bridge'>
-      <mac address='""" + virtualmachines[self.name]['mac'] + """'/>
+      <mac address='""" + mac + """'/>
       <source bridge='p1p1'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
@@ -445,7 +459,7 @@ class VacVM:
       <listen type='address' address='0.0.0.0'/>
     </graphics>
     <interface type='bridge'>
-      <mac address='""" + virtualmachines[self.name]['mac'] + """'/>
+      <mac address='""" + mac + """'/>
       <source bridge='br-eth0'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
@@ -455,7 +469,7 @@ class VacVM:
 """        
 
       else:
-          raise 'domain_type not recognised!'
+          return 'domain_type not recognised!'
       
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/started', 
                   str(int(time.time())) + '\n')
@@ -471,6 +485,9 @@ class VacVM:
            self.state = VacState.running
 
       conn.close()
+       
+      # Everything ok so return no error message
+      return None
      
 def createFile(targetname, contents):
    # Create a text file containing contents in the vac tmp directory
@@ -501,6 +518,7 @@ domainType = 'kvm'
 vcpuPerMachine = 1
 mbPerMachine = 2048
 deleteOldFiles = True
+volumeGroup = 'vac_volume_group'
 
 def readConf():
       global factories, vcpuPerMachine, mbPerMachine, domainType, deleteOldFiles, spaceName
@@ -523,14 +541,26 @@ def readConf():
       # general settings from [Settings] section
 
       if not parser.has_section('settings'):
-#        print 'Must have a [settings] section!'
         return 'Must have a settings section!'
       
       if not parser.has_option('settings', 'vac_space'):
-#        print 'Must give a vac_space in [settings]!'
-        return 'Must give a vac_space in [settings]!'
+        return 'Must give vac_space in [settings]!'
         
       spaceName = parser.get('settings','vac_space').strip()
+             
+      if parser.has_option('settings', 'virtualmachines'):
+          # Optional number of VMs for Vac to auto-define.
+          # Cannot be used if there are [virtualmachine ...] sections!
+          numVirtualmachines = int(parser.get('settings','virtualmachines').strip())
+             
+      if parser.has_option('settings', 'virtualmachines'):
+          # Optional number of VMs for Vac to auto-define.
+          # Cannot be used if there are [virtualmachine ...] sections!
+          numVirtualmachines = int(parser.get('settings','virtualmachines').strip())
+             
+      if parser.has_option('settings', 'volume_group'):
+          # Volume group to search for logical volumes if automatic VM definitions
+          volumeGroup = parser.get('settings','volume_group').strip()
              
       if parser.has_option('settings', 'cycle_seconds'):
           # How long to wait before re-evaluating state of VMs in the
@@ -625,6 +655,10 @@ def readConf():
                  pass
              
          elif sectionNameSplit[0] == 'virtualmachine':
+           
+             if not numVirtualmachines is None:
+               return 'Cannot mix virtualmachines setting and [virtualmachine ...] sections'
+         
              virtualmachine = {}
              
              # ordinal of the VM, counting from 0
@@ -644,6 +678,23 @@ def readConf():
 #                pass
 #              else:
 #                raise
+
+      if numVirtualmachines:
+         # Auto define VMs          
+         ordinal = 0
+         
+         while ordinal < numVirtualmachines:           
+           virtualmachine = {}
+           
+           virtualmachine['ordinal'] = ordinal
+           vmname = os.uname()[1] + '%02d' % ordinal
+                      
+           if os.exists('/dev/' + volumeGroup + '/' + vmname) and \           
+              stat.S_IFBLK(os.stat('/dev/' + volumeGroup + '/' + vmname).st_mode):
+                virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmname
+           
+           virtualmachines[vmname] = virtualmachine
+           ordinal += 1
 
       # Finished successfully, with no error to return
       return None
