@@ -367,7 +367,7 @@ class VacVM:
           return 'No mac given in configuration for ' + self.name
           
       logLine('Using MAC ' + mac + ' when creating ' + self.name)
-
+      
       conn = libvirt.open(None)
       if conn == None:
           return 'Failed to open connection to the hypervisor'
@@ -413,9 +413,9 @@ class VacVM:
     <controller type='usb' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
     </controller>
-    <interface type='bridge'>
+    <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
       <mac address='""" + mac + """'/>
-      <source bridge='p1p1'/>
+      <source """ + ("network='vac-nat-net'" if networkType == 'nat' else "bridge='p1p1'") + """/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -466,9 +466,9 @@ class VacVM:
     <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
       <listen type='address' address='0.0.0.0'/>
     </graphics>
-    <interface type='bridge'>
+    <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
       <mac address='""" + mac + """'/>
-      <source bridge='br-eth0'/>
+      <source """ + ("network='vac-nat-net'" if networkType == 'nat' else "bridge='br-eth0'") + """/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
