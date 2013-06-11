@@ -273,11 +273,16 @@ class VacVM:
         os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command', 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
-         os.system('exportfs ' + self.name + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
+      if networkType == 'nat':
+        exportAddress = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])        
+      else:
+        exportAddress = self.name
 
-      os.system('exportfs ' + self.name + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
-      os.system('exportfs -o rw,no_root_squash ' + self.name + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+      if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
+         os.system('exportfs ' + exportAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
+
+      os.system('exportfs ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
+      os.system('exportfs -o rw,no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def makeRootDisk(self):
       if domainType == 'kvm':
@@ -415,7 +420,7 @@ class VacVM:
     </controller>
     <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
       <mac address='""" + mac + """'/>
-      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else "bridge='p1p1'") + """/>
+      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else ("bridge='" + bridgeDevice + "'")) + """/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -468,7 +473,7 @@ class VacVM:
     </graphics>
     <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
       <mac address='""" + mac + """'/>
-      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else "bridge='br-eth0'") + """/>
+      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else ("bridge='" + bridgeDevice + "'")) + """/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -537,6 +542,7 @@ def logLine(text):
       print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
       sys.stdout.flush()
 
+bridgeDevice = None
 cycleSeconds = 60
 deleteOldFiles = True
 domainType = 'kvm'
@@ -553,7 +559,8 @@ vmtypes = {}
 volumeGroup = 'vac_volume_group'
 
 def readConf():
-      global deleteOldFiles, domainType, factories, mbPerMachine, natNetwork, networkType, numVirtualmachines, spaceName, vcpuPerMachine, volumeGroup
+      global bridgeDevice, cycleSeconds, deleteOldFiles, domainType, factories, mbPerMachine, \
+             natNetwork, networkType, numVirtualmachines, spaceName, vcpuPerMachine, volumeGroup
       
       parser = RawConfigParser()
 
@@ -579,6 +586,21 @@ def readConf():
         return 'Must give vac_space in [settings]!'
         
       spaceName = parser.get('settings','vac_space').strip()
+             
+      if parser.has_option('settings', 'domain_type'):
+          # defaults to 'kvm' but can specify 'xen' instead
+          domainType = parser.get('settings','domain_type').strip()
+
+      if parser.has_option('settings', 'network_type'):
+          # bridge or nat
+          networkType = parser.get('settings','network_type').strip().lower()
+          
+      if parser.has_option('settings', 'bridge_device'):
+          bridgeDevice = parser.get('settings','bridge_device').strip()
+      elif domainType == 'xen':
+          bridgeDevice = 'br-eth0'
+      else:
+          bridgeDevice = 'p1p1'
              
       if parser.has_option('settings', 'virtualmachines'):
           # Optional number of VMs for Vac to auto-define.
@@ -609,10 +631,6 @@ def readConf():
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
-             
-      if parser.has_option('settings', 'domain_type'):
-          # defaults to 'kvm' but can specify 'xen' instead
-          domainType = parser.get('settings','domain_type').strip()
              
       if (parser.has_option('settings', 'delete_old_files') and
           parser.get('settings','delete_old_files').strip().lower() == 'false'):

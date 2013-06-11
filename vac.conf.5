@@ -78,6 +78,21 @@ VMs fully qualified domain names as their names. For example,
 /dev/vac_volume_group/facory1-00.example.com/ would used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
+.B network_type
+selects between bridge and nat as styles of networking. If nat is given,
+then the virtualmachines setting must also be used.
+Defaults to bridge.
+
+.B nat_network
+allows the C-class private network use by Vac for NAT to be chosen. Vac
+will pre-allocate a large number of IP addresses within this network
+and associate MAC addresses with them. Defaults to 192.168.86.0.
+
+.B bridge_device
+allows a device name to be set in bridging mode, to match the bridge
+device on the factory host that can be seen using ifconfig.
+Defaults to p1p1 when using kvm and br-eth0 with Xen.
+
 .SH [VMTYPE ...] SECTIONS
 
 One [vmtype ...] section must exist for each vmtype in the system, with
