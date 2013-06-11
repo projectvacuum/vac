@@ -347,7 +347,7 @@ class VacVM:
 
         if networkType == 'nat':
           try:
-            ip = natNetwork.rsplit('.',1)[0] + str(100 + virtualmachines[self.name][ordinal])
+            ip = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])
           except:
             return 'Failed to make NAT address'
         else:
@@ -415,7 +415,7 @@ class VacVM:
     </controller>
     <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
       <mac address='""" + mac + """'/>
-      <source """ + ("network='vac-nat-net'" if networkType == 'nat' else "bridge='p1p1'") + """/>
+      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else "bridge='p1p1'") + """/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -468,7 +468,7 @@ class VacVM:
     </graphics>
     <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
       <mac address='""" + mac + """'/>
-      <source """ + ("network='vac-nat-net'" if networkType == 'nat' else "bridge='br-eth0'") + """/>
+      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else "bridge='br-eth0'") + """/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -496,24 +496,46 @@ class VacVM:
        
       # Everything ok so return no error message
       return None
+
+def vacNetworkXML():
+
+      nameParts = os.uname()[1].split('.',1)
+
+      netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
+      netXML += " <ip address='" + natNetwork.rsplit('.',1)[0] + ".1' netmask='255.255.255.0'>\n  <dhcp>\n"
+ 
+      ordinal = 0
+      while ordinal < 100:
+    
+        ip      = natNetwork.rsplit('.',1)[0] + '.' + str(100 + ordinal)
+        ipBytes = ip.split('.')        
+        mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
+        vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
+
+        netXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
+        ordinal += 1
+
+      netXML += "  </dhcp>\n </ip>\n</network>\n"
+      
+      return netXML      
      
 def createFile(targetname, contents):
-   # Create a text file containing contents in the vac tmp directory
-   # then move it into place. Rename is an atomic operation in POSIX,
-   # including situations where targetname already exists.
+      # Create a text file containing contents in the vac tmp directory
+      # then move it into place. Rename is an atomic operation in POSIX,
+      # including situations where targetname already exists.
    
-   try:
-     ftup = tempfile.mkstemp(prefix='/var/lib/vac/tmp',text=True)
-     os.write(ftup[0], contents)
-     os.close(ftup[0])
-     os.rename(ftup[1], targetname)
-     return True
-   except:
-     return False
+      try:
+       ftup = tempfile.mkstemp(prefix='/var/lib/vac/tmp',text=True)
+       os.write(ftup[0], contents)
+       os.close(ftup[0])
+       os.rename(ftup[1], targetname)
+       return True
+      except:
+       return False
 
 def logLine(text):
-   print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
-   sys.stdout.flush()
+      print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
+      sys.stdout.flush()
 
 cycleSeconds = 60
 deleteOldFiles = True
@@ -531,7 +553,7 @@ vmtypes = {}
 volumeGroup = 'vac_volume_group'
 
 def readConf():
-      global deleteOldFiles, domainType, factories, mbPerMachine, networkType, numVirtualmachines, spaceName, vcpuPerMachine, volumeGroup
+      global deleteOldFiles, domainType, factories, mbPerMachine, natNetwork, networkType, numVirtualmachines, spaceName, vcpuPerMachine, volumeGroup
       
       parser = RawConfigParser()
 
