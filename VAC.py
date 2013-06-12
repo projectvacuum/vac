@@ -553,14 +553,24 @@ networkType = 'bridge'
 numVirtualmachines = None
 spaceName = None
 udpTimeoutSeconds = 5.0
+vacVersion = '0.0.0'
 vcpuPerMachine = 1
+versionLogger = True
 virtualmachines = {}
 vmtypes = {}
 volumeGroup = 'vac_volume_group'
 
 def readConf():
       global bridgeDevice, cycleSeconds, deleteOldFiles, domainType, factories, mbPerMachine, \
-             natNetwork, networkType, numVirtualmachines, spaceName, vcpuPerMachine, volumeGroup
+             natNetwork, networkType, numVirtualmachines, spaceName, vacVersion, vcpuPerMachine, \
+             versionLogger, volumeGroup             
+
+      try:
+        f = open('/var/lib/vac/doc/VERSION', 'r')
+        vacVersion = f.readline().split('=',1)[1].strip()
+        f.close()
+      except:
+        pass
       
       parser = RawConfigParser()
 
@@ -632,6 +642,12 @@ def readConf():
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
              
+      if (parser.has_option('settings', 'version_logger') and
+          parser.get('settings','version_logger').strip().lower() == 'false'):
+           versionLogger = False
+      else:
+           versionLogger = True
+
       if (parser.has_option('settings', 'delete_old_files') and
           parser.get('settings','delete_old_files').strip().lower() == 'false'):
            deleteOldFiles = False

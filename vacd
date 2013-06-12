@@ -111,12 +111,10 @@ def pollFactories():
                    if response['state'] == VAC.VacState.starting:
                            # starting counts as before fizzle point
                            factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-#                           VAC.logLine(response['vmname']+' BeforeFizzle because starting')
                    elif response['state'] == VAC.VacState.running and 'vmtypes' in response and \
                         int(time.time()) < (response['vmtypes'][response['vmtype']]['started'] + VAC.vmtypes[response['vmtype']]['fizzle_seconds']):
                            # running for less than fizzle_seconds counts too
                            factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-#                           VAC.logLine(response['vmname']+' BeforeFizzle because started at '+str(response['vmtypes'][response['vmtype']]['started'])+' '+str(time.time()))
                    
               if 'vmtypes' in response:
                 for vmtypeName, vmtypeOutcome in response['vmtypes'].iteritems():
@@ -191,6 +189,19 @@ def vacOneCycle():
    if readConfError:
      VAC.logLine('Reading configuration fails with: ' + readConfError)
      return
+      
+   if not os.path.exists('/var/lib/vac/factory-daily') or \
+      time.time() > (os.stat('/var/lib/vac/factory-daily').st_ctime + 86400.0):
+         VAC.createFile('/var/lib/vac/factory-daily', '')
+   
+         if VAC.versionLogger:
+           try:
+             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+             sock.sendto(json.dumps({'space':VAC.spaceName, 'factory':os.uname()[1], 'version':VAC.vacVersion}),
+                         ('vac-version-logger.gridpp.ac.uk',8884))
+             sock.close()
+           except:
+             pass
      
    if VAC.networkType == 'nat':
      conn = libvirt.open(None)
@@ -489,6 +500,11 @@ if __name__ == '__main__':
           vacResponder()
 
         else:
+          try:
+             os.remove('/var/lib/vac/factory-daily')
+          except:
+             pass
+ 
           VAC.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n')
                                      
           si = file('/dev/null', 'r')
