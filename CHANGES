@@ -2,6 +2,12 @@
 - Mistakes in configuration file(s) now produce an error rather than a
   traceback. vacd now just skips the cycle if the configuration is bad,
   in the hope of it being fixed in the future.  
-- virtualmachines option added to configuration files, so the number
+- total_machines option added to configuration files, so the number
   of VMs desired can be given rather then listing them as virtualmachine
-  sections of the file.
+  sections of the file. 
+- network_type can be used to specify NAT rather than a bridged network.
+- version_logger option allows control over daily logging by UDP of the
+  Vac version number in use to vac-version-logger.gridpp.ac.uk:8884
+- volume_group, nat_network, and bridge_device options allow tailoring
+  of the defaults Vac uses when making disk and network resources 
+  available to VMs.

@@ -203,13 +203,19 @@ class VacVM:
                                      
       f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
 
+      if networkType == 'nat':
+          # if NAT, we use the private address of the bridge
+          factoryAddress = natNetwork.rsplit('.',1)[0] + '.1'
+      else:
+          factoryAddress = os.uname()[1]
+          
       f.write('#!/bin/sh\n')
       f.write('if [ "$1" = "start" ] ; then\n')
       f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')      
-      f.write('  mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
-      f.write('  mount ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
-      f.write('  mount ' + os.uname()[1] + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
-      f.write('  mount -o rw ' + os.uname()[1] + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
+      f.write('  mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
+      f.write('  mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
+      f.write('  mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
+      f.write('  mount -o rw ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
       f.write('fi\n# end of vac prolog.sh\n\n')
 
       # if a prolog is given for this vmtype, we append that to vac's part of the script
@@ -601,9 +607,16 @@ def readConf():
           # defaults to 'kvm' but can specify 'xen' instead
           domainType = parser.get('settings','domain_type').strip()
 
+      if parser.has_option('settings', 'total_machines'):
+          # Optional number of VMs for Vac to auto-define.
+          # Will override any [virtualmachine ...] sections!
+          numVirtualmachines = int(parser.get('settings','total_machines').strip())
+                          
       if parser.has_option('settings', 'network_type'):
           # bridge or nat
           networkType = parser.get('settings','network_type').strip().lower()
+          if networkType == 'nat' and numVirtualmachines is None:
+              return 'nat networking can only be used if total_machines has been given'
           
       if parser.has_option('settings', 'bridge_device'):
           bridgeDevice = parser.get('settings','bridge_device').strip()
@@ -612,14 +625,15 @@ def readConf():
       else:
           bridgeDevice = 'p1p1'
              
-      if parser.has_option('settings', 'virtualmachines'):
-          # Optional number of VMs for Vac to auto-define.
-          # Cannot be used if there are [virtualmachine ...] sections!
-          numVirtualmachines = int(parser.get('settings','virtualmachines').strip())
-                          
+      if parser.has_option('settings', 'nat_network'):
+          if networkType != 'nat':
+              return 'nat_network can only be used with network_type = nat'
+          # network to use for NAT addresses
+          natNetwork = parser.get('settings','nat_network').strip()
+                       
       if parser.has_option('settings', 'volume_group'):
           if not numVirtualmachines:
-              return 'volume_group can only be used with the virtualmachines option'
+              return 'volume_group can only be used with the total_machines option'
           # Volume group to search for logical volumes if automatic VM definitions
           volumeGroup = parser.get('settings','volume_group').strip()
              
@@ -628,16 +642,6 @@ def readConf():
           # main loop again. Defaults to 60 seconds.
           cycleSeconds = int(parser.get('settings','cycle_seconds').strip())
 
-      if parser.has_option('settings', 'network_type'):
-          # bridge or nat
-          networkType = parser.get('settings','network_type').strip().lower()
-          
-      if parser.has_option('settings', 'nat_network'):
-          if networkType != 'nat':
-              return 'nat_network can only be used with network_type = nat'
-          # network to use for NAT addresses
-          natNetwork = parser.get('settings','nat_network').strip()
-                       
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
@@ -727,14 +731,8 @@ def readConf():
              except:
                  pass
              
-         elif sectionNameSplit[0] == 'virtualmachine':
-           
-             if not numVirtualmachines is None:
-               return 'Cannot mix virtualmachines setting and [virtualmachine ...] sections'
-         
-             if networkType == 'nat':
-               return 'Cannot use NAT working and [virtualmachine ...] sections'
-         
+         elif sectionNameSplit[0] == 'virtualmachine' and numVirtualmachines is None:
+                  
              virtualmachine = {}
              
              # ordinal of the VM, counting from 0
@@ -747,14 +745,6 @@ def readConf():
              
              virtualmachines[sectionNameSplit[1]] = virtualmachine
              
-#             try:
-#              os.makedirs('/var/lib/vac/machines/' + sectionNameSplit[1])
-#             except:
-#              if os.path.isdir('/var/lib/vac/machines/' + sectionNameSplit[1]):
-#                pass
-#              else:
-#                raise
-
       if numVirtualmachines:
          # Auto define VMs          
          ordinal = 0
@@ -769,7 +759,7 @@ def readConf():
            vmName = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
                       
            if os.path.exists('/dev/' + volumeGroup + '/' + vmName) and \
-              stat.S_IFBLK(os.stat('/dev/' + volumeGroup + '/' + vmName).st_mode):
+              stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + vmName).st_mode):
                 virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
            
            virtualmachines[vmName] = virtualmachine
@@ -811,10 +801,11 @@ def cleanupExports():
         raise
 
    f = os.popen('exportfs', 'r')
-   pathname  = f.readline().strip()
-   pathsplit = pathname.split('/')
+   exportPath = f.readline().strip()
+   exportHost = f.readline().strip()
+   pathsplit  = exportPath.split('/')
    
-   while pathname:
+   while exportPath and exportHost:
 
       #  /var/lib/vac/machines/f.q.d.n/vmtype/UUID/shared
       # 0  1   2   3      4       5      6     7     8
@@ -827,11 +818,22 @@ def cleanupExports():
               dom = conn.lookupByUUIDString(pathsplit[7])
 
             except: 
-              print 'Remove now unused export of',pathname
-              os.system('exportfs -u ' + pathsplit[5] + ':' + pathname) 
+              print 'Remove now unused export of', exportPath
+              os.system('exportfs -u ' + exportHost + ':' + exportPath)
     
-      pathname  = f.readline().strip()
-      pathsplit = pathname.split('/')
+      #  /var/lib/vac/vmtypes/vmtype/shared
+      # 0  1   2   3     4      5      6 
+
+      elif (len(pathsplit) > 6) and pathsplit[0] == '' and pathsplit[1] == 'var' and \
+         pathsplit[2] == 'lib' and pathsplit[3] == 'vac' and pathsplit[4] == 'vmtypes' and \
+         pathsplit[6] == 'shared' and (pathsplit[5] not in vmtypes):
+         
+              print 'Remove now unused export of', exportPath
+              os.system('exportfs -u ' + exportHost + ':' + exportPath)              
+
+      exportPath = f.readline().strip()
+      exportHost = f.readline().strip()
+      pathsplit  = exportPath.split('/')
 
    f.close()
    conn.close()

@@ -61,10 +61,19 @@ sets the number of virtual CPUs to assign to each VM. Defaults to 1.
 .B mb_per_machine
 sets the memory allocated to each VM in MiB. Defaults to 2048.
 
-.B virtualmachines
+.B version_logger
+can be used to disable the logging of the version in use. Normally
+Vac sends one UDP packet per day to vac-version-logger.gridpp.ac.uk
+on port 8884 containing the factory and space names, and the Vac
+version number. This will be used to target patches for security
+and bugs at the versions currently in use. Default to True.
+
+.B total_machines
 gives the number of VMs to be defined by Vac rather than in 
 [virtualmachine ...] sections in the configuration file(s). These two
-mechanisms cannot be used on the same factory. The VM names are formed by
+mechanisms cannot be used on the same factory, and any 
+[virtualmachine ...] sections will be ignored if total_machines is
+given. The VM names are formed by
 adding a hyphen and the VM number to the hostname component of its fully
 qualified domain name. For example, factory1.example.com would have
 factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
@@ -80,8 +89,7 @@ factory1-00.example.com. Defaults to vac_volume_group.
 
 .B network_type
 selects between bridge and nat as styles of networking. If nat is given,
-then the virtualmachines setting must also be used.
-Defaults to bridge.
+then the total_machines setting must also be used. Defaults to bridge.
 
 .B nat_network
 allows the C-class private network use by Vac for NAT to be chosen. Vac
@@ -191,9 +199,9 @@ vmtype.
 
 .SH [VIRTUALMACHINE ...] SECTIONS
 
-If the virtualmachines option is not given in [settings], then 
-one [virtualmachine ...] section must exist for each virtual machine assigned
-to this factory machine, with its fully qualified domain name 
+If the total_machines option is not given in [settings], then 
+one [virtualmachine ...] section must exist for each virtual machine 
+assigned to this factory machine, with its fully qualified domain name 
 given in the section name, such as [virtualmachine vm1.example.com].
 Each of these sections contain one or two option=value pairs that are 
 specific to that virtualmachine.

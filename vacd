@@ -190,6 +190,11 @@ def vacOneCycle():
      VAC.logLine('Reading configuration fails with: ' + readConfError)
      return
       
+   if VAC.deleteOldFiles:
+     VAC.cleanupVirtualmachineFiles()
+
+   VAC.cleanupExports()
+
    if not os.path.exists('/var/lib/vac/factory-daily') or \
       time.time() > (os.stat('/var/lib/vac/factory-daily').st_ctime + 86400.0):
          VAC.createFile('/var/lib/vac/factory-daily', '')
@@ -531,11 +536,6 @@ if __name__ == '__main__':
                break
 
             VAC.logLine('=============== Start cycle ===============')
-
-            if VAC.deleteOldFiles:
-              VAC.cleanupVirtualmachineFiles()
-
-            VAC.cleanupExports() 
 
             vacOneCycle()
 
