@@ -86,22 +86,11 @@ used as a virtual CE name where necessary in other systems.
 <dd>Since we're creating a space that contains a single factory machine, 
     set this to be the FQDN of the factory machine you're workng on.
 
-<dt><b>[virtualmachine ...]</b>
-<dd>The virtualmachine section names contain the FQDN of the virtual 
-    machines assigned to this factory. Replace the vm01.example.com value
-    with a FQDN you can use for a VM on this factory. You should register
-    this in your local DNS too.
-
-<dt><b>mac =</b> in [virtualmachine ...]
-<dd>Each VM needs a unique MAC address, and these should be chosen from the
-    locally administered range - the MAC equivalent of private IP address
-    ranges. One way to choose a unique address is to use 56:4D as the
-    first two hex bytes, then the hexadecimal representation of the four
-    bytes of the VM's IP address. For example, 192.168.0.1 would have a
-    MAC of 56:4D:C0:A8:00:01, as you could discover with the shell command
-    <pre>
-    printf "56:4D:%02X:%02X:%02X:%02X\n" 192 168 0 1
-    </pre>
+<dt><b>total_machines</b>
+<dd>Set this to the number of VMs to create and manage on this factory.
+    Vac will create hostnames for the VMs from the factory name. For
+    example, factory1.example.com will lead to factory1-00.example.com,
+    factory1-01.example.com, ...
     
 <dt><b>root_image =</b> in [vmtype example]
 <dd>The path and filename given in this setting must point to the CernVM
