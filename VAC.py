@@ -211,6 +211,7 @@ class VacVM:
           
       f.write('#!/bin/sh\n')
       f.write('if [ "$1" = "start" ] ; then\n')
+      f.write('  hostname ' + self.name + '\n')
       f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')      
       f.write('  mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
       f.write('  mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
@@ -512,8 +513,8 @@ def vacNetworkXML():
 
       nameParts = os.uname()[1].split('.',1)
 
-      netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
-      netXML += " <ip address='" + natNetwork.rsplit('.',1)[0] + ".1' netmask='255.255.255.0'>\n  <dhcp>\n"
+      dhcpXML = ""
+      dnsXML  = ""
  
       ordinal = 0
       while ordinal < 100:
@@ -523,10 +524,15 @@ def vacNetworkXML():
         mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
         vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
 
-        netXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
+        dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
+        dnsXML  += "   <host ip='" + ip + "'><hostname>" + vmName + "</hostname></host>\n"
         ordinal += 1
 
-      netXML += "  </dhcp>\n </ip>\n</network>\n"
+      netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
+      netXML += " <domain name='" + nameParts[1] + "'/>\n"
+      netXML += " <dns>\n" + dnsXML + " </dns>\n"
+      netXML += " <ip address='" + natNetwork.rsplit('.',1)[0] + ".1' netmask='255.255.255.0'>\n"
+      netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
       
       return netXML      
      
