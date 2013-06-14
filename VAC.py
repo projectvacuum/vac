@@ -514,7 +514,6 @@ def vacNetworkXML():
       nameParts = os.uname()[1].split('.',1)
 
       dhcpXML = ""
-      dnsXML  = ""
  
       ordinal = 0
       while ordinal < 100:
@@ -525,12 +524,10 @@ def vacNetworkXML():
         vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
 
         dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
-        dnsXML  += "   <host ip='" + ip + "'><hostname>" + vmName + "</hostname></host>\n"
+        # dnsXML  += "   <host ip='" + ip + "'><hostname>" + vmName + "</hostname></host>\n"
         ordinal += 1
 
       netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
-      netXML += " <domain name='" + nameParts[1] + "'/>\n"
-      netXML += " <dns>\n" + dnsXML + " </dns>\n"
       netXML += " <ip address='" + natNetwork.rsplit('.',1)[0] + ".1' netmask='255.255.255.0'>\n"
       netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
       
