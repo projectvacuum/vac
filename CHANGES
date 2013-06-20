@@ -1,6 +1,7 @@
 ==================== Changes in Vac version 0.11.0 =====================
 - Remove _name from vac_ entries in /etc/machinefeatures and add 
   vac_vmtype
+- Automatically copy vac-shutdown-vm into /etc/machinefeatures 
 ==================== Changes in Vac version 0.10.0 =====================
 - Mistakes in configuration file(s) now produce an error rather than a
   traceback. vacd now just skips the cycle if the configuration is bad,

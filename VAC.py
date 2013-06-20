@@ -274,6 +274,10 @@ class VacVM:
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
+      shutil.copy2('/var/lib/vac/bin/vac-shutdown-vm', '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac-shutdown-vm')
+      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac-shutdown-vm',
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH + stat.S_IXUSR + stat.S_IXGRP + stat.S_IXOTH)
+    
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
