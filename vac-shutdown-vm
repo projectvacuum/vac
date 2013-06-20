@@ -10,7 +10,7 @@
 # 
 #  Defaults:dirac !requiretty
 #  Defaults:dirac visiblepw
-#  dirac ALL = NOPASSWD: /etc/vmtypefiles/vac-shutdown-vm
+#  dirac ALL = NOPASSWD: /etc/machinefeatures/vac-shutdown-vm
 #
 #  Andrew McNab, University of Manchester.
 #  Copyright (c) 2013. All rights reserved.
@@ -53,5 +53,5 @@ if [ "$USER" = "root" ] ; then
   echo "$*" >/etc/machineoutputs/shutdown_message
   /sbin/shutdown -h now "$*"
 else
-  sudo /etc/vmtypefiles/vac-shutdown-vm "$*"
+  sudo /etc/machinefeatures/vac-shutdown-vm "$*"
 fi
