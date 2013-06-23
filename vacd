@@ -277,6 +277,9 @@ def vacOneCycle():
        if vm.started and not vm.finishedFile:
                VAC.logLine('Create finished file for ' + vm.name)
                vm.createFinishedFile()
+               if VAC.vmtypes[vm.vmtypeName]['log_machineoutputs']:
+                 vm.logMachineoutputs()
+
        elif not vm.finishedFile:
                VAC.logLine('No finished file but no started time for ' + vm.name)
   
@@ -427,8 +430,6 @@ def vacResponder():
                           newestVmState = VAC.VacState.starting
                 else:
                           newestVmState = VAC.VacState.shutdown
-
-#                print int(time.time()),'newestVmState=',newestVmState,'timeStarted=',timeStarted,'timeHeartbeat=',timeHeartbeat,'cpuSeconds=',cpuSeconds,'hasFinished=',hasFinished,
 
                 try:
                   f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')

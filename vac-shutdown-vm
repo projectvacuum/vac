@@ -55,3 +55,4 @@ if [ "$USER" = "root" ] ; then
 else
   sudo /etc/machinefeatures/vac-shutdown-vm "$*"
 fi
+ 

@@ -138,6 +138,46 @@ class VacVM:
         f.close()
       except:
         logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
+
+   def logMachineoutputs(self):
+   
+      try:
+        # Get the list of files that the VM has left in its /etc/machineoutputs
+        outputs = os.listdir('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+      except:
+        logLine('Failed reading /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+        return
+        
+      try:
+        f = open('/var/log/vacd-machineoutputs', 'a+')
+      except:
+        logLine('Failed opening /var/log/vacd-machineoutputs')
+        return
+      
+      if not outputs:
+        # Nothing to do if there are no files there
+        f.write('=========== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' has no outputs ====\n')
+      else:
+        f.write('\n')
+        # Go through the files one by one, appending them to /var/log/vacd-machineoutputs
+        for oneOutput in outputs:
+        
+          contents = None
+          try:
+             g = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs/' + oneOutput, 'r')
+             contents = g.read()
+             g.close()
+          except:
+             pass
+
+          if contents:
+             f.write('===Start=== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ====\n')
+             f.write(contents)
+             f.write('==Finnish== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ====\n')
+          else:
+             f.write('=========== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' is empty ====\n')
+                        
+      f.close()
    
    def uuidFromLatestVM(self):
 
@@ -212,11 +252,18 @@ class VacVM:
       f.write('#!/bin/sh\n')
       f.write('if [ "$1" = "start" ] ; then\n')
       f.write('  hostname ' + self.name + '\n')
-      f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')      
-      f.write('  mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
-      f.write('  mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
-      f.write('  mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
-      f.write('  mount -o rw ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
+      f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')
+      f.write('  cat <<EOF >/etc/cernvm/cernvm.d/S50vac.sh\n')
+      f.write('#!/bin/sh\n')
+      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
+      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
+      f.write('mount -o rw ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
+
+      if os.path.isdir('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
+        f.write('mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
+
+      f.write('EOF\n')
+      f.write('  chmod ugo+x /etc/cernvm/cernvm.d/S50vac.sh\n')
       f.write('fi\n# end of vac prolog.sh\n\n')
 
       # if a prolog is given for this vmtype, we append that to vac's part of the script
@@ -657,7 +704,7 @@ def readConf():
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
-             
+
       if (parser.has_option('settings', 'version_logger') and
           parser.get('settings','version_logger').strip().lower() == 'false'):
            versionLogger = False
@@ -717,6 +764,12 @@ def readConf():
              if parser.has_option(sectionName, 'epilog'):
                  vmtype['epilog'] = parser.get(sectionName, 'epilog')
 
+             if parser.has_option(sectionName, 'log_machineoutputs') and \
+                parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
+                 vmtype['log_machineoutputs'] = True
+             else:
+                 vmtype['log_machineoutputs'] = False
+             
              if parser.has_option(sectionName, 'max_wallclock_seconds'):
                  vmtype['max_wallclock_seconds'] = int(parser.get(sectionName, 'max_wallclock_seconds'))
              else:
