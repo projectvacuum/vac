@@ -134,21 +134,19 @@ VM. Default 86400.
 .B shutdown_command
 is the path to a file inside the VM which the VM can use to shut itself down.
 This value is written to /etc/machinefeatures/shutdown_command. The script
-/var/lib/vac/bin/vac-shutdown-vm is suitable for this, but it must be 
-included in the contextualization or copied to 
-/var/lib/vac/vmtypes/VMTYPE/shared (where VMTYPE is the vmtype name) which
-is NFS-exported into the VM as /etc/vmtypefiles. 
+/var/lib/vac/bin/vac-shutdown-vm is suitable for this, and is 
+available at the NFS-exported location /etc/machinefeatures/vac-shutdown-vm 
+in the VM.
 
 Running the vac-shutdown-vm command from a non-root use can be accomplished
-by appending lines like this to /etc/sudoers, with USER as the user name,
-and SHUTDOWN_COMMAND as the full path of the command:
+by appending lines like this to /etc/sudoers, with USER as the user name:
 
 .br
 Defaults:USER !requiretty
 .br
 Defaults:USER visiblepw
 .br
-USER ALL = NOPASSWD: SHUTDOWN_COMMAND
+USER ALL = NOPASSWD: /etc/machinefeatures/vac-shutdown-vm
 
 .B root_device
 is the device name exposed to the VM that is associated with the root
@@ -157,6 +155,12 @@ disk image. Default hda.
 .B scratch_device
 is the device name exposed to the VM that is associated with the scratch
 logical volume. Default hdb.
+
+.B log_machineoutputs
+can be set to True to enable recording of all the files in 
+/etc/machineoutputs in the file /var/log/vacd-machineoutputs when the
+VM finishes or is killed. For this reason, only text files should be
+written to this directory. Default False.
 
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
@@ -176,7 +180,7 @@ the site.
 and
 .B epilog
 are file names of optional prolog.sh and epilog.sh scripts as defined in
-the CERNVM contextualization documentation.
+the CernVM contextualization documentation.
 
 .SH [TARGETSHARES] SECTION
 
