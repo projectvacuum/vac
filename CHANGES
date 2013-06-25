@@ -4,7 +4,7 @@
 - Remove _name from vac_ entries in /etc/machinefeatures and add 
   vac_vmtype
 - Automatically copy vac-shutdown-vm into /etc/machinefeatures 
-- Add log-machineoutputs to [vmtype ...] sections so contents of 
+- Add log_machineoutputs to [vmtype ...] sections so contents of 
   /etc/machineoutputs can be written to /var/log/vacd-machineoutputs
 ==================== Changes in Vac version 0.10.0 =====================
 - Mistakes in configuration file(s) now produce an error rather than a
