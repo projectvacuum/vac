@@ -186,6 +186,46 @@ losetup -d /dev/loop7
 
 <h3>Logical volumes</h3>
 
+<p>
+Vac virtual machines can use logical volumes that exist on the factory machine
+to provide additional, faster disk space. Normally these will be mounted at
+/scratch by the VM, as they are on conventional grid worker nodes. 
+
+<p>By
+default, the block device associated with the logical volume is available to
+the VM has hdb, but this can changed with the scratch_device option in a
+[vmtype ...] section. 
+
+<p>
+If you are using explicit [virtualmachine ...] sections to define your
+available virtual machines, then the scratch_volume option is used to 
+give the full path of the logical volume on the factory machine. For
+example, /dev/vac_volume_group/vm1.example.com_scratch 
+
+<p>
+If you are implicitly defining virtual machines using the total_machines 
+option, then for each virtual machine Vac will look for a logical volume
+to use with it. The global volume_group option in [settings] (default
+vac_volume_group) and the virtual machine's name is used to construct the
+logical volume paths to try. For example,
+/dev/vac_volume_group/vm1.example.com
+
+<p>
+In either scenario, you must create the volume group and logical volumes
+to be used by Vac, with something similar to this, where /dev/sda9 is a
+physical volume (partition):
+<pre>
+vgcreate vac_volume_group /dev/sda9
+lvcreate --name vm1.example.com -L 25G vac_volume_group
+lvcreate --name vm2.example.com -L 25G vac_volume_group
+lvcreate --name vm3.example.com -L 25G vac_volume_group
+...
+</pre>
+
+<p>
+During the creation of each virtual machine instance, Vac will identify the 
+logical volume it has been told to use and (re)format it.
+ 
 <h3>Installation: tar vs RPM</h3>
 
 <h3>Cnfiguration of factory and virtualmachines</h3>
