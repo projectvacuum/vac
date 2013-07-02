@@ -41,12 +41,271 @@ import errno
 import base64
 import shutil
 import libvirt
+import datetime
 import tempfile
 import socket
 import stat
 
 from ConfigParser import RawConfigParser
 
+bridgeDevice = None
+cycleSeconds = None
+deleteOldFiles = None
+domainType = None
+
+factories = None
+mbPerMachine = None
+natNetwork = None
+networkType = None
+
+numVirtualmachines = None
+spaceName = None
+udpTimeoutSeconds = None
+vacVersion = None
+
+vcpuPerMachine = None
+versionLogger = None
+virtualmachines = None
+vmtypes = None
+
+volumeGroup = None
+
+def readConf():
+      global bridgeDevice, cycleSeconds, deleteOldFiles, domainType, \
+             factories, mbPerMachine, natNetwork, networkType, \
+             numVirtualmachines, spaceName, udpTimeoutSeconds, vacVersion, \
+             vcpuPerMachine, versionLogger, virtualmachines, vmtypes, \
+             volumeGroup
+
+      # reset to defaults
+      bridgeDevice = None
+      cycleSeconds = 60
+      deleteOldFiles = True
+      domainType = 'kvm'
+
+      factories = []
+      mbPerMachine = 2048
+      natNetwork = '192.168.86.0'
+      networkType = 'bridge'
+
+      numVirtualmachines = None
+      spaceName = None
+      udpTimeoutSeconds = 5.0
+      vacVersion = '0.0.0'
+
+      vcpuPerMachine = 1
+      versionLogger = True
+      virtualmachines = {}
+      vmtypes = {}
+
+      volumeGroup = 'vac_volume_group'
+
+      try:
+        f = open('/var/lib/vac/doc/VERSION', 'r')
+        vacVersion = f.readline().split('=',1)[1].strip()
+        f.close()
+      except:
+        pass
+      
+      parser = RawConfigParser()
+
+      # Main configuration file, including global [settings] section
+      parser.read('/etc/vac.conf')
+      
+      # Optional file for vitualmachine sections for this factory machine
+      parser.read('/etc/vac-virtualmachines.conf')
+      
+      # Optional file with [factories] listing all factories in this vac space
+      parser.read('/etc/vac-factories.conf')
+
+      # Optional file with [targetshares] for all factories in this vac space
+      parser.read('/etc/vac-targetshares.conf')
+
+
+      # general settings from [Settings] section
+
+      if not parser.has_section('settings'):
+        return 'Must have a settings section!'
+      
+      if not parser.has_option('settings', 'vac_space'):
+        return 'Must give vac_space in [settings]!'
+        
+      spaceName = parser.get('settings','vac_space').strip()
+             
+      if parser.has_option('settings', 'domain_type'):
+          # defaults to 'kvm' but can specify 'xen' instead
+          domainType = parser.get('settings','domain_type').strip()
+
+      if parser.has_option('settings', 'total_machines'):
+          # Optional number of VMs for Vac to auto-define.
+          # Will override any [virtualmachine ...] sections!
+          numVirtualmachines = int(parser.get('settings','total_machines').strip())
+                          
+      if parser.has_option('settings', 'network_type'):
+          # bridge or nat
+          networkType = parser.get('settings','network_type').strip().lower()
+          if networkType == 'nat' and numVirtualmachines is None:
+              return 'nat networking can only be used if total_machines has been given'
+          
+      if parser.has_option('settings', 'bridge_device'):
+          bridgeDevice = parser.get('settings','bridge_device').strip()
+      elif domainType == 'xen':
+          bridgeDevice = 'br-eth0'
+      else:
+          bridgeDevice = 'p1p1'
+             
+      if parser.has_option('settings', 'nat_network'):
+          if networkType != 'nat':
+              return 'nat_network can only be used with network_type = nat'
+          # network to use for NAT addresses
+          natNetwork = parser.get('settings','nat_network').strip()
+                       
+      if parser.has_option('settings', 'volume_group'):
+          if not numVirtualmachines:
+              return 'volume_group can only be used with the total_machines option'
+          # Volume group to search for logical volumes if automatic VM definitions
+          volumeGroup = parser.get('settings','volume_group').strip()
+             
+      if parser.has_option('settings', 'cycle_seconds'):
+          # How long to wait before re-evaluating state of VMs in the
+          # main loop again. Defaults to 60 seconds.
+          cycleSeconds = int(parser.get('settings','cycle_seconds').strip())
+
+      if parser.has_option('settings', 'udp_timeout_seconds'):
+          # How long to wait before giving up on more UDP replies          
+          udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
+
+      if (parser.has_option('settings', 'version_logger') and
+          parser.get('settings','version_logger').strip().lower() == 'false'):
+           versionLogger = False
+      else:
+           versionLogger = True
+
+      if (parser.has_option('settings', 'delete_old_files') and
+          parser.get('settings','delete_old_files').strip().lower() == 'false'):
+           deleteOldFiles = False
+      else:
+           deleteOldFiles = True
+             
+      if parser.has_option('settings', 'vcpu_per_machine'):
+          # if this isn't set, then we allocate one vcpu per VM
+          vcpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
+             
+      if parser.has_option('settings', 'mb_per_machine'):
+          # if this isn't set, then we use default (2048 MiB)
+          mbPerMachine = int(parser.get('settings','mb_per_machine'))
+             
+      # all other sections are VM types or Virtual Machines or Factories
+      for sectionName in parser.sections():
+
+         if (sectionName.lower() == 'settings'):
+           continue 
+           
+         sectionNameSplit = sectionName.lower().split(None,1)
+         
+         if sectionNameSplit[0] == 'vmtype':
+             vmtype = {}
+             vmtype['root_image'] = parser.get(sectionName, 'root_image')
+
+             vmtype['share'] = 0.0
+                                            
+             if parser.has_option('targetshares', sectionNameSplit[1]):
+                 vmtype['share'] = float(parser.get('targetshares', sectionNameSplit[1]))
+
+             if parser.has_option(sectionName, 'root_device'):
+                 vmtype['root_device'] = parser.get(sectionName, 'root_device')
+             else:
+                 vmtype['root_device'] = 'hda'
+             
+             if parser.has_option(sectionName, 'scratch_device'):
+                 vmtype['scratch_device'] = parser.get(sectionName, 'scratch_device')
+             else:
+                 vmtype['scratch_device'] = 'hdb'
+
+             if parser.has_option(sectionName, 'rootpublickey'):
+                 vmtype['rootpublickey'] = parser.get(sectionName, 'rootpublickey')
+
+             if parser.has_option(sectionName, 'user_data'):
+                 vmtype['user_data'] = parser.get(sectionName, 'user_data')
+
+             if parser.has_option(sectionName, 'prolog'):
+                 vmtype['prolog'] = parser.get(sectionName, 'prolog')
+
+             if parser.has_option(sectionName, 'epilog'):
+                 vmtype['epilog'] = parser.get(sectionName, 'epilog')
+
+             if parser.has_option(sectionName, 'log_machineoutputs') and \
+                parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
+                 vmtype['log_machineoutputs'] = True
+             else:
+                 vmtype['log_machineoutputs'] = False
+             
+             if parser.has_option(sectionName, 'max_wallclock_seconds'):
+                 vmtype['max_wallclock_seconds'] = int(parser.get(sectionName, 'max_wallclock_seconds'))
+             else:
+                 vmtype['max_wallclock_seconds'] = 86400
+             
+             if parser.has_option(sectionName, 'shutdown_command'):
+                 vmtype['shutdown_command'] = parser.get(sectionName, 'shutdown_command')
+
+             if parser.has_option(sectionName, 'backoff_seconds'):
+                 vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
+             else:
+                 vmtype['backoff_seconds'] = 10
+             
+             if parser.has_option(sectionName, 'fizzle_seconds'):
+                 vmtype['fizzle_seconds'] = int(parser.get(sectionName, 'fizzle_seconds'))
+             else:
+                 vmtype['fizzle_seconds'] = 600
+            
+             if parser.has_option(sectionName, 'accounting_fqan'):
+                 vmtype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
+                          
+             vmtypes[sectionNameSplit[1]] = vmtype
+             
+         elif sectionName.lower() == 'factories':
+             try:
+                 factories = (parser.get('factories', 'names')).lower().split()
+             except:
+                 pass
+             
+         elif sectionNameSplit[0] == 'virtualmachine' and numVirtualmachines is None:
+                  
+             virtualmachine = {}
+             
+             # ordinal of the VM, counting from 0
+             virtualmachine['ordinal'] = len(virtualmachines)
+          
+             virtualmachine['mac'] = parser.get(sectionName, 'mac')
+
+             if parser.has_option(sectionName, 'scratch_volume'):
+                 virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
+             
+             virtualmachines[sectionNameSplit[1]] = virtualmachine
+             
+      if numVirtualmachines:
+         # Auto define VMs          
+         ordinal = 0
+         
+         while ordinal < numVirtualmachines:           
+           virtualmachine = {}
+           
+           virtualmachine['ordinal'] = ordinal
+           
+           nameParts = os.uname()[1].split('.',1)
+           
+           vmName = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
+                      
+           if os.path.exists('/dev/' + volumeGroup + '/' + vmName) and \
+              stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + vmName).st_mode):
+                virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
+           
+           virtualmachines[vmName] = virtualmachine
+           ordinal += 1
+
+      # Finished successfully, with no error to return
+      return None
+        
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
@@ -57,6 +316,7 @@ class VacVM:
       self.uuidStr=None
       self.vmtypeName=None
       self.finishedFile=None
+      self.cpuSeconds = 0
 
       conn = libvirt.open(None)
       if conn == None:
@@ -66,6 +326,11 @@ class VacVM:
       try:
           dom = conn.lookupByName(self.name)          
           self.uuidStr = dom.UUIDString()
+
+          try:
+            self.cpuSeconds = int(dom.info()[4] / 1000000000.0)
+          except:
+            pass
 
           for vmtypeName, vmtype in vmtypes.iteritems():
                if os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + vmtypeName + '/' + self.uuidStr):
@@ -81,8 +346,6 @@ class VacVM:
                 (domState == libvirt.VIR_DOMAIN_NOSTATE and domainType == 'xen') or
                 domState == libvirt.VIR_DOMAIN_BLOCKED):
             self.state = VacState.running
-            self.cpuSeconds = dom.info()[4] / 1000000000.0
-
           else:
             self.state = VacState.paused
             logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
@@ -90,8 +353,15 @@ class VacVM:
       except:
           self.state = VacState.shutdown
  
-          # try to find state of last instance to be created   
+          # try to find state of last instance to be created
           self.uuidFromLatestVM()
+
+          try:
+            f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 'r')
+            self.cpuSeconds = int(f.readline().strip())
+            f.close()
+          except:
+            pass
 
           if self.uuidStr and self.vmtypeName \
              and not os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
@@ -99,13 +369,13 @@ class VacVM:
               self.state = VacState.starting
                         
           try: 
-            f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/machineoutputs/shutdown_message')
+            f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr
+                                         + '/shared/machineoutputs/shutdown_message', 'r')
             self.shutdownMessage = f.readline().strip()
             f.close()
 
             self.timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
-                                            '/' + self.uuidStr + '/shared/machineoutputs/shutdown_message').st_ctime)            
+                                            '/' + self.uuidStr + '/shared/machineoutputs/shutdown_message').st_ctime)
           except:
             self.shutdownMessage = None
             self.timeShutdownMessage = None
@@ -119,6 +389,12 @@ class VacVM:
       except:
            self.started = None
                           
+      try:
+           self.heartbeat = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
+                                            '/' + self.uuidStr + '/heartbeat').st_ctime)
+      except:
+           self.heartbeat = None
+
       if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                          + '/shared/machinefeatures/shutdowntime') :
           f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
@@ -131,13 +407,93 @@ class VacVM:
           self.finishedFile = True
       else:
           self.finishedFile = False
-      
+
+   def createHeartbeatFile(self):
+      self.heartbeat = int(time.time())
+      try:
+        createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
+                            self.uuidStr + '/heartbeat', str(self.cpuSeconds) + '\n')
+      except:
+        pass
+                                  
    def createFinishedFile(self):
       try:
         f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished', 'w')
         f.close()
       except:
         logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
+
+   def writeAccounting(self):
+      # Write accounting information about a VM that has finished
+      if self.state != VacState.shutdown or not self.started or not self.heartbeat:
+        return
+
+      # If the VM just ran for fizzle_seconds, then we don't log it
+#      if (self.heartbeat - self.started) < vmtypes[self.vmtypeName]['fizzle_seconds']:
+#        return
+
+      # Just in case it's been cleaned away somehow
+      try:
+        os.makedirs('/var/log/vacd-accounting')
+      except:
+        pass
+
+      # PBS/Torque accounting file (uses localtime)
+      try:
+        pbsFile = open(time.strftime('/var/log/vacd-accounting/%Y%m%d', time.localtime()), 'a+')
+      except:
+        logLine('Failed opening ' + time.strftime('/var/log/vacd-accounting/%Y%m%d', time.localtime()))
+        return
+      
+      # BLAHP accounting file (uses UTC/GMT!)
+      try:
+        blahpFile = open(time.strftime('/var/log/vacd-accounting/blahp.log-%Y%m%d', time.gmtime()), 'a+')
+      except:
+        logLine('Failed opening ' + time.strftime('/var/log/vacd-accounting/blahp.log-%Y%m%d', time.gmtime()))
+        pbsFile.close()
+        return
+      
+      pbsFile.write(time.strftime('%m/%d/%Y %H:%M:%S;E;', time.localtime()) + 
+              self.uuidStr + '.' + spaceName + ';user=' + self.vmtypeName +
+              ' group=' + self.vmtypeName + 
+              ' jobname=' + self.uuidStr + 
+              ' queue=' + self.vmtypeName + 
+              ' ctime=' + str(self.started) +
+              ' qtime=' + str(self.started) +
+              ' etime=' + str(self.started) +
+              ' start=' + str(self.started) +
+              ' owner=' + self.vmtypeName + '@' + spaceName + 
+              ' exec_host=' + os.uname()[1] + '/' + str(virtualmachines[self.name]['ordinal']) + 
+              ' Resource_List.cput=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
+              ' Resource_List.neednodes=1 Resource_List.nodect=1 Resource_List.nodes=1' +
+              ' Resource_List.walltime=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
+              ' session=0' +
+              ' end=' + str(self.heartbeat) + 
+              ' Exit_status=0' +
+              ' resources_used.cput=' + secondsToHHMMSS(self.cpuSeconds) + 
+              ' resources_used.mem=' + str(mbPerMachine * 1024) + 'kb resources_used.vmem=' + str(mbPerMachine * 1024) + 'kb' +
+              ' resources_used.walltime=' + secondsToHHMMSS(self.heartbeat - self.started) + '\n')
+                          
+      pbsFile.close()
+
+      userDN = ''
+      for component in spaceName.split('.'):
+        userDN = '/DC=' + component + userDN
+        
+      if 'accounting_fqan' in vmtypes[self.vmtypeName]:
+        userFQANField = '"userFQAN=' + vmtypes[self.vmtypeName]['accounting_fqan'] + '" '
+      else:
+        userFQANField = ''
+
+      blahpFile.write(time.strftime('"timestamp=%Y-%m-%d %H:%M:%S" ', time.gmtime()) + 
+              '"userDN=' + userDN + '" ' + userFQANField +
+              '"ceID=' + spaceName + '" ' +
+              '"jobID=' + self.uuidStr + '" ' +
+              '"lrmsID=' + self.uuidStr + '.' + spaceName + '" ' +
+              '"localUser=99" ' +
+              '"clientID=' + self.uuidStr + '"\n')
+                           
+      blahpFile.close()
 
    def logMachineoutputs(self):
    
@@ -156,7 +512,8 @@ class VacVM:
       
       if not outputs:
         # Nothing to do if there are no files there
-        f.write('=========== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' has no outputs ====\n')
+        f.write('=====' + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+                self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' has no outputs =====\n')
       else:
         f.write('\n')
         # Go through the files one by one, appending them to /var/log/vacd-machineoutputs
@@ -171,11 +528,14 @@ class VacVM:
              pass
 
           if contents:
-             f.write('===Start=== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ====\n')
+             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+                     self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ==start===\n')
              f.write(contents)
-             f.write('==Finnish== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ====\n')
+             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+                     self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ==finish==\n')
           else:
-             f.write('=========== ' + self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' is empty ====\n')
+             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+                     self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' is empty =====\n')
                         
       f.close()
    
@@ -607,232 +967,11 @@ def logLine(text):
       print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
       sys.stdout.flush()
 
-bridgeDevice = None
-cycleSeconds = 60
-deleteOldFiles = True
-domainType = 'kvm'
-factories = []
-mbPerMachine = 2048
-natNetwork = '192.168.86.0'
-networkType = 'bridge'
-numVirtualmachines = None
-spaceName = None
-udpTimeoutSeconds = 5.0
-vacVersion = '0.0.0'
-vcpuPerMachine = 1
-versionLogger = True
-virtualmachines = {}
-vmtypes = {}
-volumeGroup = 'vac_volume_group'
-
-def readConf():
-      global bridgeDevice, cycleSeconds, deleteOldFiles, domainType, factories, mbPerMachine, \
-             natNetwork, networkType, numVirtualmachines, spaceName, vacVersion, vcpuPerMachine, \
-             versionLogger, volumeGroup             
-
-      try:
-        f = open('/var/lib/vac/doc/VERSION', 'r')
-        vacVersion = f.readline().split('=',1)[1].strip()
-        f.close()
-      except:
-        pass
+def secondsToHHMMSS(seconds):
+      hh, ss = divmod(seconds, 3600)
+      mm, ss = divmod(ss, 60)
+      return '%02d:%02d:%02d' % (hh, mm, ss)
       
-      parser = RawConfigParser()
-
-      # Main configuration file, including global [settings] section
-      parser.read('/etc/vac.conf')
-      
-      # Optional file for vitualmachine sections for this factory machine
-      parser.read('/etc/vac-virtualmachines.conf')
-      
-      # Optional file with [factories] listing all factories in this vac space
-      parser.read('/etc/vac-factories.conf')
-
-      # Optional file with [targetshares] for all factories in this vac space
-      parser.read('/etc/vac-targetshares.conf')
-
-
-      # general settings from [Settings] section
-
-      if not parser.has_section('settings'):
-        return 'Must have a settings section!'
-      
-      if not parser.has_option('settings', 'vac_space'):
-        return 'Must give vac_space in [settings]!'
-        
-      spaceName = parser.get('settings','vac_space').strip()
-             
-      if parser.has_option('settings', 'domain_type'):
-          # defaults to 'kvm' but can specify 'xen' instead
-          domainType = parser.get('settings','domain_type').strip()
-
-      if parser.has_option('settings', 'total_machines'):
-          # Optional number of VMs for Vac to auto-define.
-          # Will override any [virtualmachine ...] sections!
-          numVirtualmachines = int(parser.get('settings','total_machines').strip())
-                          
-      if parser.has_option('settings', 'network_type'):
-          # bridge or nat
-          networkType = parser.get('settings','network_type').strip().lower()
-          if networkType == 'nat' and numVirtualmachines is None:
-              return 'nat networking can only be used if total_machines has been given'
-          
-      if parser.has_option('settings', 'bridge_device'):
-          bridgeDevice = parser.get('settings','bridge_device').strip()
-      elif domainType == 'xen':
-          bridgeDevice = 'br-eth0'
-      else:
-          bridgeDevice = 'p1p1'
-             
-      if parser.has_option('settings', 'nat_network'):
-          if networkType != 'nat':
-              return 'nat_network can only be used with network_type = nat'
-          # network to use for NAT addresses
-          natNetwork = parser.get('settings','nat_network').strip()
-                       
-      if parser.has_option('settings', 'volume_group'):
-          if not numVirtualmachines:
-              return 'volume_group can only be used with the total_machines option'
-          # Volume group to search for logical volumes if automatic VM definitions
-          volumeGroup = parser.get('settings','volume_group').strip()
-             
-      if parser.has_option('settings', 'cycle_seconds'):
-          # How long to wait before re-evaluating state of VMs in the
-          # main loop again. Defaults to 60 seconds.
-          cycleSeconds = int(parser.get('settings','cycle_seconds').strip())
-
-      if parser.has_option('settings', 'udp_timeout_seconds'):
-          # How long to wait before giving up on more UDP replies          
-          udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
-
-      if (parser.has_option('settings', 'version_logger') and
-          parser.get('settings','version_logger').strip().lower() == 'false'):
-           versionLogger = False
-      else:
-           versionLogger = True
-
-      if (parser.has_option('settings', 'delete_old_files') and
-          parser.get('settings','delete_old_files').strip().lower() == 'false'):
-           deleteOldFiles = False
-      else:
-           deleteOldFiles = True
-             
-      if parser.has_option('settings', 'vcpu_per_machine'):
-          # if this isn't set, then we allocate one vcpu per VM
-          vcpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
-             
-      if parser.has_option('settings', 'mb_per_machine'):
-          # if this isn't set, then we use default (2048 MiB)
-          mbPerMachine = int(parser.get('settings','mb_per_machine'))
-             
-      # all other sections are VM types or Virtual Machines or Factories
-      for sectionName in parser.sections():
-
-         if (sectionName.lower() == 'settings'):
-           continue 
-           
-         sectionNameSplit = sectionName.lower().split(None,1)
-         
-         if sectionNameSplit[0] == 'vmtype':
-             vmtype = {}
-             vmtype['root_image'] = parser.get(sectionName, 'root_image')
-
-             vmtype['share'] = 0.0
-                                            
-             if parser.has_option('targetshares', sectionNameSplit[1]):
-                 vmtype['share'] = float(parser.get('targetshares', sectionNameSplit[1]))
-
-             if parser.has_option(sectionName, 'root_device'):
-                 vmtype['root_device'] = parser.get(sectionName, 'root_device')
-             else:
-                 vmtype['root_device'] = 'hda'
-             
-             if parser.has_option(sectionName, 'scratch_device'):
-                 vmtype['scratch_device'] = parser.get(sectionName, 'scratch_device')
-             else:
-                 vmtype['scratch_device'] = 'hdb'
-
-             if parser.has_option(sectionName, 'rootpublickey'):
-                 vmtype['rootpublickey'] = parser.get(sectionName, 'rootpublickey')
-
-             if parser.has_option(sectionName, 'user_data'):
-                 vmtype['user_data'] = parser.get(sectionName, 'user_data')
-
-             if parser.has_option(sectionName, 'prolog'):
-                 vmtype['prolog'] = parser.get(sectionName, 'prolog')
-
-             if parser.has_option(sectionName, 'epilog'):
-                 vmtype['epilog'] = parser.get(sectionName, 'epilog')
-
-             if parser.has_option(sectionName, 'log_machineoutputs') and \
-                parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
-                 vmtype['log_machineoutputs'] = True
-             else:
-                 vmtype['log_machineoutputs'] = False
-             
-             if parser.has_option(sectionName, 'max_wallclock_seconds'):
-                 vmtype['max_wallclock_seconds'] = int(parser.get(sectionName, 'max_wallclock_seconds'))
-             else:
-                 vmtype['max_wallclock_seconds'] = 86400
-             
-             if parser.has_option(sectionName, 'shutdown_command'):
-                 vmtype['shutdown_command'] = parser.get(sectionName, 'shutdown_command')
-
-             if parser.has_option(sectionName, 'backoff_seconds'):
-                 vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
-             else:
-                 vmtype['backoff_seconds'] = 10
-             
-             if parser.has_option(sectionName, 'fizzle_seconds'):
-                 vmtype['fizzle_seconds'] = int(parser.get(sectionName, 'fizzle_seconds'))
-             else:
-                 vmtype['fizzle_seconds'] = 600
-             
-             vmtypes[sectionNameSplit[1]] = vmtype
-             
-         elif sectionName.lower() == 'factories':
-             try:
-                 factories = (parser.get('factories', 'names')).lower().split()
-             except:
-                 pass
-             
-         elif sectionNameSplit[0] == 'virtualmachine' and numVirtualmachines is None:
-                  
-             virtualmachine = {}
-             
-             # ordinal of the VM, counting from 0
-             virtualmachine['ordinal'] = len(virtualmachines)
-          
-             virtualmachine['mac'] = parser.get(sectionName, 'mac')
-
-             if parser.has_option(sectionName, 'scratch_volume'):
-                 virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
-             
-             virtualmachines[sectionNameSplit[1]] = virtualmachine
-             
-      if numVirtualmachines:
-         # Auto define VMs          
-         ordinal = 0
-         
-         while ordinal < numVirtualmachines:           
-           virtualmachine = {}
-           
-           virtualmachine['ordinal'] = ordinal
-           
-           nameParts = os.uname()[1].split('.',1)
-           
-           vmName = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
-                      
-           if os.path.exists('/dev/' + volumeGroup + '/' + vmName) and \
-              stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + vmName).st_mode):
-                virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
-           
-           virtualmachines[vmName] = virtualmachine
-           ordinal += 1
-
-      # Finished successfully, with no error to return
-      return None
-        
 def cleanupByNameUUID(name, vmtypeName, uuidStr):
    conn = libvirt.open(None)
    if conn == None:
@@ -944,4 +1083,5 @@ def cleanupVirtualmachineFiles():
              shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
              logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
    
+
                   

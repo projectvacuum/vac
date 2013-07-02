@@ -243,8 +243,7 @@ def vacOneCycle():
      
      if vm.state == VAC.VacState.running:
        # VM is happily running so we redo the machine's heartbeat file
-       VAC.createFile('/var/lib/vac/machines/' + vm.name + '/' + vm.vmtypeName + '/' +      
-                      vm.uuidStr + '/heartbeat', str(int(vm.cpuSeconds)) + '\n')
+       vm.createHeartbeatFile()
 
        # ah, but are WE happy that it is still running?
        try:
@@ -275,10 +274,11 @@ def vacOneCycle():
      if vm.state == VAC.VacState.shutdown:
        # create the finished file for the responder if not already there
        if vm.started and not vm.finishedFile:
-               VAC.logLine('Create finished file for ' + vm.name)
-               vm.createFinishedFile()
+               vm.writeAccounting()
                if VAC.vmtypes[vm.vmtypeName]['log_machineoutputs']:
                  vm.logMachineoutputs()
+               VAC.logLine('Create finished file for ' + vm.name)
+               vm.createFinishedFile()
 
        elif not vm.finishedFile:
                VAC.logLine('No finished file but no started time for ' + vm.name)

@@ -162,6 +162,10 @@ can be set to True to enable recording of all the files in
 VM finishes or is killed. For this reason, only text files should be
 written to this directory. Default False.
 
+.B accounting_fqan
+is used to specify a userFQAN to include in the blahp accounting 
+entries in the /var/log/vacd-accounting/ log files. 
+
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
 relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
