@@ -454,7 +454,7 @@ class VacVM:
         return
       
       pbsFile.write(time.strftime('%m/%d/%Y %H:%M:%S;E;', time.localtime()) + 
-              self.uuidStr + '.' + spaceName + ';user=' + self.vmtypeName +
+              self.uuidStr + ';user=' + self.vmtypeName +
               ' group=' + self.vmtypeName + 
               ' jobname=' + self.uuidStr + 
               ' queue=' + self.vmtypeName + 
@@ -489,7 +489,7 @@ class VacVM:
               '"userDN=' + userDN + '" ' + userFQANField +
               '"ceID=' + spaceName + '" ' +
               '"jobID=' + self.uuidStr + '" ' +
-              '"lrmsID=' + self.uuidStr + '.' + spaceName + '" ' +
+              '"lrmsID=' + self.uuidStr + '" ' +
               '"localUser=99" ' +
               '"clientID=' + self.uuidStr + '"\n')
                            
