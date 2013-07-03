@@ -1,5 +1,6 @@
 ==================== Changes in Vac version 0.12.0 =====================
-- 
+- Add accounting logs in PBS and BLAHP format, optionally including a
+  FQAN from the accounting_fqan option for the vmtype.
 ==================== Changes in Vac version 0.11.0 =====================
 - Remove _name from vac_ entries in /etc/machinefeatures and add 
   vac_vmtype
