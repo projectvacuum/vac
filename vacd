@@ -461,6 +461,7 @@ def vacResponder():
 
            sock.sendto(json.dumps({
                 'space'		: VAC.spaceName,
+#                'hs06'		: VAC.hs06PerMachine,
                 'vmname'	: vmName,
                 'state'		: vmState,
                 'vmtype'	: vmVmtypeName,

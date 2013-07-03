@@ -54,6 +54,7 @@ deleteOldFiles = None
 domainType = None
 
 factories = None
+hs06PerMachine = None
 mbPerMachine = None
 natNetwork = None
 networkType = None
@@ -72,7 +73,7 @@ volumeGroup = None
 
 def readConf():
       global bridgeDevice, cycleSeconds, deleteOldFiles, domainType, \
-             factories, mbPerMachine, natNetwork, networkType, \
+             factories, hs06PerMachine, mbPerMachine, natNetwork, networkType, \
              numVirtualmachines, spaceName, udpTimeoutSeconds, vacVersion, \
              vcpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup
@@ -84,6 +85,7 @@ def readConf():
       domainType = 'kvm'
 
       factories = []
+      hs06PerMachine = 0.0
       mbPerMachine = 2048
       natNetwork = '192.168.86.0'
       networkType = 'bridge'
@@ -194,6 +196,10 @@ def readConf():
       if parser.has_option('settings', 'mb_per_machine'):
           # if this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
+             
+#      if parser.has_option('settings', 'hs06_per_machine'):
+#          # if this isn't set, then we use default (0.0)
+#          hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
              
       # all other sections are VM types or Virtual Machines or Factories
       for sectionName in parser.sections():
