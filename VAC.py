@@ -518,7 +518,7 @@ class VacVM:
       
       if not outputs:
         # Nothing to do if there are no files there
-        f.write('=====' + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+        f.write('=====' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
                 self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' has no outputs =====\n')
       else:
         f.write('\n')
@@ -534,13 +534,13 @@ class VacVM:
              pass
 
           if contents:
-             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
                      self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ==start===\n')
              f.write(contents)
-             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
                      self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ==finish==\n')
           else:
-             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S;E;', time.localtime()) + '===== ' + 
+             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
                      self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' is empty =====\n')
                         
       f.close()
