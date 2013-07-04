@@ -70,6 +70,12 @@ We do this because zcat (and gunzip) won't create sparse files, but cp can
 and they are much quicker to read and copy around.
 
 <p>
+Vac uses to share some directories from the factory machine to its virtual
+machines, and needs to have the standard NFS server installed and running.
+It's not necessary to configure the NFS server, as Vac uses exportfs
+commands to create and destroy exports dynamically.
+
+<p>
 Now you need to create the /etc/vac.conf configuration file. Copy
 /var/lib/vac/doc/example.vac.conf to /etc/vac.conf and read through its
 comments. There are 6 lines you need to check and probably change.
