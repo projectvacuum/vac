@@ -283,8 +283,7 @@ The [settings] section must include a vac_space name, which is also used
 as the virtual CE name. 
 
 <p>
-A separate [factories] section contains the single required option 
-.B name
+A separate [factories] section contains the single required option name
 which has a space separated list of the fully qualified domain names of all
 the factories in this Vac space, including this factory. The factories are
 queried using UDP when a factory needs to decide which vmtype to start.
@@ -326,7 +325,8 @@ that can be give for each vmtype.
 The [targetshares] section contains a list of vmtype=share pairs giving
 the desired share of the total VMs available in this space for each
 vmtype. The shares do not need to add up to 1.0, and if a share is not given
-for a vmtype, then it is set to 0. Vac factories consult these shares
+for a vmtype, then it is set to 0. The creation of new VMs can be completely
+disabled by setting all shares to 0. Vac factories consult these shares
 when deciding which vmtype to start as VMs become available.
 
 <p>
