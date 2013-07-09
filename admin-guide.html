@@ -192,6 +192,36 @@ losetup -d /dev/loop7
 
 <h3>DNS, IP, MAC</h3>
 
+<p>
+There are three networking scenarios supported:
+
+<p> 
+ 1) Bridging in which you make a [virtualmachine x.y.z] section for
+ each VM you want on a factory, giving the FQDN (x.y.z), and the MAC address
+ with the mac= option. You can then allocate everything however you want in
+ your DHCP and DNS servers, and have a free choice of FQDN, but you must 
+ supply an IP address for each VM as part of that.
+ 
+<p>
+ 2) Bridging, but with no [virtualmachine x.y.z] sections and total_machines 
+ specified instead. Vac then creates the VM FQDNs from the factory name
+ by adding -00, -01, ... So factory1.example.com has factory1-00.example.com,
+ factory1-01.example.com, ... as its VMs. Vac looks up the IP addresses of
+ these names in your DNS and creates unique MACs from them. This is
+ a way of avoiding making [virtualmachine x.y.z] sections, as they are
+ factory
+ specific and means you can use the same configuration on all your
+ factories.
+ However, you still need to set up your DHCP and DNS as in (1).
+
+<p> 
+ 3) NAT, again using total_machines. This time Vac creates the FQDNs as
+ in (2), but now also chooses private IPs (in 192.168.86.0 by default) and
+ makes MACs for them. Using libvirt NAT machinery means this network is
+ hidden from the rest of the LAN and only visible from the factory and its
+ VMs. libvirt configures the dnsmasq server to run dedicated DNS and DHCP
+ servers on this private network.
+
 <h3>Logical volumes</h3>
 
 <p>
@@ -237,19 +267,105 @@ VM as hdb by default.
  
 <h3>Installation: tar vs RPM</h3>
 
-<h3>Configuration of factory and virtualmachines</h3>
+<p>
+RPM is the recommended installation procedure, and RPMs are available
+from the <a href="http://www.gridpp.ac.uk/vac/versions/">Downloads
+directory</a> on the Vac website.
+
+<p>
+It is possible to install Vac from a tar file, using the install Makefile
+target.
+
+<h3>Configuration of the Vac space</h3>
+
+<p>
+The [settings] section must include a vac_space name, which is also used
+as the virtual CE name. 
+
+<p>
+A separate [factories] section contains the single required option 
+.B name
+which has a space separated list of the fully qualified domain names of all
+the factories in this Vac space, including this factory. The factories are
+queried using UDP when a factory needs to decide which vmtype to start.
+The Vac responder process on the factories replies to these queries with
+a summary of the VM and the outcome of recent attempts to run a VM of each
+vmtype.
+
+<p>
+For ease of management, the [factories] section can be placed in
+/etc/vac-factories.conf which could be automatically generated and
+maintained from another source, such as the site's assets database.
+
+<h3>Configuration of this factory and its virtualmachines</h3>
+
+If the total_machines option is not given in [settings], then 
+one [virtualmachine ...] section must exist for each virtual machine 
+assigned to this factory machine, with its fully qualified domain name 
+given in the section name, such as [virtualmachine vm1.example.com].
+Each of these sections contain one or two option=value pairs that are 
+specific to that virtualmachine.
+
+<p>
+For ease of management, the [virtualmachine ...] sections can be
+placed in a seperate /etc/vac-virtualmachines.conf file. This is
+particularly convenient as it can be used to concentrate all the
+factory-specific information in one file so the same /etc/vac.conf
+can be used on all factories.
 
 <h3>Setting up vmtypes</h3>
 
+<p>
+One [vmtype ...] section must exist for each vmtype in the system, with
+the name of the vmtype given in the section name, such as [vmtype example].
+A vmtype name must only consist of lowercase letters, numbers, periods,
+underscores, and hyphens. The vac.conf(5) man page lists the options
+that can be give for each vmtype.
+
+<p>
+The [targetshares] section contains a list of vmtype=share pairs giving
+the desired share of the total VMs available in this space for each
+vmtype. The shares do not need to add up to 1.0, and if a share is not given
+for a vmtype, then it is set to 0. Vac factories consult these shares
+when deciding which vmtype to start as VMs become available.
+
+<p>
+For ease of management, the [targetshares] section can be placed in
+a separate file, /etc/vac-targetshares.conf, which is convenient if
+it is generated automatically or frequently edited by hand and pushed
+out to the factory machines.
+
 <h2>Using vac command</h2>
+
+<p>
+The vac(1) man page explains how the vac command can be used to
+scan the current Vac space and display the VMs running, along with
+statistics about their CPU load and wall clock time.
 
 <h2>Setting up Nagios</h2>
 
+<p>
+The check-vacd script installed in /var/lib/vac/bin can be used with
+Nagios to monitor the state of the vacd on a factory node. 
+
+<p>
+It can be run from the local Nagios nrpe daemon with a line like this
+in its configuration file:
+
+<pre>
+command[check-vacd]=/var/lib/vac/bin/check-vacd 600
+</pre>
+
+which raises an alarm if the vacd heartbeat wasn't updated in the
+last 600 seconds.
+
+<!--
 <h2>Setting up APEL</h2>
 
 <h2>Tuning backoff</h2>
 
 <h2>Troubleshooting</h2>
+-->
 
 </body>
 </html>
