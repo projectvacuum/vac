@@ -146,6 +146,24 @@ This part of the guide covers the same groud as the quick start
 guide but in a lot more detail. It's intended to help you choose
 how best to configure your site.
 
+<p>
+The configuration file /etc/vac.conf use the Python ConfigParser syntax, 
+which is similar to MS
+Windows INI files. The file is divided into sections, with each section
+name in square brackets. For example: [settings]. Each section contains
+a series of option=value pairs.
+
+For ease of management, three more optional files are read if they exist:
+<ul>
+<li>/etc/vac-virtualmachines.conf
+<li>/etc/vac-factories.conf
+<li>/etc/vac-targetshares.conf
+</ul>
+
+<p>
+These files are named after important sections, but sections can be placed
+in any of the four files, or all placed in /etc/vac.conf
+
 <h3>Xen vs kvm</h3>
 
 <p>
