@@ -231,7 +231,6 @@ def vacOneCycle():
    # --> So we do not use  continue  within this loop! <--
    totalCount    = 0
    runningCount  = 0
-   errorCount	 = 0
    
    for vmname in VAC.virtualmachines:
    
@@ -295,12 +294,17 @@ def vacOneCycle():
          if createError:
             VAC.logLine('VM creation fails with: ' + createError)
             VAC.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
-            errorCount += 1
          else:
             # we update heartbeat after creating a VM in case that took a while
             # (several minutes for Xen, without COW disk images)
             VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
             os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+            # if no VM creation errors, then cleanup any old message   
+            try:
+              os.remove('/var/lib/vac/factory-error')
+            except OSError:
+              pass
        else:
          VAC.logLine('No vmtype suitable for creation in this cycle')
 
@@ -314,13 +318,6 @@ def vacOneCycle():
    # finished with all VMs, so output counts for Nagios etc
    VAC.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount))
    os.chmod('/var/lib/vac/counts', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
-   # if no factory errors (likely VM creation problems), then cleanup any old message   
-   if errorCount == 0:
-     try:
-       os.remove('/var/lib/vac/factory-error')
-     except OSError:
-       pass
 
 def vacResponder():
  
