@@ -783,12 +783,12 @@ class VacVM:
           try:
             ip = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])
           except:
-            return 'Failed to make NAT address'
+            return 'failed to make NAT address'
         else:
           try:
             ip = socket.getaddrinfo(self.name, None)[1][4][0]
           except:
-            return 'Failed to get IP address of ' + self.name
+            return 'failed to get IP address of ' + self.name
 
         ipBytes = ip.split('.')
         
@@ -798,13 +798,13 @@ class VacVM:
           mac = virtualmachines[self.name]['mac']
 
       else:
-          return 'No mac given in configuration for ' + self.name
+          return 'no mac given in configuration for ' + self.name
           
       logLine('Using MAC ' + mac + ' when creating ' + self.name)
       
       conn = libvirt.open(None)
       if conn == None:
-          return 'Failed to open connection to the hypervisor'
+          return 'failed to open connection to the hypervisor'
                 
       if domainType == 'kvm':
           xmldesc="""<domain type='kvm'>
@@ -925,7 +925,7 @@ class VacVM:
       except:
            logLine('Failed trying to create VM domain for ' + self.name)
            conn.close()
-           return 'Failed trying to create VM domain for ' + self.name
+           return 'failed trying to create VM domain'
       else:
            self.state = VacState.running
 
