@@ -801,8 +801,12 @@ class VacVM:
           return 'no mac given in configuration for ' + self.name
           
       logLine('Using MAC ' + mac + ' when creating ' + self.name)
-      
-      conn = libvirt.open(None)
+
+      try:
+          conn = libvirt.open(None)
+      except:
+          return 'exception when opening connection to the hypervisor'
+
       if conn == None:
           return 'failed to open connection to the hypervisor'
                 
@@ -928,9 +932,9 @@ class VacVM:
            return 'exception when trying to create VM domain'
            
       if not dom:
-           logLine('No result when trying to create VM domain for ' + self.name)
+           logLine('Failed when trying to create VM domain for ' + self.name)
            conn.close()
-           return 'no result when trying to create VM domain'
+           return 'failed when trying to create VM domain'
            
       conn.close()
        
