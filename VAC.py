@@ -911,6 +911,7 @@ class VacVM:
 """        
 
       else:
+          conn.close()
           return 'domain_type not recognised!'
       
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/started', 
@@ -923,6 +924,8 @@ class VacVM:
            dom = conn.createXML(xmldesc, 0)
       except:
            logLine('Failed trying to create VM domain for ' + self.name)
+           conn.close()
+           return 'Failed trying to create VM domain for ' + self.name
       else:
            self.state = VacState.running
 

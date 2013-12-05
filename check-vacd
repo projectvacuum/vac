@@ -51,18 +51,7 @@ if __name__ == '__main__':
  except:
    timeout_seconds = 600
 
- # first we look for an explicit statement of an error
- try: 
-   f = open('/var/lib/vac/factory-error', 'r')
- except IOError:
-   pass
- else:
-   error_line = f.readline().strip()
-   f.close()
-   print error_line + vm_status_line
-   sys.exit(2)
-   
- # next we check the factory heartbeat and give an error if there's a problem
+ # first we check the factory heartbeat and give an error if there's a problem
  try:
    factory_heartbeat_seconds = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
  except:
@@ -72,6 +61,7 @@ if __name__ == '__main__':
    if factory_heartbeat_seconds < (int(time.time()) - timeout_seconds):
           print 'No vacd factory heartbeat in %.2f hours' % ((time.time() - factory_heartbeat_seconds) / 3600) + vm_status_line
           sys.exit(2)        
+
  # then we check the responder and give an error if there's a problem
  try:
    responder_heartbeat_seconds = int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime)
@@ -83,5 +73,17 @@ if __name__ == '__main__':
           print 'No vacd responder heartbeat in %.2f hours' % ((time.time() - responder_heartbeat_seconds) / 3600) + vm_status_line
           sys.exit(2)        
 
+ # finally we look for an explicit statement of an error
+ try: 
+   f = open('/var/lib/vac/factory-error', 'r')
+ except IOError:
+   pass
+ else:
+   error_line = f.readline().strip()
+   f.close()
+   print error_line + vm_status_line
+   sys.exit(2)
+
+ # Yes! Everything appears ok!
  print 'Factory + responder ok' + vm_status_line
  sys.exit(0)
