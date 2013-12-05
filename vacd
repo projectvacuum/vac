@@ -294,6 +294,7 @@ def vacOneCycle():
          if createError:
             VAC.logLine('VM creation fails with: ' + createError)
             VAC.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
+            os.chmod('/var/lib/vac/factory-error', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
          else:
             # we update heartbeat after creating a VM in case that took a while
             # (several minutes for Xen, without COW disk images)

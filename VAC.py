@@ -921,16 +921,21 @@ class VacVM:
                  '0.0\n')
       
       try:
-           dom = conn.createXML(xmldesc, 0)
+           dom = conn.createXML(xmldesc, 0)           
       except:
-           logLine('Failed trying to create VM domain for ' + self.name)
+           logLine('Exception when trying to create VM domain for ' + self.name)
            conn.close()
-           return 'failed trying to create VM domain'
-      else:
-           self.state = VacState.running
-
+           return 'exception when trying to create VM domain'
+           
+      if not dom:
+           logLine('No result when trying to create VM domain for ' + self.name)
+           conn.close()
+           return 'no result when trying to create VM domain'
+           
       conn.close()
        
+      self.state = VacState.running
+
       # Everything ok so return no error message
       return None
 
