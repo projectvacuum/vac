@@ -51,7 +51,18 @@ if __name__ == '__main__':
  except:
    timeout_seconds = 600
 
- # first we check the factory and give an error if there's a problem
+ # first we look for an explicit statement of an error
+ try: 
+   f = open('/var/lib/vac/factory-error', 'r')
+ except IOError:
+   pass
+ else:
+   error_line = f.readline().strip()
+   f.close()
+   print error_line + vm_status_line
+   sys.exit(2)
+   
+ # next we check the factory heartbeat and give an error if there's a problem
  try:
    factory_heartbeat_seconds = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
  except:
