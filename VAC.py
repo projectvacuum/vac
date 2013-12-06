@@ -1074,6 +1074,7 @@ def cleanupVirtualmachineFiles():
 # otherwise they may never be got rid of
 
    for vmname in virtualmachines:
+   
      vm = VacVM(vmname)
 
      # we go through the vmtypes, looking for directory

@@ -184,6 +184,16 @@ def vacOneCycle():
    VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
    os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
+   # Check we can talk to the hypervisor
+   # This is important at (re)start time and lets us wait till things are ok
+   try:
+     conn = libvirt.open(None)
+   except:
+     VAC.logLine('Failed to open libvirt connection')
+     return
+   else:     
+     conn.close()
+
    readConfError = VAC.readConf()
    
    if readConfError:
