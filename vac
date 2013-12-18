@@ -82,6 +82,8 @@ def queryFactories():
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
                 
+                stateStr = (response['state'] + 10 * ' ')[0:9]
+                
                 if response['state'] == VAC.VacState.running:
                                        runningcount += 1
                 elif response['state'] == VAC.VacState.starting:
@@ -99,6 +101,9 @@ def queryFactories():
                     
                   hoursStr +=  22 * ' '
 
+                  if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+                    stateStr = 'Running* '
+
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
 
@@ -108,7 +113,7 @@ def queryFactories():
                 else:
                   hoursStr = 22 * ' '
 
-                print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],(response['state'] + 10 * ' ')[0:9],hoursStr[0:21],"%.2fs" % (time.time() - start), \
+                print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],stateStr,hoursStr[0:21],"%.2fs" % (time.time() - start), \
                        response['vmtype'] if 'vmtype' in response else '------'
 
       except socket.error as msg:
