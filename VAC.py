@@ -48,6 +48,11 @@ import stat
 
 from ConfigParser import RawConfigParser
 
+natNetwork     = '169.254.0.0'
+natNetmask     = '255.255.0.0'
+natPrefix      = '169.254.169.'
+factoryAddress = '169.254.169.254'
+
 bridgeDevice = None
 cycleSeconds = None
 deleteOldFiles = None
@@ -56,7 +61,7 @@ domainType = None
 factories = None
 hs06PerMachine = None
 mbPerMachine = None
-natNetwork = None
+#natNetwork = None
 networkType = None
 
 numVirtualmachines = None
@@ -73,7 +78,7 @@ volumeGroup = None
 
 def readConf():
       global bridgeDevice, cycleSeconds, deleteOldFiles, domainType, \
-             factories, hs06PerMachine, mbPerMachine, natNetwork, networkType, \
+             factories, hs06PerMachine, mbPerMachine, networkType, \
              numVirtualmachines, spaceName, udpTimeoutSeconds, vacVersion, \
              vcpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup
@@ -87,8 +92,8 @@ def readConf():
       factories = []
       hs06PerMachine = 0.0
       mbPerMachine = 2048
-      natNetwork = '192.168.86.0'
-      networkType = 'bridge'
+#      natNetwork = '192.168.86.0'
+      networkType = 'nat'
 
       numVirtualmachines = None
       spaceName = None
@@ -114,8 +119,8 @@ def readConf():
       # Main configuration file, including global [settings] section
       parser.read('/etc/vac.conf')
       
-      # Optional file for vitualmachine sections for this factory machine
-      parser.read('/etc/vac-virtualmachines.conf')
+#      # Optional file for vitualmachine sections for this factory machine
+#      parser.read('/etc/vac-virtualmachines.conf')
       
       # Optional file with [factories] listing all factories in this vac space
       parser.read('/etc/vac-factories.conf')
@@ -139,28 +144,30 @@ def readConf():
           domainType = parser.get('settings','domain_type').strip()
 
       if parser.has_option('settings', 'total_machines'):
-          # Optional number of VMs for Vac to auto-define.
-          # Will override any [virtualmachine ...] sections!
+          # Mandatory number of VMs for Vac to auto-define.
+          # No longer use [virtualmachine ...] sections!
           numVirtualmachines = int(parser.get('settings','total_machines').strip())
-                          
-      if parser.has_option('settings', 'network_type'):
-          # bridge or nat
-          networkType = parser.get('settings','network_type').strip().lower()
-          if networkType == 'nat' and numVirtualmachines is None:
-              return 'nat networking can only be used if total_machines has been given'
-          
-      if parser.has_option('settings', 'bridge_device'):
-          bridgeDevice = parser.get('settings','bridge_device').strip()
-      elif domainType == 'xen':
-          bridgeDevice = 'br-eth0'
       else:
-          bridgeDevice = 'p1p1'
+          return 'Must give total_machines in [settings]!'
+                          
+#      if parser.has_option('settings', 'network_type'):
+#          # bridge or nat
+#          networkType = parser.get('settings','network_type').strip().lower()
+#          if networkType == 'nat' and numVirtualmachines is None:
+#              return 'nat networking can only be used if total_machines has been given'
+          
+#      if parser.has_option('settings', 'bridge_device'):
+#          bridgeDevice = parser.get('settings','bridge_device').strip()
+#      elif domainType == 'xen':
+#          bridgeDevice = 'br-eth0'
+#      else:
+#          bridgeDevice = 'p1p1'
              
-      if parser.has_option('settings', 'nat_network'):
-          if networkType != 'nat':
-              return 'nat_network can only be used with network_type = nat'
-          # network to use for NAT addresses
-          natNetwork = parser.get('settings','nat_network').strip()
+#      if parser.has_option('settings', 'nat_network'):
+#          if networkType != 'nat':
+#              return 'nat_network can only be used with network_type = nat'
+#          # network to use for NAT addresses
+#          natNetwork = parser.get('settings','nat_network').strip()
                        
       if parser.has_option('settings', 'volume_group'):
           if not numVirtualmachines:
@@ -196,7 +203,8 @@ def readConf():
       if parser.has_option('settings', 'mb_per_machine'):
           # if this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
-             
+
+# Having to do this via BDII due to APEL requirement?             
 #      if parser.has_option('settings', 'hs06_per_machine'):
 #          # if this isn't set, then we use default (0.0)
 #          hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
@@ -275,19 +283,19 @@ def readConf():
              except:
                  pass
              
-         elif sectionNameSplit[0] == 'virtualmachine' and numVirtualmachines is None:
-                  
-             virtualmachine = {}
-             
-             # ordinal of the VM, counting from 0
-             virtualmachine['ordinal'] = len(virtualmachines)
-          
-             virtualmachine['mac'] = parser.get(sectionName, 'mac')
-
-             if parser.has_option(sectionName, 'scratch_volume'):
-                 virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
-             
-             virtualmachines[sectionNameSplit[1]] = virtualmachine
+#         elif sectionNameSplit[0] == 'virtualmachine' and numVirtualmachines is None:
+#                  
+#             virtualmachine = {}
+#             
+#             # ordinal of the VM, counting from 0
+#             virtualmachine['ordinal'] = len(virtualmachines)
+#          
+#             virtualmachine['mac'] = parser.get(sectionName, 'mac')
+#
+#             if parser.has_option(sectionName, 'scratch_volume'):
+#                 virtualmachine['scratch_volume'] = parser.get(sectionName, 'scratch_volume')
+#             
+#             virtualmachines[sectionNameSplit[1]] = virtualmachine
              
       if numVirtualmachines:
          # Auto define VMs          
@@ -609,11 +617,11 @@ class VacVM:
                                      
       f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
 
-      if networkType == 'nat':
-          # if NAT, we use the private address of the bridge
-          factoryAddress = natNetwork.rsplit('.',1)[0] + '.1'
-      else:
-          factoryAddress = os.uname()[1]
+#      if networkType == 'nat':
+#          # if NAT, we use the private address of the bridge
+#          factoryAddress = natNetwork.rsplit('.',1)[0] + '.1'
+#      else:
+#          factoryAddress = os.uname()[1]
           
       f.write('#!/bin/sh\n')
       f.write('if [ "$1" = "start" ] ; then\n')
@@ -702,10 +710,12 @@ class VacVM:
         os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command', 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      if networkType == 'nat':
-        exportAddress = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])        
-      else:
-        exportAddress = self.name
+#      if networkType == 'nat':
+#        exportAddress = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])        
+#      else:
+#        exportAddress = self.name
+
+      exportAddress = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
       if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
          os.system('exportfs ' + exportAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
@@ -776,29 +786,31 @@ class VacVM:
       else:
           scratch_volume_xml = ""
 
-      if numVirtualmachines:
+#      if numVirtualmachines:
         # if auto defining VMs, MACs are done here
 
-        if networkType == 'nat':
-          try:
-            ip = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])
-          except:
-            return 'failed to make NAT address'
-        else:
-          try:
-            ip = socket.getaddrinfo(self.name, None)[1][4][0]
-          except:
-            return 'failed to get IP address of ' + self.name
+#        if networkType == 'nat':
+#          try:
+#            ip = natNetwork.rsplit('.',1)[0] + '.' + str(100 + virtualmachines[self.name]['ordinal'])
+#          except:
+#            return 'failed to make NAT address'
+#        else:
+#          try:
+#            ip = socket.getaddrinfo(self.name, None)[1][4][0]
+#          except:
+#            return 'failed to get IP address of ' + self.name
 
-        ipBytes = ip.split('.')
+      ip = natPrefix + str(virtualmachines[self.name]['ordinal'])
+
+      ipBytes = ip.split('.')
         
-        mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
+      mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
          
-      elif 'mac' in virtualmachines[self.name]:
-          mac = virtualmachines[self.name]['mac']
-
-      else:
-          return 'no mac given in configuration for ' + self.name
+#      elif 'mac' in virtualmachines[self.name]:
+#          mac = virtualmachines[self.name]['mac']
+#
+#      else:
+#          return 'no mac given in configuration for ' + self.name
           
       logLine('Using MAC ' + mac + ' when creating ' + self.name)
 
@@ -851,9 +863,9 @@ class VacVM:
     <controller type='usb' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
     </controller>
-    <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
+    <interface type='network'>
       <mac address='""" + mac + """'/>
-      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else ("bridge='" + bridgeDevice + "'")) + """/>
+      <source network='vac_""" + natNetwork + """"'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -904,9 +916,9 @@ class VacVM:
     <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
       <listen type='address' address='0.0.0.0'/>
     </graphics>
-    <interface type='""" + ("network" if networkType == 'nat' else "bridge") + """'>
+    <interface type='network'>
       <mac address='""" + mac + """'/>
-      <source """ + (("network='vac_" + natNetwork + "'") if networkType == 'nat' else ("bridge='" + bridgeDevice + "'")) + """/>
+      <source network='vac_""" + natNetwork + """'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
@@ -952,17 +964,16 @@ def vacNetworkXML():
       ordinal = 0
       while ordinal < 100:
     
-        ip      = natNetwork.rsplit('.',1)[0] + '.' + str(100 + ordinal)
+        ip      = natPrefix + str(ordinal)
         ipBytes = ip.split('.')        
         mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
         vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
 
         dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
-        # dnsXML  += "   <host ip='" + ip + "'><hostname>" + vmName + "</hostname></host>\n"
         ordinal += 1
 
       netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
-      netXML += " <ip address='" + natNetwork.rsplit('.',1)[0] + ".1' netmask='255.255.255.0'>\n"
+      netXML += " <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
       netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
       
       return netXML      

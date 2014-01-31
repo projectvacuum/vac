@@ -218,12 +218,11 @@ def vacOneCycle():
            except:
              pass
      
-   if VAC.networkType == 'nat':
-     conn = libvirt.open(None)
+   conn = libvirt.open(None)
      
-     try:
+   try:
        conn.networkLookupByName('vac_' + VAC.natNetwork)
-     except:
+   except:
        VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT.')       
        if conn.networkCreateXML(VAC.vacNetworkXML()):
          VAC.logLine('Network vac_' + VAC.natNetwork + ' created.')
@@ -231,7 +230,7 @@ def vacOneCycle():
          VAC.logLine('Failed to create NAT network vac_' + VAC.natNetwork)
          return
        
-     conn.close()
+   conn.close()
      
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))
    VAC.logLine('VM Types configuration: ' + str(VAC.vmtypes))

@@ -18,8 +18,6 @@ a series of option=value pairs.
 
 For ease of management, three more optional files are read if they exist:
 .br
-"/etc/vac-virtualmachines.conf"
-.br 
 "/etc/vac-factories.conf"
 .br 
 "/etc/vac-targetshares.conf"
@@ -69,11 +67,7 @@ version number. This will be used to target patches for security
 and bugs at the versions currently in use. Defaults to True.
 
 .B total_machines
-gives the number of VMs to be defined by Vac rather than in 
-[virtualmachine ...] sections in the configuration file(s). These two
-mechanisms cannot be used on the same factory, and any 
-[virtualmachine ...] sections will be ignored if total_machines is
-given. The VM names are formed by
+gives the number of VMs to be defined by Vac. The VM names are formed by
 adding a hyphen and the VM number to the hostname component of its fully
 qualified domain name. For example, factory1.example.com would have
 factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
@@ -86,20 +80,6 @@ which can be used by a particular VM. The logical volumes must have the
 VMs fully qualified domain names as their names. For example, 
 /dev/vac_volume_group/facory1-00.example.com/ would used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
-
-.B network_type
-selects between bridge and nat as styles of networking. If nat is given,
-then the total_machines setting must also be used. Defaults to bridge.
-
-.B nat_network
-allows the C-class private network use by Vac for NAT to be chosen. Vac
-will pre-allocate a large number of IP addresses within this network
-and associate MAC addresses with them. Defaults to 192.168.86.0.
-
-.B bridge_device
-allows a device name to be set in bridging mode, to match the bridge
-device on the factory host that can be seen using ifconfig.
-Defaults to p1p1 when using kvm and br-eth0 with Xen.
 
 .SH [VMTYPE ...] SECTIONS
 
@@ -204,34 +184,6 @@ queried using UDP when a factory needs to decide which vmtype to start.
 The Vac responder process on the factories replies to these queries with
 a summary of the VM and the outcome of recent attempts to run a VM of each
 vmtype.
-
-.SH [VIRTUALMACHINE ...] SECTIONS
-
-If the total_machines option is not given in [settings], then 
-one [virtualmachine ...] section must exist for each virtual machine 
-assigned to this factory machine, with its fully qualified domain name 
-given in the section name, such as [virtualmachine vm1.example.com].
-Each of these sections contain one or two option=value pairs that are 
-specific to that virtualmachine.
-
-.B mac
-is the MAC address of the virtual network interface used by the VM. You can
-allocate MAC addresses from the locally administered range. This must be 
-unique across the local network. A convenient way to achieve this is to
-convert the 4 bytes of the virtual machine's IP address into hexadecimal 
-and use them as the final 8 hex digits of the MAC address. For the first 4
-digits a prefix in the locally administered range, such as 56:4D, must be
-used. For example, 192.168.1.80 maps to 56:4D:C0:A8:01:50 (0x56 0x4D is 
-VM in ASCII.)
-
-.B scratch_volume
-is optional and if given will be used by Vac as a logical volume which can
-be attached to the VM. The scratch_volume option will be a device file, 
-similar to /dev/vac_volume_group/vm1.example.com_scratch
-Vac will first format the volume as ext3, and then 
-attach it the VM using the value of 
-.B scratch_device
-for the vmtype.                  
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
