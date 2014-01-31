@@ -1,6 +1,6 @@
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013. All rights reserved.
+#  Copyright (c) 2013-4. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -34,7 +34,7 @@
 include VERSION
 
 INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
-          make-vac-virtualmachines-conf check-vacd VERSION \
+          check-vacd VERSION \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           example.vac.conf example.README example.user_data \
           example.prolog.sh example.epilog.sh admin-guide.html \
@@ -57,7 +57,6 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
 	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
-	   make-vac-virtualmachines-conf \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES \
 	   check-vacd.8 vac.1 example.vac.conf \
