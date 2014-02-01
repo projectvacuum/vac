@@ -105,7 +105,7 @@ def queryFactories():
                     stateStr = 'Running* '
 
                 elif response['state'] == VAC.VacState.starting:
-                  hoursStr = '%0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
+                  hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
 
                 elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
