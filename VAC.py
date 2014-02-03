@@ -397,8 +397,8 @@ class VacVM:
         return
 
       # If the VM just ran for fizzle_seconds, then we don't log it
-#      if (self.heartbeat - self.started) < vmtypes[self.vmtypeName]['fizzle_seconds']:
-#        return
+      if (self.heartbeat - self.started) < vmtypes[self.vmtypeName]['fizzle_seconds']:
+        return
 
       # Just in case it's been cleaned away somehow
       try:
