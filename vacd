@@ -224,16 +224,11 @@ def vacOneCycle():
        conn.networkLookupByName('vac_' + VAC.natNetwork)
    except:
        VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT.')       
-       try:
-        if conn.networkCreateXML(VAC.vacNetworkXML()):
-         VAC.logLine('Network vac_' + VAC.natNetwork + ' created.')
-        else:
-         VAC.logLine('Failed to create NAT network vac_' + VAC.natNetwork)
-         return
-       except:
-        VAC.logLine('Failed to create NAT network vac_' + VAC.natNetwork + ' (Need dnsmasq RPM >= 2.48-13?)')
+
+       if not VAC.createNetwork(conn):
+        conn.close()
         return
-       
+
    conn.close()
      
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))

@@ -878,7 +878,7 @@ class VacVM:
       # Everything ok so return no error message
       return None
 
-def vacNetworkXML():
+def createNetwork(conn):
 
       nameParts = os.uname()[1].split('.',1)
 
@@ -895,11 +895,32 @@ def vacNetworkXML():
         dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
         ordinal += 1
 
+        hostsLine = ip + ' ' + vmName + ' # added by Vac'
+
+        # append this line to /etc/hosts if not already present
+        with open('/etc/hosts', 'r') as f:
+          if not hostsLine in f.read():
+           f.close()
+           with open('/etc/hosts', 'a') as g:
+            g.write(hostsLine + '\n')
+
       netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
       netXML += " <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
       netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
       
-      return netXML      
+      try:
+        if conn.networkCreateXML(netXML):
+         logLine('Network vac_' + natNetwork + ' created.')
+         return True
+        else:
+         logLine('Failed to create NAT network vac_' + natNetwork)
+         return False
+      except:
+        logLine('Failed to create NAT network vac_' + natNetwork + ' (Need dnsmasq RPM >= 2.48-13?)')
+        return False
+
+      # we never get here...
+      return False     
      
 def createFile(targetname, contents):
       # Create a text file containing contents in the vac tmp directory
