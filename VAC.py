@@ -891,13 +891,12 @@ def createNetwork(conn):
         ipBytes = ip.split('.')        
         mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
         vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
+        hostsLine = ip + ' ' + nameParts[0] + '-%02d' % ordinal + ' ' + vmName + ' # added by Vac'
 
         dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
         ordinal += 1
 
-        hostsLine = ip + ' ' + vmName + ' # added by Vac'
-
-        # append this line to /etc/hosts if not already present
+        # append a line for this VM to /etc/hosts if not already present
         with open('/etc/hosts', 'r') as f:
           if not hostsLine in f.read():
            f.close()
