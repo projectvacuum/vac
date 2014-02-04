@@ -2,6 +2,8 @@
 - Remove bridge networking
 - Remove [virtualmachine ...] configuration sections
 - Always use 169.254.169.* for VM IPs, and 169.254.169.254 for factory
+- Add entries in /etc/hosts for VM IPs
+- Don't do accounting logs for VMs that last less than fizzle_seconds
 ==================== Changes in Vac version 0.12.0 =====================
 - Add accounting logs in PBS and BLAHP format, optionally including a
   FQAN from the accounting_fqan option for the vmtype.
