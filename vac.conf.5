@@ -103,7 +103,10 @@ backoff_seconds time has expired for a VM abort, once at least one VM has
 been started in this Vac space, then no more new VMs can be started for 
 another fizzle_seconds. Thirdly, these new VMs are identified because
 they are still in the starting phase of creating files, or because they
-have been running for less than fizzle_seconds.
+have been running for less than fizzle_seconds. 
+.br
+Additionally, when writing the accounting log files, any VMs which run for 
+less than fizzle_seconds are excluded.
 
 .B max_wallclock_seconds
 gives the maximum lifetime of a VM. Vac will destroy the VM if it is still
