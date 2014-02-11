@@ -351,9 +351,78 @@ command[check-vacd]=/var/lib/vac/bin/check-vacd 600
 which raises an alarm if the vacd heartbeat wasn't updated in the
 last 600 seconds.
 
-<!--
-<h2>Setting up APEL</h2>
+<h2>APEL accounting</h2>
 
+<p>
+When Vac detects that a VM has finished, it writes one line with
+accounting information to two daily log files in /var/log/vacd-accounting .
+One log file is in PBS format, and one in BLAHP format. Vac uses the 
+UUID of the VM as the local and grid job ID, and the vmtype name as the
+local user and group. The a unique user DN is constructed from the components 
+of the Vac space name. For example, vac01.example.com becomes
+/DC=com/DC=example/DC=vac01 . If the accounting_fqan option in a [vmtype ...]
+section, then for VMs of that type the value of that option is included in
+the log files as the user FQAN, which indicates the VO associated with the
+VM.
+
+<p>
+The format of these accounting log files is designed to work with the
+standard APEL PBS log file parser, which can be run on each factory machine
+from cron to publish accounting records into the site's APEL publisher
+database.
+
+<p>
+For APEL 2, a configuration file modelled on this example can be placed in 
+/etc/glite-apel-pbs/parser-config-vac.xml:
+
+<pre>
+<?xml version="1.0" encoding="UTF-8"?>
+<ApelConfiguration enableDebugLogging="yes">
+<SiteName>EXAMPLE-COM</SiteName>
+<DBURL>jdbc:mysql://apel.example.com:3306/accounting</DBURL>
+  <DBUsername>accounting</DBUsername>
+  <DBPassword>REPLACE-WITH-PASSWORD</DBPassword>
+  <DBProcessor inspectTables="no"/>
+
+  <EventLogProcessor>
+    <Logs searchSubDirs="yes"
+     reprocess="no"><Dir>/var/log/vacd-accounting</Dir></Logs>
+    <Timezone>UTC</Timezone>
+    <SubmitHost>vac01.example.com</SubmitHost>
+  </EventLogProcessor>
+
+  <BlahdLogProcessor>
+    <BlahdLogPrefix>blahp.log-</BlahdLogPrefix>
+    <Logs searchSubDirs="yes"
+     reprocess="no"><Dir>/var/log/vacd-accounting</Dir></Logs>
+  </BlahdLogProcessor>
+</ApelConfiguration>
+</pre>
+
+<p>
+The SiteName is the EGI/WLCG site name used by the GOCDB, and 
+the other example.com values should be replaced with your chosen names as 
+before.
+
+<p>
+The parser can be run once a day by placing the file
+glite-apel-pbs-parser-cron in /etc/cron.d:
+<pre>
+25 01 * * * root env APEL_HOME=/ /usr/bin/apel-pbs-log-parser  -f /etc/glite-apel-pbs/parser-config-vac.xml >> /var/log/apel.log 2>&amp;1
+</pre>
+
+<p>
+A similar approach can be taken for APEL 3 based sites, using the new
+APEL configuration file format and scripts.
+
+<p>
+In either case, it is necessary to ensure that HEPSPEC06 benchmark values are 
+present in the publisher database, either by placing them in the BDII and 
+using the APEL SpecUpdater option, or by inserting them by hand in the 
+database. New rows only need to be inserted if the benchmark changes for some
+reason. 
+
+<!--
 <h2>Tuning backoff</h2>
 
 <h2>Troubleshooting</h2>
