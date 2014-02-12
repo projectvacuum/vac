@@ -394,8 +394,9 @@ For APEL 2, a configuration file modelled on this example can be placed in
 
   &lt;BlahdLogProcessor&gt;
     &lt;BlahdLogPrefix&gt;blahp.log-&lt;/BlahdLogPrefix&gt;
-    &lt;Logs searchSubDirs="yes"
-     reprocess="no"&gt;&lt;Dir&gt;/var/log/vacd-accounting&lt;/Dir&gt;&lt;/Logs&gt;
+    &lt;Logs searchSubDirs="yes" reprocess="no"&gt;
+      &lt;Dir&gt;/var/log/vacd-accounting&lt;/Dir&gt;
+    &lt;/Logs&gt;
   &lt;/BlahdLogProcessor&gt;
 &lt;/ApelConfiguration&gt;
 </pre>
