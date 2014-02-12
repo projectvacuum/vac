@@ -226,10 +226,10 @@ network is 169.254.169.254, which is the so-called Magic IP used by some
 Cloud systems for a local configuration service which VMs look for.
 
 <p>
-<b>To use IP addresses in the 169.254.0.0 network, you must ensure you are
+To use IP addresses in the 169.254.0.0 network, <b>you must ensure you are
 using a recent
-version of dnsmasq. For SL6, dnsmasq-2.48-13.el6.x86_64.rpm avaiable as part
-of SL6 updates, is suitable.</b>
+version of dnsmasq.</b> For SL6, dnsmasq-2.48-13.el6.x86_64.rpm avaiable as part
+of SL6 updates, is suitable.
 
 <p>
 The 169.254.0.0 network should not be configured on the factory machine
@@ -358,9 +358,10 @@ When Vac detects that a VM has finished, it writes one line with
 accounting information to two daily log files in /var/log/vacd-accounting .
 One log file is in PBS format, and one in BLAHP format. Vac uses the 
 UUID of the VM as the local and grid job ID, and the vmtype name as the
-local user and group. The a unique user DN is constructed from the components 
+local user and group. A unique user DN is constructed from the components 
 of the Vac space name. For example, vac01.example.com becomes
-/DC=com/DC=example/DC=vac01 . If the accounting_fqan option in a [vmtype ...]
+/DC=com/DC=example/DC=vac01 . If the accounting_fqan option is present in a
+[vmtype ...]
 section, then for VMs of that type the value of that option is included in
 the log files as the user FQAN, which indicates the VO associated with the
 VM.
@@ -376,27 +377,27 @@ For APEL 2, a configuration file modelled on this example can be placed in
 /etc/glite-apel-pbs/parser-config-vac.xml:
 
 <pre>
-<?xml version="1.0" encoding="UTF-8"?>
-<ApelConfiguration enableDebugLogging="yes">
-<SiteName>EXAMPLE-COM</SiteName>
-<DBURL>jdbc:mysql://apel.example.com:3306/accounting</DBURL>
-  <DBUsername>accounting</DBUsername>
-  <DBPassword>REPLACE-WITH-PASSWORD</DBPassword>
-  <DBProcessor inspectTables="no"/>
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;ApelConfiguration enableDebugLogging="yes"&gt;
+&lt;SiteName&gt;EXAMPLE-COM&lt;/SiteName&gt;
+&lt;DBURL&gt;jdbc:mysql://apel.example.com:3306/accounting&lt;/DBURL&gt;
+  &lt;DBUsername&gt;accounting&lt;/DBUsername&gt;
+  &lt;DBPassword&gt;REPLACE-WITH-PASSWORD&lt;/DBPassword&gt;
+  &lt;DBProcessor inspectTables="no"/&gt;
 
-  <EventLogProcessor>
-    <Logs searchSubDirs="yes"
-     reprocess="no"><Dir>/var/log/vacd-accounting</Dir></Logs>
-    <Timezone>UTC</Timezone>
-    <SubmitHost>vac01.example.com</SubmitHost>
-  </EventLogProcessor>
+  &lt;EventLogProcessor&gt;
+    &lt;Logs searchSubDirs="yes"
+     reprocess="no"&gt;&lt;Dir&gt;/var/log/vacd-accounting&lt;/Dir&gt;&lt;/Logs&gt;
+    &lt;Timezone&gt;UTC&lt;/Timezone&gt;
+    &lt;SubmitHost&gt;vac01.example.com&lt;/SubmitHost&gt;
+  &lt;/EventLogProcessor&gt;
 
-  <BlahdLogProcessor>
-    <BlahdLogPrefix>blahp.log-</BlahdLogPrefix>
-    <Logs searchSubDirs="yes"
-     reprocess="no"><Dir>/var/log/vacd-accounting</Dir></Logs>
-  </BlahdLogProcessor>
-</ApelConfiguration>
+  &lt;BlahdLogProcessor&gt;
+    &lt;BlahdLogPrefix&gt;blahp.log-&lt;/BlahdLogPrefix&gt;
+    &lt;Logs searchSubDirs="yes"
+     reprocess="no"&gt;&lt;Dir&gt;/var/log/vacd-accounting&lt;/Dir&gt;&lt;/Logs&gt;
+  &lt;/BlahdLogProcessor&gt;
+&lt;/ApelConfiguration&gt;
 </pre>
 
 <p>
@@ -418,7 +419,7 @@ APEL configuration file format and scripts.
 <p>
 In either case, it is necessary to ensure that HEPSPEC06 benchmark values are 
 present in the publisher database, either by placing them in the BDII and 
-using the APEL SpecUpdater option, or by inserting them by hand in the 
+using the APEL SpecUpdater, or by inserting them by hand in the 
 database. New rows only need to be inserted if the benchmark changes for some
 reason. 
 
