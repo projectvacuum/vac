@@ -246,13 +246,13 @@ to provide additional, faster disk space. Normally these will be mounted at
 
 <p>By
 default, the block device associated with the logical volume is available to
-the VM has hdb, but this can changed with the scratch_device option in a
+the VM is hdb, but this can changed with the scratch_device option in a
 [vmtype ...] section. 
 
 <p>
 For each virtual machine Vac will look for a logical volume
 to use with it. The global volume_group option in [settings] (default
-vac_volume_group) and the virtual machine's name is used to construct the
+vac_volume_group) and the virtual machine's name are used to construct the
 logical volume paths to try. For example, 
 /dev/vac_volume_group/factory1-01.example.com
 

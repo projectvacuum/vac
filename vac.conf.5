@@ -16,7 +16,7 @@ Windows INI files. The file is divided into sections, with each section
 name in square brackets. For example: [settings]. Each section contains
 a series of option=value pairs.
 
-For ease of management, three more optional files are read if they exist:
+For ease of management, two more optional files are read if they exist:
 .br
 "/etc/vac-factories.conf"
 .br 
@@ -121,7 +121,7 @@ This value is written to /etc/machinefeatures/shutdown_command. The script
 available at the NFS-exported location /etc/machinefeatures/vac-shutdown-vm 
 in the VM.
 
-Running the vac-shutdown-vm command from a non-root use can be accomplished
+Running the vac-shutdown-vm command from a non-root user can be accomplished
 by appending lines like this to /etc/sudoers, with USER as the user name:
 
 .br
