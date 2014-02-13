@@ -705,7 +705,7 @@ class VacVM:
 
       # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
-                 str(mbPerMachine * 1.048576) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(int(mbPerMachine * 1.048576)) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
                         
       # vcpuPerMachine again
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
@@ -747,7 +747,7 @@ class VacVM:
        f = os.popen('lvs --nosuffix --units G --noheadings -o lv_size ' + virtualmachines[self.name]['scratch_volume'], 'r')
        sizeGB = float(f.readline())
        f.close()
-       virtualmachines[self.name]['scratch_volume_gb']) = sizeGB
+       virtualmachines[self.name]['scratch_volume_gb'] = sizeGB
       except:
        logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
        pass      
