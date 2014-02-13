@@ -121,9 +121,10 @@ VM. Default 86400.
 .B shutdown_command
 is the path to a file inside the VM which the VM can use to shut itself down.
 This value is written to /etc/machinefeatures/shutdown_command. The script
-/var/lib/vac/bin/vac-shutdown-vm is suitable for this, and is 
-available at the NFS-exported location /etc/machinefeatures/vac-shutdown-vm 
-in the VM.
+/var/lib/vac/bin/vac-shutdown-vm is suitable for this, and should normally
+be copied to the shared subdirectory of the vmtype's directory in
+/var/lib/vac/vmtypes/ . it will then be visible inside the VM at the
+NFS-imported location /etc/vmtypefiles/vac-shutdown-vm .
 
 Running the vac-shutdown-vm command from a non-root user can be accomplished
 by appending lines like this to /etc/sudoers, with USER as the user name:
@@ -133,7 +134,7 @@ Defaults:USER !requiretty
 .br
 Defaults:USER visiblepw
 .br
-USER ALL = NOPASSWD: /etc/machinefeatures/vac-shutdown-vm
+USER ALL = NOPASSWD: /etc/vmtypefiles/vac-shutdown-vm
 
 .B root_device
 is the device name exposed to the VM that is associated with the root

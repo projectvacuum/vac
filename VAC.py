@@ -635,10 +635,6 @@ class VacVM:
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
                  self.uuidStr + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
-      shutil.copy2('/var/lib/vac/bin/vac-shutdown-vm', '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac-shutdown-vm')
-      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac-shutdown-vm',
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH + stat.S_IXUSR + stat.S_IXGRP + stat.S_IXOTH)
     
       # Standard machinefeatures
 

@@ -72,6 +72,8 @@ install: $(INSTALL_FILES)
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/prolog.sh
 	cp example.epilog.sh \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/epilog.sh
+	cp vac-shutdown-vm \
+           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared
 	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
