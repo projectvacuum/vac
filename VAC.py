@@ -86,7 +86,7 @@ def readConf():
       domainType = 'kvm'
 
       factories = []
-      hs06PerMachine = 0.0
+      hs06PerMachine = 1.0
       mbPerMachine = 2048
 
       numVirtualmachines = None
@@ -173,10 +173,9 @@ def readConf():
           # if this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
 
-# Having to do this via BDII due to APEL requirement?             
-#      if parser.has_option('settings', 'hs06_per_machine'):
-#          # if this isn't set, then we use default (0.0)
-#          hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
+      if parser.has_option('settings', 'hs06_per_machine'):
+          # if this isn't set, then we keep default (1.0)
+          hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
              
       # all other sections are VM types or Virtual Machines or Factories
       for sectionName in parser.sections():
@@ -622,41 +621,97 @@ class VacVM:
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures')
-       
+
+      # Vac specific extensions
+             
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
-                 os.uname()[1] + '\n')
-      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 os.uname()[1] + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_vmtype',
-                 self.vmtypeName + '\n')
-      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_vmtype',
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 self.vmtypeName + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
-                 spaceName + '\n')
-      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 spaceName + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
-                 self.uuidStr + '\n')
-      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 self.uuidStr + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       shutil.copy2('/var/lib/vac/bin/vac-shutdown-vm', '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac-shutdown-vm')
       os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac-shutdown-vm',
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH + stat.S_IXUSR + stat.S_IXGRP + stat.S_IXOTH)
     
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
-                 str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n')
-      os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      # Standard machinefeatures
 
+      # HEPSPEC06 per virtual machine
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
+                 str(hs06PerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # we don't know the physical vs logical cores distinction here so we just use vcpu
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
+                 str(vcpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # again just use vcpu
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
+                 str(vcpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # tell them they have the whole VM to themselves; they are in the only jobslot here
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
+                '1\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      
       if 'shutdown_command' in vmtypes[self.vmtypeName]:
         createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command',
-                   vmtypes[self.vmtypeName]['shutdown_command'] + '\n')
-        os.chmod('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command', 
-                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                   vmtypes[self.vmtypeName]['shutdown_command'] + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # calculate the absolute shutdown time for the VM, as a machine
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+                 str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n', 
+                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # Standard  jobfeatures
+      
+      # calculate the absolute shutdown time for the VM, as a job
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+                 str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n', 
+                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # we don't do this, so just say 1.0 for cpu factor
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
+                 '1.0\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the vcpu            
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * vcpuPerMachine + '\n', 
+                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * vcpuPerMachine + '\n', 
+                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in vcpu
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
+                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
+                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
+      if virtualmachines[self.name]['scratch_volume_gb']:
+         createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
+                 str(virtualmachines[self.name]['scratch_volume_gb']) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # we are about to start the VM now
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
+                 str(int(time.time())) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
+                 str(mbPerMachine * 1.048576) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                        
+      # vcpuPerMachine again
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
+                 str(vcpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+      # do the NFS exports
 
       exportAddress = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
@@ -685,7 +740,17 @@ class VacVM:
           raise NameError('copy of disk image fails!')
 
    def makeScratchDisk(self):
-      os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])
+      os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])      
+
+      try:
+       # get logical volume size in GB (1000^3 not 1024^3)
+       f = os.popen('lvs --nosuffix --units G --noheadings -o lv_size ' + virtualmachines[self.name]['scratch_volume'], 'r')
+       sizeGB = float(f.readline())
+       f.close()
+       virtualmachines[self.name]['scratch_volume_gb']) = sizeGB
+      except:
+       logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
+       pass      
 
    def destroyVM(self):
       conn = libvirt.open(None)
@@ -712,7 +777,6 @@ class VacVM:
 
       self.makeISO()
       self.makeRootDisk()
-      self.exportFileSystems()
 
       if 'scratch_volume' in virtualmachines[self.name]:
           self.makeScratchDisk()
@@ -736,6 +800,9 @@ class VacVM:
       mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
                    
       logLine('Using MAC ' + mac + ' when creating ' + self.name)
+
+      # this goes after the rest of the setup since it populates machinefeatures and jobfeatures
+      self.exportFileSystems()
 
       try:
           conn = libvirt.open(None)
@@ -921,7 +988,7 @@ def createNetwork(conn):
       # we never get here...
       return False     
      
-def createFile(targetname, contents):
+def createFile(targetname, contents, mode=None):
       # Create a text file containing contents in the vac tmp directory
       # then move it into place. Rename is an atomic operation in POSIX,
       # including situations where targetname already exists.
@@ -929,6 +996,10 @@ def createFile(targetname, contents):
       try:
        ftup = tempfile.mkstemp(prefix='/var/lib/vac/tmp',text=True)
        os.write(ftup[0], contents)
+       
+       if mode: 
+         os.fchmod(ftup[0], mode)
+
        os.close(ftup[0])
        os.rename(ftup[1], targetname)
        return True
