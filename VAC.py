@@ -744,7 +744,7 @@ class VacVM:
 
       try:
        # get logical volume size in GB (1000^3 not 1024^3)
-       f = os.popen('lvs --nosuffix --units G --noheadings -o lv_size ' + virtualmachines[self.name]['scratch_volume'], 'r')
+       f = os.popen('lvs --nosuffix --units G --noheadings -o lv_size ' + virtualmachines[self.name]['scratch_volume'] + ' 2>/dev/null', 'r')
        sizeGB = float(f.readline())
        f.close()
        virtualmachines[self.name]['scratch_volume_gb'] = sizeGB
