@@ -674,7 +674,7 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
                  '1.0\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the vcpu            
+      # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the vcpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * vcpuPerMachine + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
@@ -683,10 +683,10 @@ class VacVM:
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in vcpu
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
