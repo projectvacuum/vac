@@ -55,7 +55,9 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/machines
+	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
+	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
+	         $(RPM_BUILD_ROOT)/etc/logrotate.d
 	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES \
@@ -76,9 +78,10 @@ install: $(INSTALL_FILES)
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared
 	chmod +x \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared/vac-shutdown-vm
-	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
+	cp vacd.logrotate \
+	   $(RPM_BUILD_ROOT)/etc/logrotate.d/vacd
 	
 rpm: vac.tgz
 	export VAC_VERSION=$(VERSION) ; rpmbuild -ta vac.tgz

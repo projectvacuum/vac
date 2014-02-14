@@ -1,0 +1,8 @@
+/var/log/vacd-factory
+/var/log/vacd-responder
+/var/log/vacd-machineoutputs
+{
+  daily
+  missingok
+  rotate 3
+}
