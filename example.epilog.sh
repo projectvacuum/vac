@@ -14,7 +14,7 @@ fi
 if [ -x "$ShutdownCommand" ] ; then
   $ShutdownCommand 200 Finished
 else
-  shutdown -h now
+  /sbin/shutdown -h now
 fi
       
 sleep 1234567890

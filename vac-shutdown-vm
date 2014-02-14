@@ -49,7 +49,7 @@ if [ ! -d /etc/machineoutputs ] ; then
  exit 1
 fi
 
-if [ "$USER" = "root" ] ; then
+if [ `/usr/bin/id -u` = 0 ] ; then
   echo "$*" >/etc/machineoutputs/shutdown_message
   /sbin/shutdown -h now "$*"
 else
