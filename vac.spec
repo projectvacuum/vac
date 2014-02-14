@@ -31,7 +31,7 @@ mkdir -p $RPM_BUILD_ROOT/usr/share/man/man1 $RPM_BUILD_ROOT/usr/share/man/man5 $
 cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vac.1 $RPM_BUILD_ROOT/usr/share/man/man1
 cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vac.conf.5 $RPM_BUILD_ROOT/usr/share/man/man5
 cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
-      $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
+      $RPM_BUILD_ROOT/var/lib/vac/doc/check-vacd.8 \
            $RPM_BUILD_ROOT/usr/share/man/man8
 
 %files
