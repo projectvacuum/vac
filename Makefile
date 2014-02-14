@@ -74,7 +74,7 @@ install: $(INSTALL_FILES)
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/epilog.sh
 	cp vac-shutdown-vm \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared
-        chmod +x \
+	chmod +x \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared/vac-shutdown-vm
 	mkdir -p $(RPM_BUILD_ROOT)/etc/rc.d/init.d
 	cp vacd.init \
