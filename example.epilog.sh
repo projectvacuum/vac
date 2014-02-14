@@ -7,8 +7,8 @@ echo 'epilog.sh file has started' >>/tmp/epilog.sh.log
 
 sleep 600
 
-if [ -r /etc/machinefeatures/shutdown_command ] ; then
-  ShutdownCommand=`cat /etc/machinefeatures/shutdown_command`
+if [ -r /etc/vmtypefiles/shutdown_command ] ; then
+  ShutdownCommand=`cat /etc/vmtypefiles/shutdown_command`
 fi
   
 if [ "$ShutdownCommand" ] ; then
