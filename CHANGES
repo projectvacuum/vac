@@ -7,6 +7,7 @@
 - Fully populate /etc/machinefeatures and /etc/jobfeatures, including
   hs06_per_machine option and measured size of the scratch partition
 - Move assumed vac-shutdown-vm location to /etc/vmtypefiles
+- Require lvm2 in SPEC file so we get lvs command to read partition size
 ==================== Changes in Vac version 0.12.0 =====================
 - Add accounting logs in PBS and BLAHP format, optionally including a
   FQAN from the accounting_fqan option for the vmtype.

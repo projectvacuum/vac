@@ -154,7 +154,7 @@ name in square brackets. For example: [settings]. Each section contains
 a series of option=value pairs.
 
 <p>
-For ease of management, three more optional files are read if they exist:
+For convenience, two more optional files are read if they exist:
 <ul>
 <li>/etc/vac-factories.conf
 <li>/etc/vac-targetshares.conf
@@ -162,7 +162,7 @@ For ease of management, three more optional files are read if they exist:
 
 <p>
 These files are named after important sections, but sections can be placed
-in any of the four files, or all placed in /etc/vac.conf
+in any of the three files, or all placed in /etc/vac.conf
 
 <h3>Xen vs kvm</h3>
 
@@ -332,6 +332,24 @@ The experiment or VO responsible for each vmtype should supply
 step by step intructions on how to set up the rest of the [vmtype ...]
 section and how to configure the files to be placed in its subdirectory
 of /var/lib/vac/vmtypes .
+
+<h2>Starting and stopping vacd</h2>
+
+<p>
+The Vac daemon, vacd, is started and stopped by /etc/rc.d/init.d/vacd 
+on conjunction with the usual service and chkconfig commands. As the 
+configuration files are reread at the start of each cycle (by default, 
+one per minute) it is not necessary to restart vacd after changing the 
+configuration.
+
+<p>
+Furthermore, as vacd rereads the current state of the VMs from status
+files and the hypervisor at the start of each cycle, vacd can be 
+restarted without disrupting running VMs or losing information about
+their state. 
+In most cases it will even be possible to upgrade vacd from one patch
+level to another within the same minor release without having to
+drain the factory of running VMs.
 
 <h2>Using vac command</h2>
 
