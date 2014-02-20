@@ -1,3 +1,5 @@
+==================== Changes in Vac version 0.13.1 =====================
+- Extra double-quota fix to VAC.py from Ewan MacMahon
 ==================== Changes in Vac version 0.13.0 =====================
 - Remove bridge networking
 - Remove [virtualmachine ...] configuration sections

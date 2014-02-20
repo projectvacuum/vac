@@ -851,7 +851,7 @@ class VacVM:
     </controller>
     <interface type='network'>
       <mac address='""" + mac + """'/>
-      <source network='vac_""" + natNetwork + """"'/>
+      <source network='vac_""" + natNetwork + """'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
