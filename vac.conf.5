@@ -78,6 +78,14 @@ factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
 addresses are formed with the prefix 56:4D as the first two bytes, and
 the four bytes of the IP address as the remaining four bytes.
 
+.B machines_to_create
+is equal to total_machines by default and is usually not needed. If set,
+then no more than machines_to_create virtual machines will be created
+even if total_machines is higher. This allows you to reduce the number
+of running VMs on a factory machine without having to kill running VMs.
+Instead, they are allowed to finish one by one and are only recreated if 
+machines_to_create allows.
+
 .B volume_group
 can be used to set the volume group to be searched for a logical volume
 which can be used by a particular VM. The logical volumes must have the

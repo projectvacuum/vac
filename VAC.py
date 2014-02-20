@@ -62,6 +62,7 @@ hs06PerMachine = None
 mbPerMachine = None
 
 numVirtualmachines = None
+numMachinesToCreate = None
 spaceName = None
 udpTimeoutSeconds = None
 vacVersion = None
@@ -76,7 +77,7 @@ volumeGroup = None
 def readConf():
       global cycleSeconds, deleteOldFiles, domainType, \
              factories, hs06PerMachine, mbPerMachine, \
-             numVirtualmachines, spaceName, udpTimeoutSeconds, vacVersion, \
+             numVirtualmachines, numMachinesToCreate, spaceName, udpTimeoutSeconds, vacVersion, \
              vcpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup
 
@@ -90,6 +91,7 @@ def readConf():
       mbPerMachine = 2048
 
       numVirtualmachines = None
+      numMachinesToCreate = None
       spaceName = None
       udpTimeoutSeconds = 5.0
       vacVersion = '0.0.0'
@@ -139,6 +141,16 @@ def readConf():
           numVirtualmachines = int(parser.get('settings','total_machines').strip())
       else:
           return 'Must give total_machines in [settings]!'
+                                                 
+      if parser.has_option('settings', 'machines_to_create'):
+          # Option limit on number of VMs for Vac to create.
+          # defaults to total_machines
+          numMachinesToCreate = int(parser.get('settings','machines_to_create').strip())
+          
+          if numMachinesToCreate > numVirtualmachines:
+           return 'machines_to_create cannot be greater than total_machines!'
+      else:
+          numMachinesToCreate = numVirtualmachines
                                                  
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 

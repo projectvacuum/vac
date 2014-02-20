@@ -291,31 +291,35 @@ def vacOneCycle():
        elif not vm.finishedFile:
                VAC.logLine('No finished file but no started time for ' + vm.name)
   
-       # as VM is shutdown, we see if we can restart it
-       VAC.logLine('Query factories and try to recreate ' + vm.name)
-       preferredVmtypeName = pollFactories()
+       if VAC.virtualmachines[vmname]['ordinal'] < VAC.numMachinesToCreate:
+         # as VM is shutdown, we see if we can restart it but only if less than
+         # numMachinesToCreate limit (by default, equals numVirtualmachines itself)
+         VAC.logLine('Query factories and try to recreate ' + vm.name)
+         preferredVmtypeName = pollFactories()
        
-       if preferredVmtypeName:
-         VAC.logLine('Creating ' + vm.name + ' with vmtype ' + preferredVmtypeName)
-         createError = vm.createVM(preferredVmtypeName)
+         if preferredVmtypeName:
+           VAC.logLine('Creating ' + vm.name + ' with vmtype ' + preferredVmtypeName)
+           createError = vm.createVM(preferredVmtypeName)
 
-         if createError:
-            VAC.logLine('VM creation fails with: ' + createError)
-            VAC.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
-            os.chmod('/var/lib/vac/factory-error', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+           if createError:
+             VAC.logLine('VM creation fails with: ' + createError)
+             VAC.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
+             os.chmod('/var/lib/vac/factory-error', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+           else:
+             # we update heartbeat after creating a VM in case that took a while
+             # (several minutes for Xen, without COW disk images)
+             VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
+             os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+             # if no VM creation errors, then cleanup any old message   
+             try:
+               os.remove('/var/lib/vac/factory-error')
+             except OSError:
+               pass
          else:
-            # we update heartbeat after creating a VM in case that took a while
-            # (several minutes for Xen, without COW disk images)
-            VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
-            os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
-            # if no VM creation errors, then cleanup any old message   
-            try:
-              os.remove('/var/lib/vac/factory-error')
-            except OSError:
-              pass
+           VAC.logLine('No vmtype suitable for creation in this cycle')
        else:
-         VAC.logLine('No vmtype suitable for creation in this cycle')
+         VAC.logLine('Not created due to machines_to_create limit')
 
      # finished with this vm, update counts
      totalCount += 1
@@ -329,6 +333,15 @@ def vacOneCycle():
    os.chmod('/var/lib/vac/counts', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
 def vacResponder():
+
+   si = file('/dev/null', 'r')
+   os.dup2(si.fileno(), sys.stdin.fileno())
+
+   so = file('/var/log/vacd-responder', 'a+')
+   os.dup2(so.fileno(), sys.stdout.fileno())
+          
+   se = file('/var/log/vacd-responder', 'a+', 0)     
+   os.dup2(se.fileno(), sys.stderr.fileno())
  
    VAC.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n')
 
@@ -340,6 +353,22 @@ def vacResponder():
    
    while True:
    
+     try:
+       close(so)
+     except:
+       pass
+           
+     so = file('/var/log/vacd-responder', 'a+')
+     os.dup2(so.fileno(), sys.stdout.fileno())
+          
+     try:
+       close(se)
+     except:
+       pass
+
+     se = file('/var/log/vacd-responder', 'a+', 0)     
+     os.dup2(se.fileno(), sys.stderr.fileno())
+
      readConfError = VAC.readConf()
 
      if readConfError:
@@ -480,7 +509,7 @@ def vacResponder():
 
            sock.sendto(json.dumps({
                 'space'		: VAC.spaceName,
-#                'hs06'		: VAC.hs06PerMachine,
+                'hs06'		: VAC.hs06PerMachine,
                 'vmname'	: vmName,
                 'state'		: vmState,
                 'vmtype'	: vmVmtypeName,
@@ -515,14 +544,6 @@ if __name__ == '__main__':
              
         if os.fork() == 0:
 
-          si = file('/dev/null', 'r')
-          so = file('/var/log/vacd-responder', 'a+')
-          se = file('/var/log/vacd-responder', 'a+', 0)
-    
-          os.dup2(si.fileno(), sys.stdin.fileno())
-          os.dup2(so.fileno(), sys.stdout.fileno())
-          os.dup2(se.fileno(), sys.stderr.fileno())
-
           vacResponder()
 
         else:
@@ -530,18 +551,29 @@ if __name__ == '__main__':
              os.remove('/var/lib/vac/factory-daily')
           except:
              pass
- 
+
           VAC.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n')
-                                     
+
           si = file('/dev/null', 'r')
-          so = file('/var/log/vacd-factory', 'a+')
-          se = file('/var/log/vacd-factory', 'a+', 0)
-     
           os.dup2(si.fileno(), sys.stdin.fileno())
-          os.dup2(so.fileno(), sys.stdout.fileno())
-          os.dup2(se.fileno(), sys.stderr.fileno())
-          
+
           while True:
+          
+            try:
+              close(so)
+            except:
+              pass
+           
+            so = file('/var/log/vacd-factory', 'a+')
+            os.dup2(so.fileno(), sys.stdout.fileno())
+          
+            try:
+              close(se)
+            except:
+              pass
+
+            se = file('/var/log/vacd-factory', 'a+', 0)     
+            os.dup2(se.fileno(), sys.stderr.fileno())
 
             try:
                pf = open('/var/lib/vac/factory.pid', 'r')
@@ -559,6 +591,8 @@ if __name__ == '__main__':
             VAC.logLine('=============== Start cycle ===============')
 
             vacOneCycle()
+
+            VAC.logLine('================ End cycle ================')
 
             sys.stdout.flush()
             sys.stderr.flush()
