@@ -295,7 +295,7 @@ def vacOneCycle():
        totalForCount = 0
   
        for vmnameForCount in VAC.virtualmachines:
-          vmForCount = VAC.VacVM(vmnameCount)
+          vmForCount = VAC.VacVM(vmnameForCount)
 
           if vmForCount.state == VAC.VacState.running:
               totalForCount += 1
