@@ -328,7 +328,7 @@ def vacOneCycle():
          else:
            VAC.logLine('No vmtype suitable for creation in this cycle')
        else:
-         VAC.logLine('Not created due to machines_to_create limit')
+         VAC.logLine('Not created due to machines_to_create limit (' + str(VAC.numMachinesToCreate) + ')')
 
      # finished with this vm, update counts
      totalCount += 1
