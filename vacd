@@ -291,7 +291,16 @@ def vacOneCycle():
        elif not vm.finishedFile:
                VAC.logLine('No finished file but no started time for ' + vm.name)
   
-       if VAC.virtualmachines[vmname]['ordinal'] < VAC.numMachinesToCreate:
+       # count up the running VMs on the this factory
+       totalForCount = 0
+  
+       for vmnameForCount in VAC.virtualmachines:
+          vmForCount = VAC.VacVM(vmnameCount)
+
+          if vmForCount.state == VAC.VacState.running:
+              totalForCount += 1
+       
+       if totalForCount < VAC.numMachinesToCreate:
          # as VM is shutdown, we see if we can restart it but only if less than
          # numMachinesToCreate limit (by default, equals numVirtualmachines itself)
          VAC.logLine('Query factories and try to recreate ' + vm.name)
@@ -324,7 +333,7 @@ def vacOneCycle():
      # finished with this vm, update counts
      totalCount += 1
 
-     # the createVM and destroyVM methods update VacVM.state          
+     # the createVM and destroyVM methods update VacVM.state
      if vm.state == VAC.VacState.running:
        runningCount += 1
 
