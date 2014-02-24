@@ -1,6 +1,6 @@
 ==================== Changes in Vac version 0.14.0 =====================
 - Include vacd file for /etc/logrotate.d
-- Extra double-quota fix to VAC.py from Ewan MacMahon
+- Extra double-quote fix to VAC.py from Ewan MacMahon
 - Close and reopen log files at each cycle, to accommodate logrotate
 - Add machines_to_create option to allow reducing number of VMs on a
   production system without having to kill any VMs

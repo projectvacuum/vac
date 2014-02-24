@@ -47,7 +47,7 @@ sys.path.append('/var/lib/vac/bin')
 
 import VAC
    
-def queryFactories():
+def scanFactories():
    
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -115,12 +115,71 @@ def queryFactories():
 
                 print response['factoryname'].split('.')[0],response['vmname'].split('.')[0],stateStr,hoursStr[0:21],"%.2fs" % (time.time() - start), \
                        response['vmtype'] if 'vmtype' in response else '------'
-
+                       
       except socket.error as msg:
            break
 
 
    print totalcount,'replies in',"%.2f" % (time.time() - start - VAC.udpTimeoutSeconds),'seconds;',runningcount,'running;',startingcount,'starting.'
+
+def queryFactory(factoryName):
+   
+   salt = base64.b64encode(os.urandom(32))
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.settimeout(VAC.udpTimeoutSeconds)
+
+   sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
+                          'method':'status'}),(factoryName,995))
+
+   try:
+           data, addr = sock.recvfrom(10240)
+                      
+           try:
+                response = json.loads(data)
+           except:
+              print 'json.loads failed for',data
+              return
+                                       
+           if 'space' 			in response and \
+              'vmname' 			in response and \
+              'cookie' 			in response and \
+              'factoryname'		in response and \
+              'method'			in response and \
+              'state'			in response and \
+              response['space']  == VAC.spaceName and \
+              response['method'] == 'status' and \
+              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
+                
+                stateStr = (response['state'] + 10 * ' ')[0:9]
+                
+                if not response['vmtype'] or not response['vmtypes']:
+                  hoursStr = 22 * ' '
+
+                elif response['state'] == VAC.VacState.running:
+                  hoursStr = '%5.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0)
+
+                  if response['vmtypes'][response['vmtype']]['heartbeat'] > response['vmtypes'][response['vmtype']]['started']:
+                    hoursStr += ' %0.1f%%' % (100.0 * response['vmtypes'][response['vmtype']]['cpuseconds'] / float(response['vmtypes'][response['vmtype']]['heartbeat'] - response['vmtypes'][response['vmtype']]['started']))
+                    
+                  hoursStr +=  22 * ' '
+
+                  if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+                    stateStr = 'Running* '
+
+                elif response['state'] == VAC.VacState.starting:
+                  hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
+
+                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
+                  hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
+                  
+                else:
+                  hoursStr = 22 * ' '
+
+                print str(response)
+
+   except socket.error as msg:
+           pass
+
 #
 # PROGRAM MAIN !!!
 # 
@@ -153,8 +212,7 @@ if __name__ == '__main__':
         if readConfError:
 # Perhaps we should try to ignore these errors in case the command
 # line arguments supplement missing info in vac.conf etc? Anyway,
-# for now it's treated as with vacd and bad config means we do
-# nothing.
+# for now, bad config means we do nothing.
           print 'Reading configuration fails with error: ' + readConfError
           sys.exit(1)
                 
@@ -168,9 +226,17 @@ if __name__ == '__main__':
              VAC.factories = options.factories.strip().split(',')
 
         if args[0] == 'scan':
-            queryFactories()
+            scanFactories()
             sys.exit(0)
  
-    print 'Must give scan argument to vac!'
+        if args[0] == 'query':
+            if len(args) != 2:
+              print 'query command requires an argument!'
+              sys.exit(1)
+            else:
+              queryFactory(args[1])
+              sys.exit(0)
+ 
+    print 'Must give command argument to vac!'
     sys.exit(1)        
                                                                       
