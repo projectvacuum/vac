@@ -75,8 +75,12 @@ def pollFactories():
    sock.settimeout(VAC.udpTimeoutSeconds)
 
    for factoryName in VAC.factories:
-      sock.sendto(json.dumps({'space':VAC.spaceName, 'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
+      try:
+         sock.sendto(json.dumps({'space':VAC.spaceName, 'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
                               'method':'status'}),(factoryName,995))
+      except socket.error as msg:
+         pass
+
    while True:
    
       try:
@@ -516,7 +520,8 @@ def vacResponder():
                                   
            VAC.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
 
-           sock.sendto(json.dumps({
+           try:
+             sock.sendto(json.dumps({
                 'space'		: VAC.spaceName,
                 'hs06'		: VAC.hs06PerMachine,
                 'vmname'	: vmName,
@@ -527,6 +532,9 @@ def vacResponder():
                 'vmtypes'	: vmtypesDict,
                 'factoryname'	: socket.gethostbyaddr(socket.gethostname())[0]
                               }), addr)
+
+           except socket.error as msg:
+             pass
 
    sys.exit(0) # if we break out of while loop then we exit
 
