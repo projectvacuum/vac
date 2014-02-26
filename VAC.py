@@ -556,7 +556,11 @@ class VacVM:
           else:
               rootpublickey_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['rootpublickey']
 
-          shutil.copy2(rootpublickey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/root.pub')
+          try:
+           shutil.copy2(rootpublickey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/root.pub')
+          except:
+           raise 'Failed to copy ' + rootpublickey_file
+                      
           f.write('ROOT_PUBKEY=root.pub\n')
   
       if 'user_data' in vmtypes[self.vmtypeName]:
@@ -990,7 +994,7 @@ def createNetwork(conn):
          logLine('Failed to create NAT network vac_' + natNetwork)
          return False
       except:
-        logLine('Failed to create NAT network vac_' + natNetwork + ' (Need dnsmasq RPM >= 2.48-13?)')
+        logLine('Failed to create NAT network vac_' + natNetwork + ' (Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf?)')
         return False
 
       # we never get here...
