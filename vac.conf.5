@@ -53,8 +53,10 @@ can be set to False to disable the normal behaviour where old files associated
 with transient VMs which have finished are deleted. This can be useful for
 debugging but can easily allow disks to fill up.
 
-.B vcpu_per_machine
-sets the number of virtual CPUs to assign to each VM. Defaults to 1.
+.B cpu_per_machine
+sets the number of virtual CPUs to assign to each VM. Along with cpu_total,
+this is also used when calculating how many virtual machines can be created.
+Defaults to 1.
 
 .B mb_per_machine
 sets the memory allocated to each VM in MiB (1024^2). Defaults to 2048.
@@ -76,15 +78,17 @@ adding a hyphen and the VM number to the hostname component of its fully
 qualified domain name. For example, factory1.example.com would have
 factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
 addresses are formed with the prefix 56:4D as the first two bytes, and
-the four bytes of the IP address as the remaining four bytes.
+the four bytes of the IP address as the remaining four bytes. 
 
-.B machines_to_create
-is equal to total_machines by default and is usually not needed. If set,
-then no more than machines_to_create virtual machines will be created
+.B cpu_total 
+is derived from /proc/cpuinfo by default and does not usually need to be 
+set explicitly. If set, then it provides an additional limit on the number 
+of virtual machines that will be created, calculated as cpu_total divided
+by cpu_per_machine, 
 even if total_machines is higher. This allows you to reduce the number
 of running VMs on a factory machine without having to kill running VMs.
 Instead, they are allowed to finish one by one and are only recreated if 
-machines_to_create allows.
+cpu_total allows. 
 
 .B volume_group
 can be used to set the volume group to be searched for a logical volume

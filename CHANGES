@@ -2,8 +2,9 @@
 - Include vacd file for /etc/logrotate.d
 - Extra double-quote fix to VAC.py from Ewan MacMahon
 - Close and reopen log files at each cycle, to accommodate logrotate
-- Add machines_to_create option to allow reducing number of VMs on a
-  production system without having to kill any VMs
+- Add cpu_total option to limit the number of processors to allocate
+- Use cpu_total and cpu_per_machine to calculate whether a new VM can
+  be created, allowing dynamic reconfiguration on production factories
 ==================== Changes in Vac version 0.13.0 =====================
 - Remove bridge networking
 - Remove [virtualmachine ...] configuration sections

@@ -62,12 +62,12 @@ hs06PerMachine = None
 mbPerMachine = None
 
 numVirtualmachines = None
-numMachinesToCreate = None
+numCpus = None
 spaceName = None
 udpTimeoutSeconds = None
 vacVersion = None
 
-vcpuPerMachine = None
+cpuPerMachine = None
 versionLogger = None
 virtualmachines = None
 vmtypes = None
@@ -77,8 +77,8 @@ volumeGroup = None
 def readConf():
       global cycleSeconds, deleteOldFiles, domainType, \
              factories, hs06PerMachine, mbPerMachine, \
-             numVirtualmachines, numMachinesToCreate, spaceName, udpTimeoutSeconds, vacVersion, \
-             vcpuPerMachine, versionLogger, virtualmachines, vmtypes, \
+             numVirtualmachines, numCpus, spaceName, udpTimeoutSeconds, vacVersion, \
+             cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup
 
       # reset to defaults
@@ -91,12 +91,12 @@ def readConf():
       mbPerMachine = 2048
 
       numVirtualmachines = None
-      numMachinesToCreate = None
+      numCpus = None
       spaceName = None
       udpTimeoutSeconds = 5.0
       vacVersion = '0.0.0'
 
-      vcpuPerMachine = 1
+      cpuPerMachine = 1
       versionLogger = True
       virtualmachines = {}
       vmtypes = {}
@@ -142,15 +142,15 @@ def readConf():
       else:
           return 'Must give total_machines in [settings]!'
                                                  
-      if parser.has_option('settings', 'machines_to_create'):
-          # Option limit on number of VMs for Vac to create.
-          # defaults to total_machines
-          numMachinesToCreate = int(parser.get('settings','machines_to_create').strip())
+      if parser.has_option('settings', 'cpu_total'):
+          # Option limit on number of processors Vac can allocate.
+          # Defaults to count from /proc/cpuinfo
+          numCpus = int(parser.get('settings','cpu_total').strip())
           
-          if numMachinesToCreate > numVirtualmachines:
-           return 'machines_to_create cannot be greater than total_machines!'
+          if numCpus > countProcProcessors():
+           return 'cpu_total cannot be greater than number of processors!'
       else:
-          numMachinesToCreate = numVirtualmachines
+          numCpus = countProcProcessors()
                                                  
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
@@ -178,8 +178,12 @@ def readConf():
            deleteOldFiles = True
              
       if parser.has_option('settings', 'vcpu_per_machine'):
-          # if this isn't set, then we allocate one vcpu per VM
-          vcpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
+          # Warn that this deprecated
+          cpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
+          print 'vcpu_per_machine is deprecated: please use vcpu_per_machine in vac.conf'
+      elif parser.has_option('settings', 'cpu_per_machine'):
+          # if this isn't set, then we allocate one cpu per VM
+          cpuPerMachine = int(parser.get('settings','cpu_per_machine'))
              
       if parser.has_option('settings', 'mb_per_machine'):
           # if this isn't set, then we use default (2048 MiB)
@@ -284,7 +288,27 @@ def readConf():
 
       # Finished successfully, with no error to return
       return None
-        
+      
+def countProcProcessors():
+      numProcessors = 0
+
+      try:
+        f = open('/proc/cpuinfo','r')
+      except:
+        print 'Failed to open /proc/cpuinfo'
+        return numProcessors
+
+      oneLine = f.readline()      
+      while oneLine:
+
+         if oneLine.startswith('processor\t:'):
+           numProcessors += 1
+
+         oneLine = f.readline()
+
+      f.close()      
+      return numProcessors
+              
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
@@ -296,6 +320,7 @@ class VacVM:
       self.vmtypeName=None
       self.finishedFile=None
       self.cpuSeconds = 0
+      self.cpus = cpuPerMachine
 
       conn = libvirt.open(None)
       if conn == None:
@@ -381,6 +406,13 @@ class VacVM:
           self.shutdownTime = int(f.read().strip())
           f.close()
       
+      if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                         + '/shared/jobfeatures/allocated_CPU') :
+          f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                         + '/shared/jobfeatures/allocated_CPU')
+          self.cpus = int(f.read().strip())
+          f.close()
+
       if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                          + '/finished') :
           self.finishedFile = True
@@ -658,13 +690,13 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
                  str(hs06PerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      # we don't know the physical vs logical cores distinction here so we just use vcpu
+      # we don't know the physical vs logical cores distinction here so we just use cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
-                 str(vcpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(self.cpus) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      # again just use vcpu
+      # again just use cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
-                 str(vcpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(self.cpus) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # tell them they have the whole VM to themselves; they are in the only jobslot here
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
@@ -690,15 +722,15 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
                  '1.0\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the vcpu
+      # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * vcpuPerMachine + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * self.cpus + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * vcpuPerMachine + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * self.cpus + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in vcpu
+      # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
@@ -719,9 +751,9 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
                  str(int(mbPerMachine * 1.048576)) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
                         
-      # vcpuPerMachine again
+      # self.cpus again
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
-                 str(vcpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(self.cpus) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # do the NFS exports
 
@@ -830,7 +862,7 @@ class VacVM:
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
   <currentMemory unit='MiB'>"""  + str(mbPerMachine) + """</currentMemory>
-  <vcpu>""" + str(vcpuPerMachine) + """</vcpu>
+  <vcpu>""" + str(self.cpus) + """</vcpu>
   <os>
     <type arch='x86_64' machine='rhel6.2.0'>hvm</type>
     <boot dev='network'/>
@@ -891,7 +923,7 @@ class VacVM:
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
   <currentMemory unit='MiB'>""" + str(mbPerMachine) + """</currentMemory>
-  <vcpu>""" + str(vcpuPerMachine) + """</vcpu>
+  <vcpu>""" + str(self.cpus) + """</vcpu>
   <bootloader>/usr/bin/pygrub</bootloader>
   <os>
     <type arch='x86_64' machine='xenpv'>linux</type>

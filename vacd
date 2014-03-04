@@ -296,17 +296,17 @@ def vacOneCycle():
                VAC.logLine('No finished file but no started time for ' + vm.name)
   
        # count up the running VMs on the this factory
-       totalForCount = 0
+       totalCpusForCount = 0
   
        for vmnameForCount in VAC.virtualmachines:
           vmForCount = VAC.VacVM(vmnameForCount)
 
           if vmForCount.state == VAC.VacState.running:
-              totalForCount += 1
+              totalCpusForCount += vmForCount.cpus
        
-       if totalForCount < VAC.numMachinesToCreate:
-         # as VM is shutdown, we see if we can restart it but only if less than
-         # numMachinesToCreate limit (by default, equals numVirtualmachines itself)
+       if totalCpusForCount + cpuPerMachine <= VAC.numCpus:
+         # as VM is shutdown, we see if we can restart it but only 
+         # if cpu limit from cpu_total or /proc/cpuinfo allows
          VAC.logLine('Query factories and try to recreate ' + vm.name)
          preferredVmtypeName = pollFactories()
        
@@ -332,7 +332,7 @@ def vacOneCycle():
          else:
            VAC.logLine('No vmtype suitable for creation in this cycle')
        else:
-         VAC.logLine('Not created due to machines_to_create limit (' + str(VAC.numMachinesToCreate) + ')')
+         VAC.logLine('Not created due to cpu_total or /proc/cpuinfo limit (' + str(VAC.numCpus) + ')')
 
      # finished with this vm, update counts
      totalCount += 1
