@@ -304,7 +304,7 @@ def vacOneCycle():
           if vmForCount.state == VAC.VacState.running:
               totalCpusForCount += vmForCount.cpus
        
-       if totalCpusForCount + cpuPerMachine <= VAC.numCpus:
+       if totalCpusForCount + VAC.cpuPerMachine <= VAC.numCpus:
          # as VM is shutdown, we see if we can restart it but only 
          # if cpu limit from cpu_total or /proc/cpuinfo allows
          VAC.logLine('Query factories and try to recreate ' + vm.name)
