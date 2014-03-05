@@ -5,6 +5,7 @@
 - Add cpu_total option to limit the number of processors to allocate
 - Use cpu_total and cpu_per_machine to calculate whether a new VM can
   be created, allowing dynamic reconfiguration on production factories
+- Add ncpus to PBS style accounting logs
 ==================== Changes in Vac version 0.13.0 =====================
 - Remove bridge networking
 - Remove [virtualmachine ...] configuration sections

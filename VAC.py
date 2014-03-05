@@ -476,13 +476,15 @@ class VacVM:
               ' owner=' + self.vmtypeName + '@' + spaceName + 
               ' exec_host=' + os.uname()[1] + '/' + str(virtualmachines[self.name]['ordinal']) + 
               ' Resource_List.cput=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
+              ' Resource_List.ncpus=' + self.ncpus +
               ' Resource_List.neednodes=1 Resource_List.nodect=1 Resource_List.nodes=1' +
               ' Resource_List.walltime=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
               ' session=0' +
               ' end=' + str(self.heartbeat) + 
               ' Exit_status=0' +
               ' resources_used.cput=' + secondsToHHMMSS(self.cpuSeconds) + 
-              ' resources_used.mem=' + str(mbPerMachine * 1024) + 'kb resources_used.vmem=' + str(mbPerMachine * 1024) + 'kb' +
+              ' resources_used.mem=' + str(mbPerMachine * 1024) + 'kb resources_used.ncpus=' + str(self.cpus) + 
+              ' resources_used.vmem=' + str(mbPerMachine * 1024) + 'kb' +
               ' resources_used.walltime=' + secondsToHHMMSS(self.heartbeat - self.started) + '\n')
                           
       pbsFile.close()
