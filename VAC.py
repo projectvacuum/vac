@@ -476,7 +476,7 @@ class VacVM:
               ' owner=' + self.vmtypeName + '@' + spaceName + 
               ' exec_host=' + os.uname()[1] + '/' + str(virtualmachines[self.name]['ordinal']) + 
               ' Resource_List.cput=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
-              ' Resource_List.ncpus=' + self.cpus +
+              ' Resource_List.ncpus=' + str(self.cpus) +
               ' Resource_List.neednodes=1 Resource_List.nodect=1 Resource_List.nodes=1' +
               ' Resource_List.walltime=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
               ' session=0' +
