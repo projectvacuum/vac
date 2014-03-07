@@ -238,11 +238,9 @@ by adding NOZEROCONF=yes to /etc/sysconfig/network and restarting
 networking.
 
 <p>
-You should also ensure that the default libvirt network isn't defined. 
-does not exist. When vac is running, the command virsh net-list should just
-return the vac_169.254.0.0 network, and not the default also. You
-can force this by ensuring that the file
-/etc/libvirt/qemu/networks/autostart/default.xml doesn't exist.
+You can check the vac private network exists with the command 
+virsh net-list which should list the vac_169.254.0.0 network (and probably
+the &quot;default&quot; network defined by libvirtd.)
 
 <h3>Logical volumes</h3>
 
