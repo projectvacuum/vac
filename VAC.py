@@ -593,7 +593,7 @@ class VacVM:
           try:
            shutil.copy2(rootpublickey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/root.pub')
           except:
-           raise 'Failed to copy ' + rootpublickey_file
+           raise NameError('Failed to copy ' + rootpublickey_file)
                       
           f.write('ROOT_PUBKEY=root.pub\n')
   
@@ -607,7 +607,7 @@ class VacVM:
           try:
             u = open(user_data_file, 'r')
           except:
-            raise 'Failed to open' + user_data_file  
+            raise NameError('Failed to open' + user_data_file)
             
           user_data_contents = u.read()
           u.close()
@@ -650,7 +650,7 @@ class VacVM:
             f.write(g.read())
             g.close()
           except:
-            raise 'Failed to read prolog file', prolog_file
+            raise NameError('Failed to read prolog file ' + prolog_file)
   
       f.close()
       
