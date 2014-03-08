@@ -9,7 +9,7 @@ Source: vac.tgz
 URL: http://www.gridpp.ac.uk/vac/
 Vendor: GridPP
 Packager: Andrew McNab <Andrew.McNab@cern.ch>
-Requires: libvirt,libvirt-python,genisoimage,nfs-utils,lvm2
+Requires: libvirt,libvirt-python,genisoimage,nfs-utils,lvm2,dnsmasq >= 2.48-13
 
 %description
 Vac implements the Vacuum model for running virtual machines.
