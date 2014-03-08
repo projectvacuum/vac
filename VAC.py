@@ -741,7 +741,7 @@ class VacVM:
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
-      if virtualmachines[self.name]['scratch_volume_gb']:
+      if 'scratch_volume_gb' in virtualmachines[self.name]:
          createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
                  str(virtualmachines[self.name]['scratch_volume_gb']) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
