@@ -807,8 +807,12 @@ class VacVM:
       dom = conn.lookupByName(self.name)
       
       if dom:
-          dom.destroy()
-          self.state = VacState.shutdown
+        try:
+           dom.destroy()
+        except:
+           pass
+           
+        self.state = VacState.shutdown
 
       conn.close()
 
