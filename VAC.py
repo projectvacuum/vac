@@ -1032,7 +1032,7 @@ def createNetwork(conn):
          logLine('Failed to create NAT network vac_' + natNetwork)
          return False
       except:
-        logLine('Failed to create NAT network vac_' + natNetwork + ' (Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf?)')
+        logLine('Failed to create NAT network vac_' + natNetwork + ' (Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf? Does virbr1 already exist?)')
         return False
 
       # we never get here...

@@ -244,7 +244,16 @@ You can check the vac private network exists with the command
 virsh net-list which should list the vac_169.254.0.0 network (and probably
 the &quot;default&quot; network defined by libvirtd.)
 
-<!-- brctl delbr virbr1 -->
+<p>
+Vac will print the error &quot;Failed to create NAT network vac_169.254.0.0 
+(Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf? Does
+virbr1 already exist?)&quot; if it cannot use libvirtd to create that
+network. Check dnsmasq is installed, that Zeroconf is disabled, and that
+virbr1 does not already exist with the commands 
+ifconfig <b>and</b> brctl show. If virbr1 is already there, use 
+ifconfig virbr1
+down and brctl delbr virbr1 to remove it completely. brctl is from the RPM
+bridge-utils.
 
 <h3>Logical volumes</h3>
 
