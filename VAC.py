@@ -825,8 +825,15 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/created', 
                   str(int(time.time())) + '\n')
 
-      self.makeISO()
-      self.makeRootDisk()
+      try:
+        self.makeISO()
+      except:
+        return 'failed to make ISO image'
+        
+      try:
+        self.makeRootDisk()
+      except:
+        return 'failed to make root disk image'
 
       if 'scratch_volume' in virtualmachines[self.name]:
           self.makeScratchDisk()
