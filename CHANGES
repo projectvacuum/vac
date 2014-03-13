@@ -1,3 +1,4 @@
+==================== Changes in Vac version 0.15.0 =====================
 ==================== Changes in Vac version 0.14.0 =====================
 - Include vacd file for /etc/logrotate.d
 - Extra double-quote fix to VAC.py from Ewan MacMahon
