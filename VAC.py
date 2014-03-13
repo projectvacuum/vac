@@ -87,7 +87,7 @@ def readConf():
       domainType = 'kvm'
 
       factories = []
-      hs06PerMachine = 1.0
+      hs06PerMachine = None
       mbPerMachine = 2048
 
       numVirtualmachines = None
@@ -180,19 +180,25 @@ def readConf():
       if parser.has_option('settings', 'vcpu_per_machine'):
           # Warn that this deprecated
           cpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
-          print 'vcpu_per_machine is deprecated: please use vcpu_per_machine in vac.conf'
+          print 'vcpu_per_machine is deprecated: please use cpu_per_machine in vac.conf'
       elif parser.has_option('settings', 'cpu_per_machine'):
-          # if this isn't set, then we allocate one cpu per VM
+          # If this isn't set, then we allocate one cpu per VM
           cpuPerMachine = int(parser.get('settings','cpu_per_machine'))
              
       if parser.has_option('settings', 'mb_per_machine'):
-          # if this isn't set, then we use default (2048 MiB)
+          # If this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
 
       if parser.has_option('settings', 'hs06_per_machine'):
-          # if this isn't set, then we keep default (1.0)
+          # Warn that this is deprecated
           hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
-             
+          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in vac.conf'
+      elif parser.has_option('settings', 'hs06_per_cpu'):
+          hs06PerMachine = cpuPerMachine * float(parser.get('settings','hs06_per_cpu'))
+      else:
+          # If this isn't set, then we use the default 1.0 * cpuPerMachine
+          hs06PerMachine = float(cpuPerMachine)
+          
       # all other sections are VM types or Virtual Machines or Factories
       for sectionName in parser.sections():
 

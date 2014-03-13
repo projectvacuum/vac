@@ -7,6 +7,8 @@
   be created, allowing dynamic reconfiguration on production factories
 - Add ncpus to PBS style accounting logs
 - Use HS06 totals rather than VM totals in target shares
+- Change vcpu_per_machine to cpu_per_machine and hs06_per_machine to
+  hs06_per_cpu in vac.conf
 ==================== Changes in Vac version 0.13.0 =====================
 - Remove bridge networking
 - Remove [virtualmachine ...] configuration sections
