@@ -54,7 +54,7 @@ def vacLibvirtErrorHandler(ctxt, err):
       
 def pollFactories():
 
-   # Number of running/starting VMs per vmtype
+   # Total HS06 of running/starting VMs per vmtype
    factoryVmtypeTotals             = {}
    
    # Time in Unix seconds of the most recent abort, for each vmtype
@@ -103,14 +103,15 @@ def pollFactories():
               if 'state'		in response and \
                  'vmname'		in response and \
                  'vmtype'		in response and \
+                 'hs06'			in response and \
                  response['vmtype']	in VAC.vmtypes and \
                  (response['state'] == VAC.VacState.starting or response['state'] == VAC.VacState.running) and \
                  VAC.vmtypes[response['vmtype']]['share'] > 0.0:
 
-                   # we only have to add 1.0/share for this vmtype to get normalisation at the end automatically
-                   factoryVmtypeTotals[response['vmtype']] += 1.0 / VAC.vmtypes[response['vmtype']]['share']
+                   # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
+                   factoryVmtypeTotals[response['vmtype']] += response['hs06'] / VAC.vmtypes[response['vmtype']]['share']
                    VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
-                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
+                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]) + ' HS06')
                                
                    if response['state'] == VAC.VacState.starting:
                            # starting counts as before fizzle point
@@ -149,7 +150,7 @@ def pollFactories():
       except socket.error as msg:
            break
 
-   VAC.logLine('Final totals ' + str(factoryVmtypeTotals))
+   VAC.logLine('Final totals ' + str(factoryVmtypeTotals) + ' HS06')
 
    preferredVmtypeName = None
 
@@ -295,7 +296,7 @@ def vacOneCycle():
        elif not vm.finishedFile:
                VAC.logLine('No finished file but no started time for ' + vm.name)
   
-       # count up the running VMs on the this factory
+       # count up the running VMs' CPUs on the this factory
        totalCpusForCount = 0
   
        for vmnameForCount in VAC.virtualmachines:
@@ -332,7 +333,7 @@ def vacOneCycle():
          else:
            VAC.logLine('No vmtype suitable for creation in this cycle')
        else:
-         VAC.logLine('Not created due to cpu_total or /proc/cpuinfo limit (' + str(VAC.numCpus) + ')')
+         VAC.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(VAC.numCpus) + ')')
 
      # finished with this vm, update counts
      totalCount += 1
@@ -434,6 +435,7 @@ def vacResponder():
            vmState      = VAC.VacState.shutdown
            vmCtime      = None
            vmVmtypeName = None
+           vmHS06       = VAC.hs06PerMachine
 
            vmtypesDict = {}
            
@@ -470,6 +472,13 @@ def vacResponder():
                   timeHeartbeat = int(heartbeatStat.st_ctime)
                 except:
                   timeHeartbeat = None
+
+                try:                  
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machinefeatures/hs06', 'r')
+                  hs06 = float(f.readline().strip())
+                  f.close()
+                except:
+                  hs06 = VAC.hs06PerMachine
 
                 try:                  
                   f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat', 'r')
@@ -517,13 +526,17 @@ def vacResponder():
                     vmCtime      = newestCtime
                     vmState      = newestVmState
                     vmVmtypeName = vmtypeName
-                                  
+
+                    # override the factory-wide default in case it changed
+                    if vmState == VAC.VacState.running:
+                      vmHS06 = hs06
+                                                        
            VAC.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
 
            try:
              sock.sendto(json.dumps({
                 'space'		: VAC.spaceName,
-                'hs06'		: VAC.hs06PerMachine,
+                'hs06'		: vmHS06,
                 'vmname'	: vmName,
                 'state'		: vmState,
                 'vmtype'	: vmVmtypeName,
