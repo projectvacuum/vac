@@ -118,8 +118,8 @@ def scanFactories():
                 else:
                  vmName = response['vmname'].split('.')[0]
 
-                print vmName,stateStr,hoursStr[0:21],"%.2fs" % (time.time() - start), \
-                       response['vmtype'] if 'vmtype' in response else '------'
+                print (vmName + ' ' + stateStr + '  ' + hoursStr[0:21] + " %.2fs" % (time.time() - start) + ' ' +
+                       (response['vmtype'] if 'vmtype' in response else '------'))
                        
       except socket.error as msg:
            break
