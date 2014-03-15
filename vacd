@@ -130,7 +130,7 @@ def pollFactories():
                     if 'messagetime' in vmtypeOutcome and 'message' in vmtypeOutcome and vmtypeOutcome['message'][0:3].isdigit():
                       # if message with code provided, then we always use it for decisions
                       messagecode=int(vmtypeOutcome['message'][0:3])
-                      if messagecode >= 300 and messagecode <= 599:
+                      if (messagecode >= 300) and (messagecode <= 599):
                         # 300 is no work, 400 is banned, 500 is problem with VM/Site
                         abortTime = vmtypeOutcome['messagetime']
                     else:
@@ -141,7 +141,7 @@ def pollFactories():
                         abortTime = vmtypeOutcome['heartbeat']
 
                     # if this is the most recent abort of this vmtype anywhere in this space
-                    if abortTime and abortTime > factoryVmtypeLastAborts[vmtypeName]:
+                    if abortTime and (abortTime > factoryVmtypeLastAborts[vmtypeName]):
                       factoryVmtypeLastAborts[vmtypeName] = abortTime
                       
                   except:
@@ -171,11 +171,11 @@ def pollFactories():
                       VAC.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
                           str(int(time.time()) - vmtype['backoff_seconds'] - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
                           ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
-      if (vmtype['share'] > 0.0 and 
-          factoryVmtypeLastAborts[vmtypeName] 
+      if ((vmtype['share'] > 0.0) and 
+          (factoryVmtypeLastAborts[vmtypeName] 
               < (int(time.time()) 
                  - vmtype['backoff_seconds'] 
-                 - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0))):
+                 - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)))):
                       if not preferredVmtypeName:
                         preferredVmtypeName = vmtypeName
                       elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
@@ -305,7 +305,7 @@ def vacOneCycle():
           if vmForCount.state == VAC.VacState.running:
               totalCpusForCount += vmForCount.cpus
        
-       if totalCpusForCount + VAC.cpuPerMachine <= VAC.numCpus:
+       if (totalCpusForCount + VAC.cpuPerMachine) <= VAC.numCpus:
          # as VM is shutdown, we see if we can restart it but only 
          # if cpu limit from cpu_total or /proc/cpuinfo allows
          VAC.logLine('Query factories and try to recreate ' + vm.name)
@@ -493,10 +493,10 @@ def vacResponder():
                 # this means that old files are ignored when working out the state
                 if (timeStarted and 
                     timeHeartbeat and 
-                    timeHeartbeat > int(time.time() - 3600) and
+                    (timeHeartbeat > int(time.time() - 3600)) and
                     not hasFinished):
                           newestVmState = VAC.VacState.running
-                elif not timeStarted and newestCtime > int(time.time() - 3600):
+                elif not timeStarted and (newestCtime > int(time.time() - 3600)):
                           newestVmState = VAC.VacState.starting
                 else:
                           newestVmState = VAC.VacState.shutdown
@@ -522,7 +522,7 @@ def vacResponder():
                                           }
                                   
                 # if this is also the newest one for the whole VM, then save for later
-                if not vmCtime or newestCtime > vmCtime:
+                if not vmCtime or (newestCtime > vmCtime):
                     vmCtime      = newestCtime
                     vmState      = newestVmState
                     vmVmtypeName = vmtypeName
