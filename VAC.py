@@ -809,16 +809,14 @@ class VacVM:
       if conn == None:
           logLine('Failed to open connection to the hypervisor')
           raise NameError('failed to open connection to the hypervisor')
-
-      dom = conn.lookupByName(self.name)
       
-      if dom:
-        try:
-           dom.destroy()
-        except:
-           pass
+      try:
+        dom = conn.lookupByName(self.name)
+        dom.destroy()
+      except:
+        pass
            
-        self.state = VacState.shutdown
+      self.state = VacState.shutdown
 
       conn.close()
 
