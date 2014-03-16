@@ -213,9 +213,16 @@ def readConf():
 
              vmtype['share'] = 0.0
                                             
+             # look in the [targetshares] section for this vmtype's share
              if parser.has_option('targetshares', sectionNameSplit[1]):
                  vmtype['share'] = float(parser.get('targetshares', sectionNameSplit[1]))
 
+             if parser.has_option(sectionName, 'vm_model'):
+                 vmtype['vm_model'] = parser.get(sectionName, 'vm_model')
+             else:
+                 vmtype['vm_model'] = 'cernvm2'
+                 print 'Setting vm_model=cernvm2 . Please put this in [vmtype ' + sectionNameSplit[1] + '] in vac.conf!'
+             
              if parser.has_option(sectionName, 'root_device'):
                  vmtype['root_device'] = parser.get(sectionName, 'root_device')
              else:
@@ -774,7 +781,18 @@ class VacVM:
       os.system('exportfs -o rw,no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def makeRootDisk(self):
-      if domainType == 'kvm':
+
+      # kvm and Xen are the same for uCernVM 3
+      if self.model == 'cernvm3':
+         logLine('make 20 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+         try:
+          f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk', 'ab')
+          f.truncate(20 * 1014 * 1024 * 1024)
+          f.close()
+         except:
+          raise NameError('creation of sparse disk image fails!')
+         
+      elif domainType == 'kvm':
          # With kvm we can make a small QEMU qcow2 disk for each instance of 
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
@@ -825,6 +843,7 @@ class VacVM:
    def createVM(self, vmtypeName):
       self.uuidStr = str(uuid.uuid4())
       self.vmtypeName = vmtypeName
+      self.model = vmtypes[vmtypeName]['vm_model']
 
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr)
 
@@ -840,7 +859,7 @@ class VacVM:
         self.makeRootDisk()
       except:
         return 'failed to make root disk image'
-
+        
       if 'scratch_volume' in virtualmachines[self.name]:
           self.makeScratchDisk()
           if domainType == 'kvm':
@@ -855,6 +874,13 @@ class VacVM:
                                   " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
       else:
           scratch_volume_xml = ""
+
+      if self.model == 'cernvm3':
+          cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                              " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
+                              " <target dev='hdc' />\n<readonly />\n</disk>")
+      else:
+          cernvm_cdrom_xml = ""
 
       ip = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
@@ -876,7 +902,7 @@ class VacVM:
           return 'failed to open connection to the hypervisor'
                 
       if domainType == 'kvm':
-          xmldesc="""<domain type='kvm'>
+          xmldesc=( """<domain type='kvm'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
@@ -902,11 +928,11 @@ class VacVM:
   <on_crash>destroy</on_crash>
   <devices>
     <emulator>/usr/libexec/qemu-kvm</emulator>
-    <disk type='file' device='disk'>
-     <driver name="qemu" type="qcow2" cache="none" />
-     <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
+    <disk type='file' device='disk'>""" + 
+    ("<driver name='qemu' type='qcow2' cache='none' />" if (self.model=='cernvm2') else "") + 
+    """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
-    </disk>""" + scratch_volume_xml + """
+    </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
@@ -935,9 +961,9 @@ class VacVM:
     </memballoon>
   </devices>
 </domain>
-"""        
+""" )
       elif domainType == 'xen':
-          xmldesc="""<domain type='xen'>
+          xmldesc=( """<domain type='xen'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
@@ -956,7 +982,7 @@ class VacVM:
       <driver name='file'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
       <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
-    </disk>""" + scratch_volume_xml + """
+    </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
       <driver name='file'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
@@ -977,7 +1003,7 @@ class VacVM:
     </interface>
   </devices>
 </domain>
-"""        
+""" )
 
       else:
           conn.close()

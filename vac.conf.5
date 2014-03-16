@@ -105,6 +105,16 @@ A vmtype name must only consist of lowercase letters, numbers, periods,
 underscores, and hyphens. Each of these sections contain option=value
 pairs that are specific to that vmtype.
 
+.B vm_model
+is required and tells Vac how to configure the virtual hardware seen by
+the VMs of this vmtype. Currently cernvm2 or cernvm3.
+
+.B root_image
+is the absolute path to the image file from which the VM will boot. 
+Normally these images should be placed in /var/lib/vac/images . With the
+cernvm2 vm_model, this is the root hard disk image; with cernvm3, it is
+the ISO CDROM-style disk image.
+
 .B backoff_seconds
 is the delay after a VM of this vmtype aborts. If a VM aborts, then no new
 VMs of this type will be created for this amount of time. This can be used 
@@ -172,9 +182,8 @@ relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
 
 .B rootpublickey
 is the file name of a public key supplied to the contextualization which
-will be allowed root ssh access. If the file begins with '/', then it
-will be used as an absolute path; otherwise the path will be interpreted
-relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
+will be allowed root ssh access. Setting this option to 
+/root/.ssh/id_rsa.pub will give access from the factory machine.
 
 .B user_data
 is a contextualization file provided by the VO and perhaps modified by
@@ -183,8 +192,8 @@ the site.
 .B prolog
 and
 .B epilog
-are file names of optional prolog.sh and epilog.sh scripts as defined in
-the CernVM contextualization documentation.
+are file names of optional HEPiX-style prolog.sh and epilog.sh scripts
+as defined in the CernVM contextualization documentation.
 
 .SH [TARGETSHARES] SECTION
 
