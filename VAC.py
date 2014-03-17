@@ -641,7 +641,7 @@ class VacVM:
       f.write('#!/bin/sh\n')
       f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
       f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
-      f.write('mount -o rw ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
+      f.write('mount -o rw,nfsvers=3 ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
 
       if os.path.isdir('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
         f.write('mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
@@ -828,15 +828,13 @@ class VacVM:
           logLine('Failed to open connection to the hypervisor')
           raise NameError('failed to open connection to the hypervisor')
 
-      dom = conn.lookupByName(self.name)
-      
-      if dom:
-        try:
-           dom.destroy()
-        except:
-           pass
-           
-        self.state = VacState.shutdown
+      try:
+        dom = conn.lookupByName(self.name)
+        dom.destroy()
+      except:
+        pass
+
+      self.state = VacState.shutdown
 
       conn.close()
 
@@ -1201,20 +1199,36 @@ def cleanupVirtualmachineFiles():
        except:
          continue
 
+       currentdir = None
+
        for onedir in dirslist:
          if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir):
-           
-           # delete the current VM instance's big root.disk image file IF VM IS SHUTDOWN 
-           if vm.uuidStr and vm.uuidStr == onedir and vm.state == VacState.shutdown:
-             try:
-               os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir + '/root.disk')
-             except:
-               pass
 
-           # delete everything if not the current VM instance
-           elif not vm.uuidStr or vm.uuidStr != onedir:
+           if currentdir is None:
+             currentdir = onedir
+             
+           elif (os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).ctime > 
+                 os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir).ctime):
+
+             # we delete currentdir and keep onedir as the new currentdir
+             shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+
+             currentdir = onedir
+
+           else:
+             # we delete the onedir we're looking at and keep currentdir
              shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
              logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-   
 
-                  
+       # we should now be left with just currentdir, as the mosty recently created directory
+
+       if currentdir:           
+         # delete the big root.disk image file of the current VM instance we found IF VM IS SHUTDOWN 
+         if (not vm.uuidStr) or (vm.uuidStr != currentdir) or (vm.state == VacState.shutdown):
+           try:
+             os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
+             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
+           except:
+             pass
+
