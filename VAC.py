@@ -1145,7 +1145,7 @@ def cleanupExports():
 
    f.close()
    conn.close()
-   
+
 def cleanupVirtualmachineFiles():
    #
    # IN vacd THIS FUNCTION CAN ONLY BE RUN INSIDE THE MAIN LOOP
@@ -1173,20 +1173,53 @@ def cleanupVirtualmachineFiles():
        except:
          continue
 
+       currentdir      = None
+       currentdirCtime = None
+
        for onedir in dirslist:
          if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir):
-           
-           # delete the current VM instance's big root.disk image file IF VM IS SHUTDOWN 
-           if vm.uuidStr and vm.uuidStr == onedir and vm.state == VacState.shutdown:
+
+           if currentdir is None:
              try:
-               os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir + '/root.disk')
+              currentdirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime
+              currentdir = onedir
+             except:
+              pass
+              
+             continue
+
+           try:
+             onedirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime
+           except:
+             continue
+
+           if (onedirCtime > currentdirCtime):
+             # we delete currentdir and keep onedir as the new currentdir 
+             try:
+               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+               logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+               currentdir      = onedir
+               currentdirCtime = onedirCtime
              except:
                pass
 
-           # delete everything if not the current VM instance
-           elif not vm.uuidStr or vm.uuidStr != onedir:
-             shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-   
+           else:
+             # we delete the onedir we're looking at and keep currentdir
+             try:
+               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+               logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+             except:
+               pass
+
+       # we should now be left with just currentdir, as the mosty recently created directory
+
+       if currentdir:           
+         # delete the big root.disk image file of the current VM instance we found IF VM IS SHUTDOWN 
+         if (not vm.uuidStr) or (vm.uuidStr != currentdir) or (vm.state == VacState.shutdown):
+           try:
+             os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
+             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
+           except:
+             pass
 
                   
