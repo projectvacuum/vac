@@ -493,10 +493,10 @@ def vacResponder():
                 # this means that old files are ignored when working out the state
                 if (timeStarted and 
                     timeHeartbeat and 
-                    (timeHeartbeat > int(time.time() - 86400)) and
+                    (timeHeartbeat > int(time.time() - 3600)) and
                     not hasFinished):
                           newestVmState = VAC.VacState.running
-                elif not timeStarted and (newestCtime > int(time.time() - 86400)):
+                elif not timeStarted and (newestCtime > int(time.time() - 3600)):
                           newestVmState = VAC.VacState.starting
                 else:
                           newestVmState = VAC.VacState.shutdown
