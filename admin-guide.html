@@ -74,8 +74,7 @@ Vac uses NFS to share some directories from the factory machine to its virtual
 machines, and needs to have the standard NFS server installed and running.
 It's not necessary to configure the NFS server, as Vac uses exportfs
 commands to create and destroy exports dynamically. If you have any iptables
-rules blocking NFS you must disable them before starting vacd to avoid 
-needing to reset iptables after libvirtd has made its additions.
+rules blocking NFS you should disable them before starting vacd.
 
 <p>
 Now you need to create the /etc/vac.conf configuration file. Copy
@@ -254,6 +253,44 @@ ifconfig <b>and</b> brctl show. If virbr1 is already there, use
 ifconfig virbr1
 down and brctl delbr virbr1 to remove it completely. brctl is from the RPM
 bridge-utils.
+
+<p>
+libvirtd attempts to configure the factory machine's iptables rules to
+support network address translation / masquerading from the private NAT
+network. In addition, you need to allow NFS mounts of directories exported
+by the factory to the VM. Assumming the virbr1 virtual interface is used
+for the private network, then iptables can be set up using the
+iptables-restore command without relying on libvirtd:
+
+<pre>
+# Set up masquerading from private network for the VMs
+*nat
+:PREROUTING ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s 169.254.0.0/16 ! -d 169.254.0.0/16 -p tcp -j MASQUERADE ---to-ports 1024-65535 
+-A POSTROUTING -s 169.254.0.0/16 ! -d 169.254.0.0/16 -p udp -j MASQUERADE ---to-ports 1024-65535 
+-A POSTROUTING -s 169.254.0.0/16 ! -d 169.254.0.0/16 -j MASQUERADE 
+COMMIT
+# Filtering and forwarding rules
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+# Catch-all, including NFS
+-A INPUT -i virbr1 -p udp -j ACCEPT 
+-A INPUT -i virbr1 -p tcp -j ACCEPT 
+# Forward to/from private network
+-A FORWARD -d 169.254.0.0/16 -o virbr1 -m state --state RELATED,ESTABLISHED --j ACCEPT 
+-A FORWARD -s 169.254.0.0/16 -i virbr1 -j ACCEPT 
+-A FORWARD -i virbr1 -o virbr1 -j ACCEPT 
+-A FORWARD -o virbr1 -j REJECT --reject-with icmp-port-unreachable 
+-A FORWARD -i virbr1 -j REJECT --reject-with icmp-port-unreachable 
+COMMIT
+</pre>
+
+This approach allows you to integrate the extra rules needed for the VMs
+private network into any existing rules you use at your site.
 
 <h3>Logical volumes</h3>
 
