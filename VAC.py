@@ -1171,7 +1171,7 @@ def cleanupExports():
 
    f.close()
    conn.close()
-   
+
 def cleanupVirtualmachineFiles():
    #
    # IN vacd THIS FUNCTION CAN ONLY BE RUN INSIDE THE MAIN LOOP
@@ -1199,27 +1199,43 @@ def cleanupVirtualmachineFiles():
        except:
          continue
 
-       currentdir = None
+       currentdir      = None
+       currentdirCtime = None
 
        for onedir in dirslist:
          if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir):
 
            if currentdir is None:
-             currentdir = onedir
-             
-           elif (os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).ctime > 
-                 os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir).ctime):
+             try:
+              currentdirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime
+              currentdir = onedir
+             except:
+              pass
+              
+             continue
 
-             # we delete currentdir and keep onedir as the new currentdir
-             shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
-             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+           try:
+             onedirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime
+           except:
+             continue
 
-             currentdir = onedir
+           if (onedirCtime > currentdirCtime):
+             # we delete currentdir and keep onedir as the new currentdir 
+             try:
+               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+               logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+               currentdir      = onedir
+               currentdirCtime = onedirCtime
+             except:
+               pass
 
            else:
              # we delete the onedir we're looking at and keep currentdir
-             shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+             try:
+               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+               logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+             except:
+               pass
 
        # we should now be left with just currentdir, as the mosty recently created directory
 
