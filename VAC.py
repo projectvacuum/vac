@@ -531,39 +531,32 @@ class VacVM:
         return
         
       try:
-        f = open('/var/log/vacd-machineoutputs', 'a+')
+        os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr)
       except:
-        logLine('Failed opening /var/log/vacd-machineoutputs')
+        logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr)
         return
       
-      if not outputs:
-        # Nothing to do if there are no files there
-        f.write('=====' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
-                self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' has no outputs =====\n')
-      else:
-        f.write('\n')
-        # Go through the files one by one, appending them to /var/log/vacd-machineoutputs
+      if outputs:
+        # Go through the files one by one, adding them to the machineoutputs directory
         for oneOutput in outputs:
-        
-          contents = None
-          try:
-             g = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs/' + oneOutput, 'r')
-             contents = g.read()
-             g.close()
-          except:
-             pass
 
-          if contents:
-             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
-                     self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ==start===\n')
-             f.write(contents)
-             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
-                     self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' ==finish==\n')
-          else:
-             f.write('====='  + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()) + '===== ' + 
-                     self.uuidStr + ' ' + self.name + ' ' + self.vmtypeName + ' /etc/machineoutputs/' + oneOutput + ' is empty =====\n')
-                        
-      f.close()
+          try:
+            # first we try a hard link, which is efficient in time and space used
+            os.link('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+                        self.uuidStr + '/shared/machineoutputs/' + oneOutput,
+                    '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
+                        self.uuidStr + '/' + oneOutput)
+          except:
+            try:
+              # if linking failed (different filesystems?) then we try a copy
+              shutil.copyfile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+                        self.uuidStr + '/shared/machineoutputs/' + oneOutput,
+                              '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
+                        self.uuidStr + '/' + oneOutput)
+            except:
+              logLine('Failed copying /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+                        self.uuidStr + '/shared/machineoutputs/' + oneOutput + 
+                        ' to /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr + '/')
    
    def uuidFromLatestVM(self):
 

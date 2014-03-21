@@ -1,6 +1,7 @@
 ==================== Changes in Vac version 0.15.0 =====================
 - Add vm_model option in vmtype sections (default cernvm2)
 - Add cernvm3 vm_model and uCernVM 3 support
+- Use /var/lib/vac/machineoutputs rather than vacd-machineoutputs
 ==================== Changes in Vac version 0.14.0 =====================
 - Include vacd file for /etc/logrotate.d
 - Extra double-quote fix to VAC.py from Ewan MacMahon

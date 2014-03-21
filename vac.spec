@@ -46,5 +46,6 @@ cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
 /var/lib/vac/images
 /var/lib/vac/vmtypes
 /var/lib/vac/machines
+/var/lib/vac/machineoutputs
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd

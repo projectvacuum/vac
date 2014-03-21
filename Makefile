@@ -55,6 +55,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/machineoutputs \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d

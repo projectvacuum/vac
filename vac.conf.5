@@ -1,4 +1,4 @@
-.TH vac.conf 5 "Jan 2014" "vac.conf" "Vac Manual"
+.TH vac.conf 5 "Mar 2014" "vac.conf" "Vac Manual"
 .SH NAME
 .B vac.conf
 \- Vac configuration file
@@ -24,6 +24,19 @@ For ease of management, two more optional files are read if they exist:
 .PP
 These files are named after important sections, but sections can be placed
 in any of the four files, or all placed in /etc/vac.conf
+
+.SH NFS SHARED DIRECTORIES
+
+Vac makes directories available to the VM via NFS which are available 
+inside the VM at:
+.br
+/etc/jobfeatures
+.br
+/etc/machinefeatures
+.br
+/etc/machineoutputs
+.br
+/etc/vmtypefiles
 
 .SH [SETTINGS] OPTIONS
 
@@ -63,7 +76,7 @@ sets the memory allocated to each VM in MiB (1024^2). Defaults to 2048.
 
 .B hs06_per_cpu
 gives the HEPSPEC06 power of each CPU in a virtual machine. This is
-communicated to the VM in /etc/machinefeatures/hs06 . Defaults to 1.
+available as /etc/machinefeatures/hs06 inside the VM. Defaults to 1.
 
 .B version_logger
 can be used to disable the logging of the version in use. Normally
@@ -137,16 +150,17 @@ less than fizzle_seconds are excluded.
 .B max_wallclock_seconds
 gives the maximum lifetime of a VM. Vac will destroy the VM if it is still
 running after this amount of time, and will create 
-/etc/machinefeatures/shutdowntime using this value to communicate it to the
-VM. Default 86400.
+/etc/machinefeatures/shutdowntime inside the VM using this value to 
+communicate it to the VM. Default 86400.
 
 .B shutdown_command
 is the path to a file inside the VM which the VM can use to shut itself down.
-This value is written to /etc/machinefeatures/shutdown_command. The script
+This value is written to /etc/machinefeatures/shutdown_command inside the
+VM. The script
 /var/lib/vac/bin/vac-shutdown-vm is suitable for this, and should normally
 be copied to the shared subdirectory of the vmtype's directory in
-/var/lib/vac/vmtypes/ . it will then be visible inside the VM at the
-NFS-imported location /etc/vmtypefiles/vac-shutdown-vm .
+/var/lib/vac/vmtypes/ . It will then be visible inside the VM at 
+/etc/vmtypefiles/vac-shutdown-vm .
 
 Running the vac-shutdown-vm command from a non-root user can be accomplished
 by appending lines like this to /etc/sudoers, with USER as the user name:
@@ -167,10 +181,11 @@ is the device name exposed to the VM that is associated with the scratch
 logical volume. Default hdb.
 
 .B log_machineoutputs
-can be set to True to enable recording of all the files in 
-/etc/machineoutputs in the file /var/log/vacd-machineoutputs when the
-VM finishes or is killed. For this reason, only text files should be
-written to this directory. Default False.
+can be set to True to enable recording of all the files from
+/etc/machineoutputs inside the VM, to subdirectories of 
+/var/lib/vac/machineoutputs when the VM finishes or is killed. The 
+subdirectories are named after the UUID of the VM, and grouped together
+in separate directories for each vmtype. Default False.
 
 .B accounting_fqan
 is used to specify a userFQAN to include in the blahp accounting 
