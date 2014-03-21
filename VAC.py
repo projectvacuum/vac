@@ -921,7 +921,7 @@ class VacVM:
   <devices>
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='file' device='disk'>""" + 
-    ("<driver name='qemu' type='qcow2' cache='none' />" if (self.model=='cernvm2') else "") + 
+    ("<driver name='qemu' type='qcow2' cache='none' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' type='raw' error_policy='report' />") + 
     """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
