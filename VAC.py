@@ -856,7 +856,7 @@ class VacVM:
           self.makeScratchDisk()
           if domainType == 'kvm':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='qemu' type='raw'/>\n" +
+                                  " <driver name='qemu' type='raw' error_policy='report'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
                                   " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
           elif domainType == 'xen':
@@ -869,6 +869,7 @@ class VacVM:
 
       if self.model == 'cernvm3':
           cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                              " <driver name='qemu' type='raw' error_policy='report'/>\n" +
                               " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
                               " <target dev='hdc' />\n<readonly />\n</disk>")
       else:
@@ -926,7 +927,7 @@ class VacVM:
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
-      <driver name='qemu' type='raw'/>
+      <driver name='qemu' type='raw' error_policy='report'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
