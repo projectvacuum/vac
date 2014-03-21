@@ -531,7 +531,8 @@ class VacVM:
         return
         
       try:
-        os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr)
+        os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr, 
+                    stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
       except:
         logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr)
         return
