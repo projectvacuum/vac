@@ -482,10 +482,18 @@ def vacResponder():
 
                 try:                  
                   f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat', 'r')
-                  cpuSeconds = int(f.readline().strip())
+                  oneLine = f.readline()
                   f.close()
+                                    
+                  cpuSeconds = int(oneLine.split(' ')[0])
+                  try:
+                    cpuPercentage = float(oneLine.split(' ')[1])
+                  except:
+                    cpuPercentage = None
+                    
                 except:
                   cpuSeconds    = None
+                  cpuPercentage = None
 
                 hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
 
@@ -517,6 +525,7 @@ def vacResponder():
                                             'started'		: timeStarted,
                                             'heartbeat'		: timeHeartbeat,
                                             'cpuseconds'	: cpuSeconds,
+                                            'cpupercentage'	: cpuPercentage,
                                             'message'		: shutdownMessage,
                                             'messagetime'	: timeShutdownMessage
                                           }

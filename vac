@@ -104,6 +104,11 @@ def scanFactories():
                   if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
                     stateStr = '* Running  '
 
+                  if 'cpupercentage' in response['vmtypes'][response['vmtype']]:
+                    percentStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
+                  else:
+                    percentStr = '      '
+
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
 
@@ -112,13 +117,14 @@ def scanFactories():
                   
                 else:
                   hoursStr = 22 * ' '
+                  percentStr = '      '
 
                 if len(response['vmname'].split('.')[0]) < 15:
                  vmName = (response['vmname'].split('.')[0] + 15*' ')[0:15]
                 else:
                  vmName = response['vmname'].split('.')[0]
 
-                print (vmName + ' ' + stateStr + '  ' + hoursStr[0:21] + " %.2fs" % (time.time() - start) + ' ' +
+                print (vmName + ' ' + stateStr + '  ' + hoursStr[0:21] + percentStr + "  %.2fs" % (time.time() - start) + ' ' +
                        (response['vmtype'] if 'vmtype' in response else '------'))
                        
       except socket.error as msg:
@@ -170,6 +176,11 @@ def queryFactory(factoryName):
 
                   if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
                     stateStr = 'Running* '
+
+                  if 'cpupercentage' in response['vmtypes'][response['vmtype']]:
+                    percentStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
+                  else:
+                    percentStr = '      '
 
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '

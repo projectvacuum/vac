@@ -375,7 +375,7 @@ class VacVM:
 
           try:
             f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 'r')
-            self.cpuSeconds = int(f.readline().strip())
+            self.cpuSeconds = int(f.readline().split(' ')[0])
             f.close()
           except:
             pass
@@ -415,14 +415,14 @@ class VacVM:
       if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                          + '/shared/machinefeatures/shutdowntime') :
           f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/machinefeatures/shutdowntime')
+                                         + '/shared/machinefeatures/shutdowntime', 'r')
           self.shutdownTime = int(f.read().strip())
           f.close()
       
       if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                          + '/shared/jobfeatures/allocated_CPU') :
           f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/jobfeatures/allocated_CPU')
+                                         + '/shared/jobfeatures/allocated_CPU', 'r')
           self.cpus = int(f.read().strip())
           f.close()
 
@@ -434,9 +434,24 @@ class VacVM:
 
    def createHeartbeatFile(self):
       self.heartbeat = int(time.time())
+      
+      try:
+        f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
+                 self.uuidStr + '/heartbeat', 'r')
+        lastCpuSeconds = int(f.readline().split(' ')[0])
+        f.close()
+        
+        lastHeartbeat = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + 
+                                    self.vmtypeName + '/' + self.uuidStr + '/heartbeat').st_ctime)
+                                    
+        cpuPercentage = 100.0 * float(self.cpuSeconds - lastCpuSeconds) / (self.heartbeat - lastHeartbeat)
+        heartbeatLine = str(self.cpuSeconds) + (" %.1f" % cpuPercentage)
+      except:
+        heartbeatLine = str(self.cpuSeconds)
+
       try:
         createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
-                            self.uuidStr + '/heartbeat', str(self.cpuSeconds) + '\n')
+                            self.uuidStr + '/heartbeat', heartbeatLine + '\n')
       except:
         pass
                                   
@@ -531,10 +546,10 @@ class VacVM:
         return
         
       try:
-        os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr, 
-                    stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+        os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr, 
+                    stat.S_IWUSR + stat.S_IXUSR + stat.S_IRUSR + stat.S_IXGRP + stat.S_IRGRP + stat.S_IXOTH + stat.S_IROTH)
       except:
-        logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr)
+        logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr)
         return
       
       if outputs:
@@ -546,18 +561,18 @@ class VacVM:
             os.link('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput,
                     '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
-                        self.uuidStr + '/' + oneOutput)
+                        self.name + '/' + self.uuidStr + '/' + oneOutput)
           except:
             try:
               # if linking failed (different filesystems?) then we try a copy
               shutil.copyfile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput,
                               '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
-                        self.uuidStr + '/' + oneOutput)
+                        self.name + '/' + self.uuidStr + '/' + oneOutput)
             except:
               logLine('Failed copying /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput + 
-                        ' to /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.uuidStr + '/')
+                        ' to /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr + '/')
    
    def uuidFromLatestVM(self):
 
@@ -856,9 +871,10 @@ class VacVM:
           self.makeScratchDisk()
           if domainType == 'kvm':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='qemu' type='raw' error_policy='report'/>\n" +
+                                  " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
-                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
+                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + 
+                                  "' bus='" + ("virtio" if "vd" in vmtypes[self.vmtypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
           elif domainType == 'xen':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
                                   " <driver name='phy'/>\n" +
@@ -869,7 +885,7 @@ class VacVM:
 
       if self.model == 'cernvm3':
           cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                              " <driver name='qemu' type='raw' error_policy='report'/>\n" +
+                              " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
                               " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
                               " <target dev='hdc' />\n<readonly />\n</disk>")
       else:
@@ -922,12 +938,13 @@ class VacVM:
   <devices>
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='file' device='disk'>""" + 
-    ("<driver name='qemu' type='qcow2' cache='none' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' type='raw' error_policy='report' />") + 
+    ("<driver name='qemu' type='qcow2' cache='none' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='none' type='raw' error_policy='report' />") + 
     """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
-     <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
+     <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='""" + 
+     ("virtio" if "vd" in vmtypes[self.vmtypeName]['root_device'] else "ide") + """'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
-      <driver name='qemu' type='raw' error_policy='report'/>
+      <driver name='qemu' type='raw' error_policy='report' cache='none'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
@@ -1076,7 +1093,7 @@ def createFile(targetname, contents, mode=None):
       # including situations where targetname already exists.
    
       try:
-       ftup = tempfile.mkstemp(prefix='/var/lib/vac/tmp',text=True)
+       ftup = tempfile.mkstemp(prefix='/var/lib/vac/tmp/temp',text=True)
        os.write(ftup[0], contents)
        
        if mode: 
