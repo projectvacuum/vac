@@ -92,6 +92,7 @@ def scanFactories():
 
                 if not response['vmtype'] or not response['vmtypes']:
                   hoursStr = 22 * ' '
+                  percentStr = '      '
 
                 elif response['state'] == VAC.VacState.running:
                   hoursStr = '%5.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0)
@@ -104,16 +105,18 @@ def scanFactories():
                   if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
                     stateStr = '* Running  '
 
-                  if 'cpupercentage' in response['vmtypes'][response['vmtype']]:
+                  if 'cpupercentage' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['cpupercentage'] != None:
                     percentStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
                   else:
                     percentStr = '      '
 
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
+                  percentStr = '      '
 
                 elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
+                  percentStr = '      '
                   
                 else:
                   hoursStr = 22 * ' '
@@ -177,7 +180,7 @@ def queryFactory(factoryName):
                   if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
                     stateStr = 'Running* '
 
-                  if 'cpupercentage' in response['vmtypes'][response['vmtype']]:
+                  if 'cpupercentage' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['cpupercentage']:
                     percentStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
                   else:
                     percentStr = '      '
@@ -185,7 +188,7 @@ def queryFactory(factoryName):
                 elif response['state'] == VAC.VacState.starting:
                   hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
 
-                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
+                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message'] != None:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
                   
                 else:
