@@ -458,7 +458,7 @@ def vacResponder():
                      if not newestUUIDByVmtype or (ctime > newestCtime):
                        newestCtime        = ctime
                        newestUUIDByVmtype = onedir
-                   
+
               if newestUUIDByVmtype:
                 
                 try:

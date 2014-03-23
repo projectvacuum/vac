@@ -1023,7 +1023,7 @@ class VacVM:
                   str(int(time.time())) + '\n')
       
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 
-                 '0.0\n')
+                 '0.0 0.0\n')
       
       try:
            dom = conn.createXML(xmldesc, 0)           
