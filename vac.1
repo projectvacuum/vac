@@ -1,4 +1,4 @@
-.TH VAC  "Jan 2014" "vac" "Vac Manual"
+.TH VAC  "Mar 2014" "vac" "Vac Manual"
 .SH NAME
 .B vac
 \- Vac utility command
@@ -6,33 +6,64 @@
 .B vac [options] command
 .SH DESCRIPTION
 .B vac
-is a command line utility for use with the vacd(8)
-daemon.
+is a command-line utility for querying the status of vacd(8) factory
+machines.
+
+.SH GENERAL OPTIONS
+
+.HP 
+.B "-h, --help"
+.br
+Show help message and exit
+
+.HP 
+.B "-s SPACENAME, --space=SPACENAME"
+.br
+Override Vac space given in the configuration file
+
+.HP 
+.B "-t UDPTIMEOUTSECONDS, --timeout=UDPTIMEOUTSECONDS"
+.br
+Set timeout in seconds for UDP queries
 
 .SH COMMANDS
 
-The
-.B scan
-command uses the Vac UDP protocol to contact the factory machines in this
-Vac space and outputs a summary of their responses. It can be used to get
-a quick overview of the status of a Vac space, including which vmtypes are
-running and where, and the outcomes of virtual machines that are currently
-shut down. 
+.HP
+.B "scan [factory1] [factory2] [...]"
+.br
+This command uses the Vac UDP protocol to contact the factory machines in this
+Vac space and outputs a summary of their responses. Each line in the output
+corresponds to the reported status of one virtual machine slot. This command
+can be used to get a quick overview of the status of a Vac space, including 
+which vmtypes are running and where, and the outcomes of virtual machines 
+that are currently shut down. By default all factories in the current
+space are contacted, but this can be limited to one or more by giving the
+FQDNs of factory machines on the command line.
 
-.SH OPTIONS
+Each line of output consists of: the virtual machine short hostname; the
+vmtype which most recently ran on that VM; an asterisk if the VM has been
+running for more than fizzle_seconds; the VM state (Running, Starting, Shut
+down); how long the VM has been running or starting, or the most recent
+shutdown_message; the CPU usage percentage over the lifetime of the VM for
+running VMs; the CPU usage percentage during the last cycle (by default 60
+seconds); the round trip time for the UDP query and response in seconds.
 
-.IP "-h, --help"
-show help message and exit
+.RS
+.HP 
+.B "-H, --include-hs06"
+.br
+Include HEPSPEC06 benchmark figures in the output
 
-.IP "-s SPACENAME, --space=SPACENAME"
-override Vac space given in configuration file
+.HP
+.B "-V, --include-versions"
+.br
+Include the Vac version of factory machines
+.RE
 
-.IP "-t UDPTIMEOUTSECONDS, --timeout=UDPTIMEOUTSECONDS"
-set timeout in seconds for UDP queries
-
-.IP "-f FACTORIES, --factories=FACTORIES"
-comma separated list of the fully qualified domain names of the factories to
-query.
+.HP
+.B "raw factory1 [factory2] [...]"
+.br
+Outputs the raw responses from one or more factory machines.
 
 .SH CONFIGURATION FILES
 
@@ -44,7 +75,7 @@ described above.
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
 
-vac and vacd are part of Vac: http://www.gridpp.ac.uk/vac/
+The vac command is part of Vac: http://www.gridpp.ac.uk/vac/
 .SH "SEE ALSO"
 vacd(8),
 vac.conf(5)
