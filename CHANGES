@@ -5,6 +5,7 @@
 - Use error_policy='report' on QEMU disks to avoid random VM pausing
 - Add cernvm3iso.spec to doc directory
 - --include-hs06 and --include-versions in vac scan command; raw command
+- Change process names to vacd-factory and vacd-responder 
 ==================== Changes in Vac version 0.14.0 =====================
 - Include vacd file for /etc/logrotate.d
 - Extra double-quote fix to VAC.py from Ewan MacMahon

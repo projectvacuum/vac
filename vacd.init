@@ -26,7 +26,8 @@ stop() {
 
         # Stop daemon
         echo -n $"Shutting down vacd: "
-	killproc vacd
+	killproc vacd-factory
+	killproc vacd-responder
 	RETVAL=$?
         echo
 	return $RETVAL
@@ -40,7 +41,7 @@ case "$1" in
 	stop
 	;;
   status)
-	status vacd
+	status vacd-factory
 	;;
   restart|force-reload|reload)
 	stop

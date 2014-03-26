@@ -365,6 +365,8 @@ def vacResponder():
    
    VAC.logLine('vac responder starts')
    
+   VAC.setProcessName('vacd-responder')
+
    while True:
    
      try:
@@ -593,6 +595,8 @@ if __name__ == '__main__':
              pass
 
           VAC.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n')
+          
+          VAC.setProcessName('vacd-factory')
 
           si = file('/dev/null', 'r')
           os.dup2(si.fileno(), sys.stdin.fileno())
