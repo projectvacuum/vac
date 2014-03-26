@@ -252,6 +252,11 @@ def readConf():
              else:
                  vmtype['log_machineoutputs'] = False
              
+             if parser.has_option(sectionName, 'machineoutputs_days'):
+                 vmtype['machineoutputs_days'] = float(parser.get(sectionName, 'machineoutputs_days'))
+             else:
+                 vmtype['machineoutputs_days'] = 3.0
+             
              if parser.has_option(sectionName, 'max_wallclock_seconds'):
                  vmtype['max_wallclock_seconds'] = int(parser.get(sectionName, 'max_wallclock_seconds'))
              else:
@@ -1238,6 +1243,35 @@ def cleanupExports():
    f.close()
    conn.close()
 
+def cleanupLoggedMachineoutputs():
+
+   vmtypesList = os.listdir('/var/lib/vac/machineoutputs/')
+   for vmtype in vmtypesList:
+
+      if vmtype not in vmtypes:
+        # use 3 days for vmtypes that have been removed
+        machineoutputs_days = 3.0
+
+      elif vmtypes[vmtype]['machineoutputs_days'] == 0.0:
+        # if zero then we do not expire these directories at all
+        continue
+
+      else:
+        # use the per-vmtype value
+        machineoutputs_days = vmtypes[vmtype]['machineoutputs_days']
+
+      vmNamesList = os.listdir('/var/lib/vac/machineoutputs/' + vmtype)      
+      for vmName in vmNamesList:
+
+         uuidList = os.listdir('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName)
+         for uuid in uuidList:
+                     
+            if (os.stat('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid).st_ctime < 
+                int(time.time() - machineoutputs_days * 86400)):
+                
+             logLine('Deleting expired /var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
+             shutil.rmtree('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
+            
 def cleanupVirtualmachineFiles():
    #
    # IN vacd THIS FUNCTION CAN ONLY BE RUN INSIDE THE MAIN LOOP

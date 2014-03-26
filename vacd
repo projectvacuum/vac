@@ -207,6 +207,8 @@ def vacOneCycle():
 
    if VAC.deleteOldFiles:
      VAC.cleanupVirtualmachineFiles()
+   
+   VAC.cleanupLoggedMachineoutputs()
 
    VAC.cleanupExports()
 

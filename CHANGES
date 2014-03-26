@@ -1,7 +1,8 @@
 ==================== Changes in Vac version 0.15.0 =====================
 - Add vm_model option in vmtype sections (default cernvm2)
 - Add cernvm3 vm_model and uCernVM 3 support
-- Use /var/lib/vac/machineoutputs rather than vacd-machineoutputs
+- Use /var/lib/vac/machineoutputs rather than vacd-machineoutputs, with
+  expiration controlled by machineoutputs_days
 - Use error_policy='report' on QEMU disks to avoid random VM pausing
 - Add cernvm3iso.spec to doc directory
 - --include-hs06 and --include-versions in vac scan command; raw command
