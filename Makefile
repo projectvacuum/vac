@@ -45,7 +45,6 @@ TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 vac.tgz: $(TGZ_FILES)
 	mkdir -p TEMPDIR/vac
 	cp $(TGZ_FILES) TEMPDIR/vac
-	mv TEMPDIR/vac/cernvm3iso.spec TEMPDIR/vac/cernvm3iso.spec.sample
 	cd TEMPDIR ; tar zcvf ../vac.tgz vac
 	rm -R TEMPDIR
 
@@ -64,7 +63,7 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES \
 	   check-vacd.8 vac.1 example.vac.conf \
-	   testkvm.xml cernvm3iso.spec.sample \
+	   testkvm.xml cernvm3iso.spec \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
 	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
 	 > $(RPM_BUILD_ROOT)/var/lib/vac/doc/admin-guide.html
