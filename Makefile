@@ -85,4 +85,10 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/etc/logrotate.d/vacd
 	
 rpm: vac.tgz
-	export VAC_VERSION=$(VERSION) ; rpmbuild -ta vac.tgz
+	rm -Rf RPMTMP
+	mkdir -p RPMTMP/SOURCES RPMTMP/SPECS RPMTMP/BUILD \
+         RPMTMP/SRPMS RPMTMP/RPMS/noarch RPMTMP/BUILDROOT
+	cp -f vac.tgz RPMTMP/SOURCES        
+	export VAC_VERSION=$(VERSION) ; rpmbuild -ba \
+	  --define "_topdir $(shell pwd)/RPMTMP" \
+	  --buildroot $(shell pwd)/RPMTMP/BUILDROOT vac.spec
