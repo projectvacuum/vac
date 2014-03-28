@@ -1020,7 +1020,7 @@ class VacVM:
     <serial type='pty'>
       <target port='0'/>
     </serial>
-    <graphics type='vnc' port='-1' autoport='yes' keymap='en-gb'/>
+    <graphics type='vnc' port='"""  + str(6000 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'/>
     <video>
       <model type='vga' vram='9216' heads='1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
@@ -1061,9 +1061,7 @@ class VacVM:
     <console type='pty'>
       <target type='xen' port='0'/>
     </console>
-    <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
-      <listen type='address' address='0.0.0.0'/>
-    </graphics>
+    <graphics type='vnc' port='"""  + str(6000 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb' />
     <interface type='network'>
       <mac address='""" + mac + """'/>
       <source network='vac_""" + natNetwork + """'/>
