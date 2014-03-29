@@ -7,7 +7,7 @@
 - Add cernvm3iso.spec to doc directory
 - --include-hs06 and --include-versions in vac scan command; raw command
 - Change process names to vacd-factory and vacd-responder 
-- Each VM now has VNC predictably on port 6000 + VM number
+- Each VM now has VNC predictably on port 5900 + VM number
 - Add heartbeat_file and heartbeat_seconds to allow vmtypes to nominate
   a file they will create and update in /etc/machineoutputs
 

@@ -851,10 +851,10 @@ class VacVM:
       exportAddress = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
       if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
-         os.system('exportfs ' + exportAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
+         os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
 
-      os.system('exportfs ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
-      os.system('exportfs -o rw,no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+      os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
+      os.system('exportfs -o no_root_squash,rw ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def makeRootDisk(self):
 
@@ -1028,7 +1028,7 @@ class VacVM:
     <serial type='pty'>
       <target port='0'/>
     </serial>
-    <graphics type='vnc' port='"""  + str(6000 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'/>
+    <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'/>
     <video>
       <model type='vga' vram='9216' heads='1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
@@ -1069,7 +1069,7 @@ class VacVM:
     <console type='pty'>
       <target type='xen' port='0'/>
     </console>
-    <graphics type='vnc' port='"""  + str(6000 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb' />
+    <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb' />
     <interface type='network'>
       <mac address='""" + mac + """'/>
       <source network='vac_""" + natNetwork + """'/>
