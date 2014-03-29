@@ -45,7 +45,7 @@ TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 vac.tgz: $(TGZ_FILES)
 	mkdir -p TEMPDIR/vac
 	cp $(TGZ_FILES) TEMPDIR/vac
-	cd TEMPDIR ; tar zcvf ../vac.tgz vac
+	cd TEMPDIR ; tar zcvf ../vac.tgz --owner=root --group=root vac
 	rm -R TEMPDIR
 
 install: $(INSTALL_FILES)

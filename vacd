@@ -280,8 +280,8 @@ def vacOneCycle():
           except:
             #  destroy VM if file does not exist (even if heartbeat_seconds is zero)
             VAC.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
-                        str(VAC.vmtypes[vm.vmtypeName]['fizzle_seconds']) + ') but no heartbeat file ' + 
-                        VAC.vmtypes[vm.vmtypeName]['heartbeat_file'] + ' has been created - destroying!')
+                        str(VAC.vmtypes[vm.vmtypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
+                        VAC.vmtypes[vm.vmtypeName]['heartbeat_file'] + ') has been created - destroying!')
             vm.destroyVM()
 
           # if heartbeat_seconds is set, we check the file is recent
@@ -289,8 +289,8 @@ def vacOneCycle():
              (int(time.time()) > (mtime + VAC.vmtypes[vm.vmtypeName]['heartbeat_seconds'])):
 
             VAC.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - mtime) + 
-                        ' seconds without updating heartbeat file ' + 
-                        VAC.vmtypes[vm.vmtypeName]['heartbeat_file'] + ' - destroying!')
+                        ' seconds without updating heartbeat file (' + 
+                        VAC.vmtypes[vm.vmtypeName]['heartbeat_file'] + ') - destroying!')
             vm.destroyVM()
 
      elif vm.state == VAC.VacState.zombie:
