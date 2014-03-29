@@ -10,8 +10,6 @@
 - Each VM now has VNC predictably on port 5900 + VM number
 - Add heartbeat_file and heartbeat_seconds to allow vmtypes to nominate
   a file they will create and update in /etc/machineoutputs
-
-- e1000 network device to avoid DHCP checksum problem
 ==================== Changes in Vac version 0.14.0 =====================
 - Include vacd file for /etc/logrotate.d
 - Extra double-quote fix to VAC.py from Ewan MacMahon
