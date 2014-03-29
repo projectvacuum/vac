@@ -267,7 +267,32 @@ def vacOneCycle():
              vm.destroyVM()
        except:
            pass
-                                                       
+           
+       # if a heartbeat_file is defined for this vmtype and fizzle_seconds is non-zero
+       # and fizzle_seconds time has passed since the VM started...
+       if 'heartbeat_file' in VAC.vmtypes[vm.vmtypeName] and \
+          (VAC.vmtypes[vm.vmtypeName]['fizzle_seconds'] > 0) and \
+          (int(time.time()) > (vm.started + VAC.vmtypes[vm.vmtypeName]['fizzle_seconds'])):
+
+          try:
+            mtime = int(os.stat('/var/lib/vac/machines/' + vmname + '/' + vm.vmtypeName + '/' + \
+                            vm.uuidStr + '/shared/machineoutputs/' + VAC.vmtypes[vm.vmtypeName]['heartbeat_file']).st_mtime)
+          except:
+            #  destroy VM if file does not exist (even if heartbeat_seconds is zero)
+            VAC.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
+                        str(VAC.vmtypes[vm.vmtypeName]['fizzle_seconds']) + ') but no heartbeat file ' + 
+                        VAC.vmtypes[vm.vmtypeName]['heartbeat_file'] + ' has been created - destroying!')
+            vm.destroyVM()
+
+          # if heartbeat_seconds is set, we check the file is recent
+          if (VAC.vmtypes[vm.vmtypeName]['heartbeat_seconds'] > 0) and \
+             (int(time.time()) > (mtime + VAC.vmtypes[vm.vmtypeName]['heartbeat_seconds'])):
+
+            VAC.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - mtime) + 
+                        ' seconds without updating heartbeat file ' + 
+                        VAC.vmtypes[vm.vmtypeName]['heartbeat_file'] + ' - destroying!')
+            vm.destroyVM()
+
      elif vm.state == VAC.VacState.zombie:
        # VM running but no corresponding vac directory structure
        # We kill zombies on sight! 

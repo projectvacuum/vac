@@ -147,6 +147,16 @@ have been running for less than fizzle_seconds.
 Additionally, when writing the accounting log files, any VMs which run for 
 less than fizzle_seconds are excluded.
 
+.B heartbeat_file
+allows the vmtype to nominate a file which will be created in 
+/etc/machineoutputs before fizzle_seconds has passed. If this file is
+not created by then, the VM will be destroyed.
+
+.B heartbeat_seconds
+gives the frequency at which the heartbeat_file will be updated after
+fizzle_seconds has passed. If the file is not then updated for 
+heartbeat_seconds then the VM will be destroyed.
+
 .B max_wallclock_seconds
 gives the maximum lifetime of a VM. Vac will destroy the VM if it is still
 running after this amount of time, and will create 

@@ -275,6 +275,14 @@ def readConf():
              else:
                  vmtype['fizzle_seconds'] = 600
             
+             if parser.has_option(sectionName, 'heartbeat_file'):
+                 vmtype['heartbeat_file'] = parser.get(sectionName, 'heartbeat_file')
+
+             if parser.has_option(sectionName, 'heartbeat_seconds'):
+                 vmtype['heartbeat_seconds'] = int(parser.get(sectionName, 'heartbeat_seconds'))
+             else:
+                 vmtype['heartbeat_seconds'] = 0
+            
              if parser.has_option(sectionName, 'accounting_fqan'):
                  vmtype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
                           
@@ -1014,7 +1022,7 @@ class VacVM:
     <interface type='network'>
       <mac address='""" + mac + """'/>
       <source network='vac_""" + natNetwork + """'/>
-      <model type='virtio'/>
+      <model type='e1000'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
     <serial type='pty'>
@@ -1065,7 +1073,7 @@ class VacVM:
     <interface type='network'>
       <mac address='""" + mac + """'/>
       <source network='vac_""" + natNetwork + """'/>
-      <model type='virtio'/>
+      <model type='e1000'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
   </devices>
