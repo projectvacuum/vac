@@ -42,10 +42,11 @@ INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
+GNUTAR ?= tar
 vac.tgz: $(TGZ_FILES)
 	mkdir -p TEMPDIR/vac
 	cp $(TGZ_FILES) TEMPDIR/vac
-	cd TEMPDIR ; tar zcvf ../vac.tgz --owner=root --group=root vac
+	cd TEMPDIR ; $(GNUTAR) zcvf ../vac.tgz --owner=root --group=root vac
 	rm -R TEMPDIR
 
 install: $(INSTALL_FILES)
