@@ -34,6 +34,19 @@ cp -f $RPM_BUILD_ROOT/var/lib/vac/doc/vacd.8 \
       $RPM_BUILD_ROOT/var/lib/vac/doc/check-vacd.8 \
            $RPM_BUILD_ROOT/usr/share/man/man8
 
+%preun
+if [ "$1" = "0" ] ; then
+  # if uninstallation rather than upgrade then stop
+  service vacd stop
+fi
+
+%post
+service vacd status
+if [ $? = 0 ] ; then
+  # if already running then restart with new version
+  service vacd restart
+fi
+
 %files
 /usr/sbin/vac
 /usr/share/man/man1
