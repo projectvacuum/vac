@@ -8,12 +8,25 @@
 .B vacd
 is a daemon which implements the Vacuum model on a factory (hypervisor) machine.
 
+When vacd starts, it forks itself into two daemons
+which change their process names to vacd-factory and vacd-responder. The
+factory daemon is responsible for managing the life cycle of VMs. The responder
+replies to queries from factories about what is currently running. 
+
 .SH CONFIGURATION FILES
 
 See 
 .B
 vac.conf(5)
-for a description of the file format and required options.
+for a description of the file format and required options. The vac daemons
+reread the configuration files at the start of each cycle - roughly once 
+every 60 seconds. It is not necessary to restart the daemons after changing
+the configuration.
+
+.SH LOG FILES
+
+The two daemon processes write to /var/log/vacd-factory and 
+/var/log/vacd-responder respectively.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
@@ -21,4 +34,5 @@ Andrew McNab <Andrew.McNab@cern.ch>
 vacd is part of Vac: http://www.gridpp.ac.uk/vac/
 .SH "SEE ALSO"
 vac(1),
-vac.conf(5)
+vac.conf(5),
+check-vacd(8)

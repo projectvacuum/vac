@@ -46,7 +46,7 @@ machines.
 .B vac_space
 is required and gives the name of this Vac space. A single space will be
 sufficient for many sites. The space name should be a fully qualified domain
-name, like vac.example.com and may be treated as space's CE name in some
+name, like vac.example.com and may be used as a virtual CE name in some
 monitoring and accounting systems.
 
 .B cycle_seconds
@@ -106,8 +106,8 @@ cpu_total allows.
 .B volume_group
 can be used to set the volume group to be searched for a logical volume
 which can be used by a particular VM. The logical volumes must have the
-VMs fully qualified domain names as their names. For example, 
-/dev/vac_volume_group/facory1-00.example.com/ would used by the VM
+VMs' fully qualified domain names as their names. For example, 
+/dev/vac_volume_group/facory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
 .SH [VMTYPE ...] SECTIONS
@@ -124,7 +124,8 @@ the VMs of this vmtype. Currently cernvm2 or cernvm3.
 
 .B root_image
 is the absolute path to the image file from which the VM will boot. 
-Normally these images should be placed in /var/lib/vac/images . With the
+Normally these images should be placed in /var/lib/vac/images or
+installed by RPM in /usr/share/images. With the
 cernvm2 vm_model, this is the root hard disk image; with cernvm3, it is
 the ISO CDROM-style disk image.
 
@@ -135,17 +136,28 @@ to prevent the unnecessary creation of many VMs when no work is available,
 and avoid overloading the matcher or task queue of the VO. 
 
 .B fizzle_seconds
-is in three places within the backoff algorithm. First, if a VM finishes
+is used in three places within the backoff procedure and in two
+other parts of Vac:
+.br
+(1) First, if a VM finishes
 without producing a shutdown message code and has lasted less than 
-fizzle_seconds, then it is treated as aborted. Secondly, after the 
+fizzle_seconds, then it is treated as aborted. 
+.br
+(2) Secondly, after the 
 backoff_seconds time has expired for a VM abort, once at least one VM has
 been started in this Vac space, then no more new VMs can be started for 
-another fizzle_seconds. Thirdly, these new VMs are identified because
+another fizzle_seconds. 
+.br
+(3) Thirdly, these new VMs are identified because
 they are still in the starting phase of creating files, or because they
 have been running for less than fizzle_seconds. 
 .br
-Additionally, when writing the accounting log files, any VMs which run for 
-less than fizzle_seconds are excluded.
+(4) Additionally, when writing the accounting log files, any VMs which run for 
+less than fizzle_seconds are excluded. 
+.br
+(5) Finally, the heartbeat file
+checking is only carried out once an initial period of fizzle_seconds
+has passed.
 
 .B heartbeat_file
 allows the vmtype to nominate a file which will be created in 
@@ -158,17 +170,17 @@ fizzle_seconds has passed. If the file is not then updated for
 heartbeat_seconds then the VM will be destroyed.
 
 .B max_wallclock_seconds
-gives the maximum lifetime of a VM. Vac will destroy the VM if it is still
-running after this amount of time, and will create 
+gives the maximum lifetime of a VM. Vac will create 
 /etc/machinefeatures/shutdowntime inside the VM using this value to 
-communicate it to the VM. Default 86400.
+communicate it to the VM. Vac will destroy the VM if it is still
+running after this amount of time. Default 86400.
 
 .B shutdown_command
 is the path to a file inside the VM which the VM can use to shut itself down.
 This value is written to /etc/machinefeatures/shutdown_command inside the
 VM. The script
-/var/lib/vac/bin/vac-shutdown-vm is suitable for this, and should normally
-be copied to the shared subdirectory of the vmtype's directory in
+/var/lib/vac/bin/vac-shutdown-vm is suitable for this, and may need to be
+copied to the shared subdirectory of the vmtype's directory in
 /var/lib/vac/vmtypes/ . It will then be visible inside the VM at 
 /etc/vmtypefiles/vac-shutdown-vm .
 
@@ -249,4 +261,5 @@ Andrew McNab <Andrew.McNab@cern.ch>
 vacd is part of Vac: http://www.gridpp.ac.uk/vac/
 .SH "SEE ALSO"
 .BR vacd(8), 
-.BR vac(1)
+.BR vac(1),
+.BR check-vacd(8)
