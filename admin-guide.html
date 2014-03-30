@@ -313,7 +313,7 @@ COMMIT
 :OUTPUT ACCEPT [0:0]
 :POSTROUTING ACCEPT [0:0]
 # Create checksums for DHCP clients even when using virtio
--A POSTROUTING -o virbr1 -p udp -m udp --dport 68 -j CHECKSUM ---checksum-fill 
+-A POSTROUTING -o virbr1 -p udp -m udp --dport 68 -j CHECKSUM --checksum-fill 
 COMMIT
 </pre>
 
