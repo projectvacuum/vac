@@ -29,14 +29,14 @@ run &quot;service libvirtd restart&quot; to make sure libvirtd daemon is
 running.)
 
 <p>
-Install the vac RPM, and download a recent compressed kvm-style CernVM batch 
+Install the vac RPM, and download a recent compressed kvm-style CernVM 2 batch 
 image from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
 downloads page</a> to /tmp. Use zcat to extract the image itself to a
 file in /tmp. It will be a large file: more than 9GB.
 
 <p>
 Copy the file /var/lib/vac/doc/testkvm.xml to /tmp as well, and edit the
-&quot;source file=&quot; path and filename to point to your CernVM image.
+&quot;source file=&quot; path and filename to point to your CernVM 2 image.
 
 <p>
 At the command line, excecute
@@ -173,14 +173,14 @@ virtualization but this is not supported on RHEL6/SL6. (6.x RPMs
 are <a href="http://xen.crc.id.au/support/guides/install/">available
 from Steven Haigh</a>.)
 
-<h3>CernVM images</h3>
+<h3>CernVM 2 &amp; 3 images</h3>
 
 <p>
 Vac currently requires the use of CernVM images with HEPiX 
 contexualization based on EC2/ISO (&quot;CD-ROM&quot;) images.
 
 <p>
-You can download a recent compressed kvm-style CernVM batch 
+You can download a recent compressed kvm-style CernVM 2 batch 
 image from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
 downloads page</a>. You can use gunzip or zcat to extract the image
 itself. It will be a large file: more than 9GB. gunzip creates
@@ -208,6 +208,22 @@ losetup -d /dev/loop7
 If loop7 is in use on your system, replace it with a different number.
 For different partitions layouts, you will need to adapt the use of
 kpartx and the partition numbers.
+
+<p>
+From 0.15.0, Vac can also use Micro CernVM 3 ISO images. These can be
+downloaded from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM
+downloads page</a> and are much smaller (~12MB) <b>You must get the 
+generic .iso image file and not the .hdd file listed for KVM.</b> 
+
+<p>
+Alternatively, you can use the cernvm3iso.spec file from /var/lib/vac/doc
+to build a binary RPM. This SPEC file is self-contained, in that it 
+downloads the ISO image itself, using the major and minor version numbers
+given in the first few lines of the SPEC file. When the RPM is installed,
+the ISO file will be placed in /usr/share/images. The major and minor
+numbers are included in the package name so you can install RPMs containing
+more than one version at the same time.
+You can build the RPM with something like  rpmbuild -ba cernvm3iso.spec
 
 <h3>DNS, IP, MAC</h3>
 
@@ -240,8 +256,10 @@ networking.
 
 <p>
 You can check the vac private network exists with the command 
-virsh net-list which should list the vac_169.254.0.0 network (and probably
-the &quot;default&quot; network defined by libvirtd.)
+virsh net-list which should list the vac_169.254.0.0 network and probably
+the &quot;default&quot; network defined by libvirtd. The Vac network should
+be using the virbr1 virtual interface, with virbr0 still used by the default
+network.
 
 <p>
 Vac will print the error &quot;Failed to create NAT network vac_169.254.0.0 
@@ -286,6 +304,15 @@ COMMIT
 -A FORWARD -i virbr1 -o virbr1 -j ACCEPT 
 -A FORWARD -o virbr1 -j REJECT --reject-with icmp-port-unreachable 
 -A FORWARD -i virbr1 -j REJECT --reject-with icmp-port-unreachable 
+COMMIT
+*mangle
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+# Create checksums for DHCP clients even when using virtio
+-A POSTROUTING -o virbr1 -p udp -m udp --dport 68 -j CHECKSUM ---checksum-fill 
 COMMIT
 </pre>
 
