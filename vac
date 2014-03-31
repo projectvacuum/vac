@@ -254,7 +254,7 @@ def scanFactories(options, factoriesList):
                  vmName = response['vmname'].split('.')[0]
 
                 print (
-                       vmName + 
+                       vmName + ' ' +
                        ((response['vmtype'] + 12 * ' ') if 'vmtype' in response else 10 * '-')[0:12] + ' ' + 
                        stateStr + '  ' + 
                        hoursStr[0:21] + 
