@@ -12,6 +12,7 @@
 - Add heartbeat_file and heartbeat_seconds to allow vmtypes to nominate
   a file they will create and update in /etc/machineoutputs
 - NFS directories are exported no_root_squash to allow 0600 mode files
+- Shutdown messages with 6xx codes trigger backoff now too
 ==================== Changes in Vac version 0.14.0 =====================
 - Include vacd file for /etc/logrotate.d
 - Extra double-quote fix to VAC.py from Ewan MacMahon

@@ -130,8 +130,10 @@ def pollFactories():
                     if 'messagetime' in vmtypeOutcome and 'message' in vmtypeOutcome and vmtypeOutcome['message'][0:3].isdigit():
                       # if message with code provided, then we always use it for decisions
                       messagecode=int(vmtypeOutcome['message'][0:3])
-                      if (messagecode >= 300) and (messagecode <= 599):
+                      if (messagecode >= 300) and (messagecode <= 699):
                         # 300 is no work, 400 is banned, 500 is problem with VM/Site
+                        # 600 is grid-wide problem with job agent or application in VM
+                        # (VMs can return 700 for transient problems within the VM)
                         abortTime = vmtypeOutcome['messagetime']
                     else:
                       # no message, so we have to use times to identify fizzles
