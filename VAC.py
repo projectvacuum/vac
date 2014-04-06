@@ -783,11 +783,11 @@ class VacVM:
 
       # we don't know the physical vs logical cores distinction here so we just use cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
-                 str(self.cpus) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(cpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # again just use cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
-                 str(self.cpus) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(cpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # tell them they have the whole VM to themselves; they are in the only jobslot here
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
@@ -815,10 +815,10 @@ class VacVM:
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * self.cpus + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * self.cpus + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine + '\n', 
                  mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
@@ -842,9 +842,9 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
                  str(int(mbPerMachine * 1.048576)) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
                         
-      # self.cpus again
+      # cpuPerMachine again
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
-                 str(self.cpus) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str(cpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
       # do the NFS exports
 
