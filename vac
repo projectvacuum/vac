@@ -97,7 +97,7 @@ def vmtypeResults(vmtypeName):
                   try:
                     if response['vmtypes'][vmtypeName]['heartbeat'] > response['vmtypes'][vmtypeName]['started']:
                     
-                      cpuPercentStr = ' %.1f%%' % ((100.0 * response['vmtypes'][vmtypeName]['cpuseconds']) / 
+                      cpuPercentStr = ' %5.1f%%' % ((100.0 * response['vmtypes'][vmtypeName]['cpuseconds']) / 
                                        (response['vmtypes'][vmtypeName]['heartbeat'] - response['vmtypes'][vmtypeName]['started']))
                     else:
                       cpuPercentStr = ' ------'
@@ -120,7 +120,7 @@ def vmtypeResults(vmtypeName):
                     print (
                             response['vmname'].split('.')[0] + ' ' + 
                             (stateStr + 12 * ' ')[:12] +
-                            time.strftime(' %d/%b/%H:%M ', time.localtime(response['vmtypes'][vmtypeName]['created'])) +
+                            time.strftime(' %d/%b/%H:%M', time.localtime(response['vmtypes'][vmtypeName]['created'])) +
                             cpuPercentStr + (' %6.2fhrs  ' % hours) + (14 * ' ') +
                             cpuPercentageStr
                           )
@@ -168,7 +168,7 @@ def vmtypeResults(vmtypeName):
            break
 
    print str(totalcount) + ' replies; ' + str(runningcount) + ' ' + vmtypeName + ' running; ' + \
-                                           str(startingcount) + ' ' + vmtypeName + ' starting.'
+                                          str(startingcount) + ' ' + vmtypeName + ' starting.'
 
 def scanFactories(options, factoriesList):
    
@@ -254,7 +254,7 @@ def scanFactories(options, factoriesList):
                  vmName = response['vmname'].split('.')[0]
 
                 print (
-                       vmName + 
+                       vmName + ' ' +
                        ((response['vmtype'] + 12 * ' ') if 'vmtype' in response else 10 * '-')[0:12] + ' ' + 
                        stateStr + '  ' + 
                        hoursStr[0:21] + 
