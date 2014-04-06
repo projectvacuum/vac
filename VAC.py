@@ -983,7 +983,7 @@ class VacVM:
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
   <currentMemory unit='MiB'>"""  + str(mbPerMachine) + """</currentMemory>
-  <vcpu>""" + str(self.cpus) + """</vcpu>
+  <vcpu>""" + str(cpuPerMachine) + """</vcpu>
   <os>
     <type arch='x86_64' machine='rhel6.2.0'>hvm</type>
     <boot dev='network'/>
@@ -1045,7 +1045,7 @@ class VacVM:
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
   <currentMemory unit='MiB'>""" + str(mbPerMachine) + """</currentMemory>
-  <vcpu>""" + str(self.cpus) + """</vcpu>
+  <vcpu>""" + str(cpuPerMachine) + """</vcpu>
   <bootloader>/usr/bin/pygrub</bootloader>
   <os>
     <type arch='x86_64' machine='xenpv'>linux</type>

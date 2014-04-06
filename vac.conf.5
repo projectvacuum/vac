@@ -162,12 +162,14 @@ has passed.
 .B heartbeat_file
 allows the vmtype to nominate a file which will be created in 
 /etc/machineoutputs before fizzle_seconds has passed. If this file is
-not created by then, the VM will be destroyed.
+not created by then and maintained for the lifetime of the VM, the 
+VM will be destroyed.
 
 .B heartbeat_seconds
-gives the frequency at which the heartbeat_file will be updated after
-fizzle_seconds has passed. If the file is not then updated for 
-heartbeat_seconds then the VM will be destroyed.
+gives the frequency at which the heartbeat_file must be updated after
+fizzle_seconds has passed. If the file is not updated for 
+heartbeat_seconds then the VM will be destroyed. If heartbeat_seconds
+is 0, then only the existence of the file will be checked. Default 0.
 
 .B max_wallclock_seconds
 gives the maximum lifetime of a VM. Vac will create 
