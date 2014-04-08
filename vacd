@@ -73,6 +73,7 @@ def pollFactories():
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    sock.settimeout(VAC.udpTimeoutSeconds)
+   sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 16777216)
 
    for factoryName in VAC.factories:
       try:
@@ -111,7 +112,7 @@ def pollFactories():
                    # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
                    factoryVmtypeTotals[response['vmtype']] += response['hs06'] / VAC.vmtypes[response['vmtype']]['share']
                    VAC.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
-                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]) + ' HS06')
+                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
                                
                    if response['state'] == VAC.VacState.starting:
                            # starting counts as before fizzle point
@@ -170,9 +171,13 @@ def pollFactories():
       
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
       if vmtype['share'] > 0.0:
-                      VAC.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+           VAC.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
                           str(int(time.time()) - vmtype['backoff_seconds'] - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
-                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
+                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time')
+#           VAC.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+#                          str(int(time.time()) - vmtype['backoff_seconds'] - VAC.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
+#                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
+
       if ((vmtype['share'] > 0.0) and 
           (factoryVmtypeLastAborts[vmtypeName] 
               < (int(time.time()) 
@@ -248,6 +253,7 @@ def vacOneCycle():
    # --> So we do not use  continue  within this loop! <--
    totalCount    = 0
    runningCount  = 0
+   startedOne    = False
    
    for vmname in VAC.virtualmachines:
    
@@ -325,44 +331,52 @@ def vacOneCycle():
        elif not vm.finishedFile:
                VAC.logLine('No finished file but no started time for ' + vm.name)
   
-       # count up the running VMs' CPUs on the this factory
-       totalCpusForCount = 0
-  
-       for vmnameForCount in VAC.virtualmachines:
-          vmForCount = VAC.VacVM(vmnameForCount)
-
-          if vmForCount.state == VAC.VacState.running:
-              totalCpusForCount += vmForCount.cpus
-       
-       if (totalCpusForCount + VAC.cpuPerMachine) <= VAC.numCpus:
-         # as VM is shutdown, we see if we can restart it but only 
-         # if cpu limit from cpu_total or /proc/cpuinfo allows
-         VAC.logLine('Query factories and try to recreate ' + vm.name)
-         preferredVmtypeName = pollFactories()
-       
-         if preferredVmtypeName:
-           VAC.logLine('Creating ' + vm.name + ' with vmtype ' + preferredVmtypeName)
-           createError = vm.createVM(preferredVmtypeName)
-
-           if createError:
-             VAC.logLine('VM creation fails with: ' + createError)
-             VAC.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
-             os.chmod('/var/lib/vac/factory-error', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-           else:
-             # we update heartbeat after creating a VM in case that took a while
-             # (several minutes for Xen, without COW disk images)
-             VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
-             os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
-             # if no VM creation errors, then cleanup any old message   
-             try:
-               os.remove('/var/lib/vac/factory-error')
-             except OSError:
-               pass
-         else:
-           VAC.logLine('No vmtype suitable for creation in this cycle')
+       # we will only start one VM per cycle
+       if startedOne:
+         VAC.logLine('VM not recreated because one already recreated this cycle')
        else:
-         VAC.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(VAC.numCpus) + ')')
+         # count up the running VMs' CPUs on the this factory
+         totalCpusForCount = 0
+  
+         for vmnameForCount in VAC.virtualmachines:
+           vmForCount = VAC.VacVM(vmnameForCount)
+
+           if vmForCount.state == VAC.VacState.running:
+              totalCpusForCount += vmForCount.cpus
+              
+         # as VM is shutdown, we see if we can restart it
+         if VAC.loadAvg() > (VAC.overloadPerCpu * VAC.cpuCount):
+           VAC.logLine('VM not recreated as load average is > overload_per_cpu(' + str(VAC.overloadPerCpu) + ') * cpu count(' + str(VAC.cpuCount) + ')')
+         elif (totalCpusForCount + VAC.cpuPerMachine) > VAC.numCpus:
+           VAC.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(VAC.numCpus) + ')')
+         else:
+           VAC.logLine('Query factories and try to recreate ' + vm.name)
+           preferredVmtypeName = pollFactories()
+       
+           if preferredVmtypeName:
+             VAC.logLine('Creating ' + vm.name + ' with vmtype ' + preferredVmtypeName)
+             createError = vm.createVM(preferredVmtypeName)
+
+             if createError:
+               VAC.logLine('VM creation fails with: ' + createError)
+               VAC.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
+               os.chmod('/var/lib/vac/factory-error', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+             else:
+               # we update heartbeat after creating a VM in case that took a while
+               # (several minutes for Xen, without COW disk images)
+               VAC.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
+               os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+               # remember we've started one this cycle
+               startedOne = True
+
+               # if no VM creation errors, then cleanup any old message   
+               try:
+                 os.remove('/var/lib/vac/factory-error')
+               except OSError:
+                 pass
+           else:
+             VAC.logLine('No vmtype suitable for creation in this cycle')
 
      # finished with this vm, update counts
      totalCount += 1
@@ -389,6 +403,7 @@ def vacResponder():
    VAC.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n')
 
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 16777216)
    sock.settimeout(60.0)
    sock.bind(('', 995))
    

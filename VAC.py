@@ -57,6 +57,7 @@ factoryAddress = '169.254.169.254'
 cycleSeconds = None
 deleteOldFiles = None
 domainType = None
+overloadPerCpu = None
 
 factories = None
 hs06PerMachine = None
@@ -64,6 +65,7 @@ mbPerMachine = None
 
 numVirtualmachines = None
 numCpus = None
+cpuCount = None
 spaceName = None
 udpTimeoutSeconds = None
 vacVersion = None
@@ -78,14 +80,15 @@ volumeGroup = None
 def readConf():
       global cycleSeconds, deleteOldFiles, domainType, \
              factories, hs06PerMachine, mbPerMachine, \
-             numVirtualmachines, numCpus, spaceName, udpTimeoutSeconds, vacVersion, \
+             numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
-             volumeGroup
+             volumeGroup, overloadPerCpu
 
       # reset to defaults
       cycleSeconds = 60
-      deleteOldFiles = True
+      deleteOldFiles = True      
       domainType = 'kvm'
+      overloadPerCpu = 2.0
 
       factories = []
       hs06PerMachine = None
@@ -93,6 +96,7 @@ def readConf():
 
       numVirtualmachines = None
       numCpus = None
+      cpuCount = countProcProcessors()
       spaceName = None
       udpTimeoutSeconds = 5.0
       vacVersion = '0.0.0'
@@ -137,22 +141,26 @@ def readConf():
           domainType = parser.get('settings','domain_type').strip()
 
       if parser.has_option('settings', 'total_machines'):
-          # Mandatory number of VMs for Vac to auto-define.
+          # Number of VMs for Vac to auto-define.
           # No longer use [virtualmachine ...] sections!
           numVirtualmachines = int(parser.get('settings','total_machines').strip())
       else:
-          return 'Must give total_machines in [settings]!'
+          numVirtualmachines = cpuCount
                                                  
       if parser.has_option('settings', 'cpu_total'):
           # Option limit on number of processors Vac can allocate.
           # Defaults to count from /proc/cpuinfo
           numCpus = int(parser.get('settings','cpu_total').strip())
           
-          if numCpus > countProcProcessors():
+          if numCpus > cpuCount:
            return 'cpu_total cannot be greater than number of processors!'
       else:
-          numCpus = countProcProcessors()
+          numCpus = cpuCount
                                                  
+      if parser.has_option('settings', 'overload_per_cpu'):
+          # Multiplier to calculate overload veto against creating more VMs
+          overloadPerCpu = float(parser.get('settings','overload_per_cpu'))
+             
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
           volumeGroup = parser.get('settings','volume_group').strip()
@@ -315,7 +323,22 @@ def readConf():
 
       # Finished successfully, with no error to return
       return None
+
+def loadAvg():
+      avg = 0.0
       
+      try:
+        f = open('/proc/loadavg')
+      except:
+        print 'Failed to open /proc/loadavg'
+        return avg
+        
+      # Use [0], the one minute load average
+      avg = float(f.readline().split(' ')[0])
+      
+      f.close()
+      return avg
+
 def countProcProcessors():
       numProcessors = 0
 

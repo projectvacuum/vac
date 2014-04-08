@@ -1,4 +1,4 @@
-.TH vac.conf 5 "Mar 2014" "vac.conf" "Vac Manual"
+.TH vac.conf 5 "Apr 2014" "vac.conf" "Vac Manual"
 .SH NAME
 .B vac.conf
 \- Vac configuration file
@@ -91,7 +91,8 @@ adding a hyphen and the VM number to the hostname component of its fully
 qualified domain name. For example, factory1.example.com would have
 factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
 addresses are formed with the prefix 56:4D as the first two bytes, and
-the four bytes of the IP address as the remaining four bytes. 
+the four bytes of the IP address as the remaining four bytes. The 
+default value is the number of processors counted using /proc/cpuinfo.
 
 .B cpu_total 
 is derived from /proc/cpuinfo by default and does not usually need to be 
@@ -102,6 +103,14 @@ even if total_machines is higher. This allows you to reduce the number
 of running VMs on a factory machine without having to kill running VMs.
 Instead, they are allowed to finish one by one and are only recreated if 
 cpu_total allows. 
+
+.B overload_per_cpu
+sets the level of load per processor on the factory machine which will 
+prevent the creation of more VMs. The number of processors is counted
+using /proc/cpuinfo and the one minute load average is taken from 
+/proc/loadavg. VMs typically generate high loads during their initial
+set up, and this mechanism throttles the VM creation rate in response
+to the current overall load figure. Default 2.0.
 
 .B volume_group
 can be used to set the volume group to be searched for a logical volume
