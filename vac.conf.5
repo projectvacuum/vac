@@ -46,8 +46,9 @@ machines.
 .B vac_space
 is required and gives the name of this Vac space. A single space will be
 sufficient for many sites. The space name should be a fully qualified domain
-name, like vac.example.com and may be used as a virtual CE name in some
-monitoring and accounting systems.
+name, like vac01.example.com and may be used as a virtual CE name in some
+monitoring and accounting systems. It should not be the canonical hostname
+of any of the factory machines.
 
 .B cycle_seconds
 is how long to wait before re-evaluating state of VMs in the main loop again.

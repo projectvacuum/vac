@@ -1048,9 +1048,10 @@ class VacVM:
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
-    <serial type='pty'>
-      <target port='0'/>
-    </serial>
+    <serial type="file">
+      <source path="/var/lib/vac/machines/"""  + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + """/console.log"/>
+      <target port="1"/>
+    </serial>                    
     <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'/>
     <video>
       <model type='vga' vram='9216' heads='1'/>
