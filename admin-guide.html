@@ -150,18 +150,29 @@ The configuration file /etc/vac.conf uses the Python ConfigParser syntax,
 which is similar to MS
 Windows INI files. The file is divided into sections, with each section
 name in square brackets. For example: [settings]. Each section contains
-a series of option=value pairs.
+a series of option=value pairs. Sections with the same name are merged
+and if options are duplicated, later values overwrite values given
+earlier. 
+Any configuration file ending in .conf in the
+directory /etc/vac.d will also be read. These files are read in 
+alphanumeric order, and then /etc/vac.conf is read if present.
 
 <p>
-For convenience, two more optional files are read if they exist:
-<ul>
-<li>/etc/vac-factories.conf
-<li>/etc/vac-targetshares.conf
-</ul>
+So in /etc/vac.d/, options from space.conf will be override any given
+in site.conf, but themselves be overwritten by options from 
+subspace.conf or vacfactory.conf .
 
 <p>
-These files are named after important sections, but sections can be placed
-in any of the three files, or all placed in /etc/vac.conf
+One
+useful approach is to populate /etc/vac.d with a management system
+like Puppet, and only create /etc/vac.conf manually to override the
+state on individual development machines or if a machine is being
+drained of work for maintenance. Site-wide configuration, such 
+as vmtype definitions, can be included in /etc/vac.d files present on 
+every factory, but host specific options, such as HEPSPEC06 values 
+and the total number of VMs to create, can be given in files which
+are specific to particular subsets of machines. Vac will merge
+all of this information as outlined above.
 
 <h3>Xen vs kvm</h3>
 
@@ -384,8 +395,8 @@ vmtype.
 
 <p>
 For ease of management, the [factories] section can be placed in
-/etc/vac-factories.conf which could be automatically generated and
-maintained from another source, such as the site's assets database.
+a configuration file in /etc/vac.d which could be automatically generated 
+and maintained from another source, such as the site's assets database.
 
 <h3>Setting up vmtypes</h3>
 
@@ -406,7 +417,7 @@ when deciding which vmtype to start as VMs become available.
 
 <p>
 For ease of management, the [targetshares] section can be placed in
-a separate file, /etc/vac-targetshares.conf, which is convenient if
+a file in /etc/vac.d, which is convenient if
 it is generated automatically or frequently edited by hand and pushed
 out to the factory machines.
 

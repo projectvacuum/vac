@@ -14,16 +14,13 @@ utility command to find default values.
 vac.conf uses the Python ConfigParser syntax, which is similar to MS
 Windows INI files. The file is divided into sections, with each section
 name in square brackets. For example: [settings]. Each section contains
-a series of option=value pairs.
+a series of option=value pairs. Sections with the same name are merged
+and if options are duplicated, later values overwrite values given
+earlier.
 
-For ease of management, two more optional files are read if they exist:
-.br
-"/etc/vac-factories.conf"
-.br 
-"/etc/vac-targetshares.conf"
-.PP
-These files are named after important sections, but sections can be placed
-in any of the three files, or all placed in /etc/vac.conf
+For ease of management, any configuration file ending in .conf in the
+directory /etc/vac.d will also be read. These files are read in 
+alphanumeric order, and then /etc/vac.conf is read if present. 
 
 .SH NFS SHARED DIRECTORIES
 

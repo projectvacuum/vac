@@ -117,15 +117,19 @@ def readConf():
       
       parser = RawConfigParser()
 
-      # Main configuration file, including global [settings] section
+      # Look for configuration files in /etc/vac.d
+      try:
+        confFiles = os.listdir('/etc/vac.d')
+      except:
+        pass 
+      else:
+        for oneFile in confFiles.sort():
+          if oneFile[-5:] == '.conf':
+            parser.read('/etc/vac.d/' + oneFile)
+
+      # Standalone configuration file, read last in case of manual overrides
       parser.read('/etc/vac.conf')
       
-      # Optional file with [factories] listing all factories in this vac space
-      parser.read('/etc/vac-factories.conf')
-
-      # Optional file with [targetshares] for all factories in this vac space
-      parser.read('/etc/vac-targetshares.conf')
-
       # general settings from [Settings] section
 
       if not parser.has_section('settings'):
