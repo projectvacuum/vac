@@ -2,6 +2,8 @@
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly
 - Add overload_per_cpu to stop thashing when cvmfs-intensive VMs start
+- Use /etc/vac.d/*.conf and /etc/vac.conf as configuration files 
+  and ignore /etc/vac-factories.conf and /etc/vac-targetshares.conf 
 ==================== Changes in Vac version 0.15.0 =====================
 - Add vm_model option in vmtype sections (default cernvm2)
 - Add cernvm3 vm_model and uCernVM 3 support

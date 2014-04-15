@@ -123,7 +123,7 @@ def readConf():
       except:
         pass 
       else:
-        for oneFile in confFiles.sort():
+        for oneFile in sorted(confFiles):
           if oneFile[-5:] == '.conf':
             parser.read('/etc/vac.d/' + oneFile)
 
