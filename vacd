@@ -255,7 +255,7 @@ def vacOneCycle():
    runningCount  = 0
    startedOne    = False
    
-   for vmname in VAC.virtualmachines:
+   for vmname in sorted(VAC.virtualmachines):
    
      vm = VAC.VacVM(vmname)
 
@@ -475,7 +475,7 @@ def vacResponder():
           
          VAC.logLine("Received " + data + " from " + str(addr))
     
-         for vmName in VAC.virtualmachines:
+         for vmName in sorted(VAC.virtualmachines):
          
            # initialise defaults in case no vmtype directories for this vmName
            vmState      = VAC.VacState.shutdown
