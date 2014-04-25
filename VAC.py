@@ -622,7 +622,7 @@ class VacVM:
 
       blahpFile.write(time.strftime('"timestamp=%Y-%m-%d %H:%M:%S" ', time.gmtime()) + 
               '"userDN=' + userDN + '" ' + userFQANField +
-              '"ceID=' + spaceName + '" ' +
+              '"ceID=' + spaceName + '/vac-' + self.vmtypeName + '" ' +
               '"jobID=' + self.uuidStr + '" ' +
               '"lrmsID=' + self.uuidStr + '" ' +
               '"localUser=99" ' +
