@@ -33,6 +33,7 @@
 #  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
 #
 
+import re
 import os
 import sys
 import uuid
@@ -53,6 +54,7 @@ natNetwork     = '169.254.0.0'
 natNetmask     = '255.255.0.0'
 natPrefix      = '169.254.169.'
 factoryAddress = '169.254.169.254'
+udpBufferSize  = 16777216
 
 cycleSeconds = None
 deleteOldFiles = None
@@ -415,6 +417,19 @@ def setProcessName(processName):
    except:
      logLine('Failed setting process name in argv[] to ' + processName)
      return
+
+def setSockBufferSize(sock):
+
+   try:
+     if int(open('/proc/sys/net/core/rmem_max', 'r').readline().strip()) < udpBufferSize:
+       open('/proc/sys/net/core/rmem_max', 'w').write(str(udpBufferSize) + '\n')
+   except:
+     pass
+
+   try:
+     sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, udpBufferSize)
+   except:
+     logLine('Failed setting RCVBUF to %d' % udpBufferSize)
               
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
@@ -1180,6 +1195,38 @@ def createNetwork(conn):
       # we never get here...
       return False     
      
+def checkIpTables(bridgeName):
+      # Do a quick check of the output of iptables-save, looking for
+      # signs that the NAT rules we need are there and haven't been
+      # removed by something like Puppet, and log the results.
+      #
+      # bridgeName should normally be virbr1 (libvirt makes virbr0)
+      #
+
+      try:
+        f = os.popen('/sbin/iptables-save', 'r')
+        iptablesSave = f.read()
+        f.close()
+      except:
+        logLine('Failed to run /sbin/iptables-save')
+        return
+      
+      iptablesPatterns = [ 
+                           '%s.*tcp.*MASQUERADE'           % natNetwork,
+                           '%s.*udp.*MASQUERADE'           % natNetwork,
+                           '%s.*udp.*53.*ACCEPT'           % bridgeName,
+                           '%s.*udp.*67.*ACCEPT'           % bridgeName,
+                           '%s.*%s.*ACCEPT|%s.*%s.*ACCEPT' % (natNetwork, bridgeName, bridgeName, natNetwork),
+                           '%s.*%s.*ACCEPT'                % (bridgeName, bridgeName),
+                           '%s.*CHECKSUM'		   % bridgeName
+                         ]
+      
+      for pattern in iptablesPatterns:
+        if re.search(pattern, iptablesSave) is None:
+          logLine('Failed to match "%s" in output of iptables-save. Have the NAT rules been removed?' % pattern)
+
+      logLine('iptables NAT check passed for ' + bridgeName)
+
 def createFile(targetname, contents, mode=None):
       # Create a text file containing contents in the vac tmp directory
       # then move it into place. Rename is an atomic operation in POSIX,

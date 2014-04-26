@@ -52,7 +52,7 @@ def vmtypeResults(vmtypeName):
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    sock.settimeout(VAC.udpTimeoutSeconds)
-   sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 16777216)
+   VAC.setSockBufferSize(sock)
 
    totalcount    = 0
    runningcount  = 0
@@ -179,7 +179,7 @@ def scanFactories(options, factoriesList):
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    sock.settimeout(VAC.udpTimeoutSeconds)
-   sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 16777216)
+   VAC.setSockBufferSize(sock)
 
    start = time.time()
    totalcount    = 0
@@ -284,6 +284,7 @@ def rawFactory(factoryName):
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    sock.settimeout(VAC.udpTimeoutSeconds)
+   VAC.setSockBufferSize(sock)
 
    sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
                           'method':'status'}),(factoryName,995))

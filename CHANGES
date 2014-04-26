@@ -4,6 +4,12 @@
 - Add overload_per_cpu to stop thashing when cvmfs-intensive VMs start
 - Use /etc/vac.d/*.conf and /etc/vac.conf as configuration files 
   and ignore /etc/vac-factories.conf and /etc/vac-targetshares.conf 
+- vacd processes VMs in numeric order to improve predictability
+- Change CeID in BLAHP accounting logs to 'space_name/vac-vmtype' format
+- Add setSockBufferSize() which increases system max if necessary and
+  sets per-socket buffer size for receiving UDP
+- Add quick check of iptables-save output in case NAT rules created by
+  libvirt have been removed
 ==================== Changes in Vac version 0.15.0 =====================
 - Add vm_model option in vmtype sections (default cernvm2)
 - Add cernvm3 vm_model and uCernVM 3 support
