@@ -59,8 +59,12 @@ def vmtypeResults(vmtypeName):
    startingcount = 0
 
    for factoryName in VAC.factories:
-      sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(),
+      try:
+        sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(),
                               'method':'status'}),(factoryName,995))
+      except:
+        print 'Failed sending UDP query to ' + VAC.canonicalFQDN(factoryName)
+
    while True:
    
       try:
@@ -187,8 +191,12 @@ def scanFactories(options, factoriesList):
    startingcount = 0
 
    for factoryName in factoriesList:
-      sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(),
+      try:
+        sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(),
                               'method':'status'}),(VAC.canonicalFQDN(factoryName), 995))
+      except:
+        print 'Failed sending UDP query to ' + VAC.canonicalFQDN(factoryName)
+      
    while True:
    
       try:
@@ -286,13 +294,17 @@ def rawFactory(factoryName):
    sock.settimeout(VAC.udpTimeoutSeconds)
    VAC.setSockBufferSize(sock)
 
-   sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(), 
+   try:
+     sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(), 
                           'method':'status'}),(VAC.canonicalFQDN(factoryName), 995))
+   except:
+     print 'Failed sending UDP query to ' + VAC.canonicalFQDN(factoryName)
 
-   n = 1 
+   else:
+     n = 1 
 
-   while True:
-      try:
+     while True:
+       try:
            data, addr = sock.recvfrom(10240)
                       
            try:
@@ -310,7 +322,7 @@ def rawFactory(factoryName):
              
            n += 1
 
-      except socket.error as msg:
+       except socket.error as msg:
            break
 
 #
