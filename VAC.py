@@ -241,12 +241,12 @@ def readConf():
              if parser.has_option(sectionName, 'root_device'):
                  vmtype['root_device'] = parser.get(sectionName, 'root_device')
              else:
-                 vmtype['root_device'] = 'hda'
+                 vmtype['root_device'] = 'vda'
              
              if parser.has_option(sectionName, 'scratch_device'):
                  vmtype['scratch_device'] = parser.get(sectionName, 'scratch_device')
              else:
-                 vmtype['scratch_device'] = 'hdb'
+                 vmtype['scratch_device'] = 'vdb'
 
              if parser.has_option(sectionName, 'rootpublickey'):
                  vmtype['rootpublickey'] = parser.get(sectionName, 'rootpublickey')
@@ -927,8 +927,8 @@ class VacVM:
           logLine('copy of disk image fails!')
           raise NameError('copy of disk image fails!')
 
-   def makeScratchDisk(self):
-      os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])      
+   def measureScratchDisk(self):
+#      os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])
 
       try:
        # get logical volume size in GB (1000^3 not 1024^3)
@@ -977,7 +977,7 @@ class VacVM:
         return 'failed to make root disk image'
         
       if 'scratch_volume' in virtualmachines[self.name]:
-          self.makeScratchDisk()
+          self.measureScratchDisk()
           if domainType == 'kvm':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
                                   " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +

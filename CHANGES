@@ -10,6 +10,8 @@
   sets per-socket buffer size for receiving UDP
 - Add quick check of iptables-save output in case NAT rules created by
   libvirt have been removed
+- The default disk devices are now /dev/vda and /dev/vdb, not hda/hdb
+- The vdb scratch disk is no longer formatted by Vac, just measured
 ==================== Changes in Vac version 0.15.0 =====================
 - Add vm_model option in vmtype sections (default cernvm2)
 - Add cernvm3 vm_model and uCernVM 3 support
