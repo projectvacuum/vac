@@ -1215,6 +1215,8 @@ def checkIpTables(bridgeName):
       #
       # bridgeName should normally be virbr1 (libvirt makes virbr0)
       #
+      
+      anyMissing = False
 
       try:
         f = os.popen('/sbin/iptables-save', 'r')
@@ -1227,8 +1229,8 @@ def checkIpTables(bridgeName):
       iptablesPatterns = [ 
                            '%s.*tcp.*MASQUERADE'           % natNetwork,
                            '%s.*udp.*MASQUERADE'           % natNetwork,
-                           '%s.*udp.*53.*ACCEPT'           % bridgeName,
-                           '%s.*udp.*67.*ACCEPT'           % bridgeName,
+                           '%s.*udp.*ACCEPT'               % bridgeName,
+                           '%s.*tcp.*ACCEPT'               % bridgeName,
                            '%s.*%s.*ACCEPT|%s.*%s.*ACCEPT' % (natNetwork, bridgeName, bridgeName, natNetwork),
                            '%s.*%s.*ACCEPT'                % (bridgeName, bridgeName),
                            '%s.*CHECKSUM'		   % bridgeName
@@ -1236,9 +1238,13 @@ def checkIpTables(bridgeName):
       
       for pattern in iptablesPatterns:
         if re.search(pattern, iptablesSave) is None:
+          anyMissing = True
           logLine('Failed to match "%s" in output of iptables-save. Have the NAT rules been removed?' % pattern)
 
-      logLine('iptables NAT check passed for ' + bridgeName)
+      if anyMissing:
+        logLine('iptables NAT check failed for ' + bridgeName)
+      else:
+        logLine('iptables NAT check passed for ' + bridgeName)
 
 def createFile(targetname, contents, mode=None):
       # Create a text file containing contents in the vac tmp directory

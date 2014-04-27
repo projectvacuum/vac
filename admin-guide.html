@@ -268,7 +268,7 @@ networking.
 
 <p>
 You can check the vac private network exists with the command 
-virsh net-list which should list the vac_169.254.0.0 network and probably
+virsh net-list which should list the vac_169.254.0.0 network and
 the &quot;default&quot; network defined by libvirtd. The Vac network should
 be using the virbr1 virtual interface, with virbr0 still used by the default
 network.
@@ -330,6 +330,13 @@ COMMIT
 
 This approach allows you to integrate the extra rules needed for the VMs
 private network into any existing rules you use at your site.
+
+<p>
+Vac performs a quick check of the current iptables rules at the start of each
+cycle using the iptables-save command. If any obvious problems are identified, 
+then &quot;Failed to match XXX in output of iptables-save.
+Have the NAT rules been removed?&quot; lines will be included in
+/var/log/vacd-factory .
 
 <h3>Logical volumes</h3>
 
