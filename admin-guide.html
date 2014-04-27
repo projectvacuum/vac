@@ -336,7 +336,9 @@ Vac performs a quick check of the current iptables rules at the start of each
 cycle using the iptables-save command. If any obvious problems are identified, 
 then &quot;Failed to match XXX in output of iptables-save.
 Have the NAT rules been removed?&quot; lines will be included in
-/var/log/vacd-factory .
+/var/log/vacd-factory . However, if you have an unusual set of rules, these 
+checks may produce false warnings, and they are not an exhaustive check that
+the rules you have are sufficient for Vac.
 
 <h3>Logical volumes</h3>
 
@@ -347,7 +349,7 @@ to provide additional, faster disk space. Normally these will be mounted at
 
 <p>By
 default, the block device associated with the logical volume is available to
-the VM is hdb, but this can changed with the scratch_device option in a
+the VM is vdb, but this can changed with the scratch_device option in a
 [vmtype ...] section. 
 
 <p>
@@ -371,8 +373,8 @@ lvcreate --name factory1-02.example.com -L 25G vac_volume_group
 
 <p>
 During the creation of each virtual machine instance, Vac will identify the 
-logical volume it has been told to use, (re)format it, and provide it to the
-VM as hdb by default.
+logical volume it has been told to use, measure its size using lvs, and 
+provide it to the VM as vdb by default.
  
 <h3>Installation: tar vs RPM</h3>
 
