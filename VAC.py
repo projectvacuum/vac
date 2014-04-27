@@ -431,7 +431,7 @@ def setSockBufferSize(sock):
    except:
      logLine('Failed setting RCVBUF to %d' % udpBufferSize)
    
-def canonicalFQDN(hostName)
+def canonicalFQDN(hostName):
    if '.' in hostName:
      # Assume ok if already contains '.'
      return hostName
