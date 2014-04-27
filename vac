@@ -187,8 +187,8 @@ def scanFactories(options, factoriesList):
    startingcount = 0
 
    for factoryName in factoriesList:
-      sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
-                              'method':'status'}),(factoryName,995))
+      sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(),
+                              'method':'status'}),(VAC.canonicalFQDN(factoryName), 995))
    while True:
    
       try:
@@ -286,8 +286,8 @@ def rawFactory(factoryName):
    sock.settimeout(VAC.udpTimeoutSeconds)
    VAC.setSockBufferSize(sock)
 
-   sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
-                          'method':'status'}),(factoryName,995))
+   sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(), 
+                          'method':'status'}),(VAC.canonicalFQDN(factoryName), 995))
 
    n = 1 
 

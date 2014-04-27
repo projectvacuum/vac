@@ -430,6 +430,18 @@ def setSockBufferSize(sock):
      sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, udpBufferSize)
    except:
      logLine('Failed setting RCVBUF to %d' % udpBufferSize)
+   
+def canonicalFQDN(hostName)
+   if '.' in hostName:
+     # Assume ok if already contains '.'
+     return hostName
+     
+   try:
+     # Try to get DNS domain from current host's FQDN
+     return hostName + '.' + os.uname()[1].split('.',1)[1]
+   except:
+     # If failed, then just return what we were given
+     return hostName
               
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
@@ -928,7 +940,6 @@ class VacVM:
           raise NameError('copy of disk image fails!')
 
    def measureScratchDisk(self):
-#      os.system('mkfs -q -t ext3 ' + virtualmachines[self.name]['scratch_volume'])
 
       try:
        # get logical volume size in GB (1000^3 not 1024^3)
@@ -948,6 +959,8 @@ class VacVM:
 
       try:
         dom = conn.lookupByName(self.name)
+        dom.shutdown()
+        time.sleep(30.0)
         dom.destroy()
       except:
         pass
@@ -1258,7 +1271,7 @@ def cleanupByNameUUID(name, vmtypeName, uuidStr):
    conn = libvirt.open(None)
    if conn == None:
       print 'Failed to open connection to the hypervisor'
-      raise
+      return
           
    try:
       dom = conn.lookupByUUIDString(uuidStr)
@@ -1284,7 +1297,7 @@ def cleanupExports():
    conn = libvirt.open(None)
    if conn == None:
         print 'Failed to open connection to the hypervisor'
-        raise
+        return
 
    f = os.popen('exportfs', 'r')
    exportPath = f.readline().strip()

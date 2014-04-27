@@ -12,6 +12,7 @@
   libvirt have been removed
 - The default disk devices are now /dev/vda and /dev/vdb, not hda/hdb
 - The vdb scratch disk is no longer formatted by Vac, just measured
+- The vac utility now canonicalizes host names given on the command line
 ==================== Changes in Vac version 0.15.0 =====================
 - Add vm_model option in vmtype sections (default cernvm2)
 - Add cernvm3 vm_model and uCernVM 3 support
