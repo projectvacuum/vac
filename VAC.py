@@ -1148,8 +1148,8 @@ class VacVM:
       
       try:
            dom = conn.createXML(xmldesc, 0)           
-      except:
-           logLine('Exception when trying to create VM domain for ' + self.name)
+      except Exception as e:
+           logLine('Exception ("' + str(e) + '") when trying to create VM domain for ' + self.name)
            conn.close()
            return 'exception when trying to create VM domain'
            
