@@ -265,7 +265,7 @@ def scanFactories(options, factoriesList):
 
                 print (
                        vmName + ' ' +
-                       ((response['vmtype'] + 12 * ' ') if 'vmtype' in response and response['vmtype'] else 10 * '-')[0:12] + ' ' + 
+                       ((response['vmtype'] + 14 * ' ') if 'vmtype' in response and response['vmtype'] else 10 * '-' + '    ')[0:14] + ' ' + 
                        stateStr + '  ' + 
                        hoursStr[0:21] + 
                        percentStr + "  %.2fs" % (time.time() - start) + 
