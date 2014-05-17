@@ -602,7 +602,7 @@ def vacResponder():
                 'cookie'	: query['cookie'],
                 'method'	: query['method'],
                 'vmtypes'	: vmtypesDict,
-                'factoryname'	: socket.gethostbyaddr(socket.gethostname())[0]
+                'factoryname'	: os.uname()[1]
                               }), addr)
 
            except socket.error as msg:
