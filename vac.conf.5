@@ -7,20 +7,22 @@
 is a daemon which implements the Vacuum model on a factory (hypervisor)
 machine. vacd reads its configuration from
 .B /etc/vac.conf
-and this file is also read by the
+and .conf files in
+.B /etc/vac.d
+and these files are also read by the
 .B vac
 utility command to find default values.
 
-vac.conf uses the Python ConfigParser syntax, which is similar to MS
-Windows INI files. The file is divided into sections, with each section
+The configuration files use the Python ConfigParser syntax, which is similar
+to MS Windows INI files. The file is divided into sections, with each section
 name in square brackets. For example: [settings]. Each section contains
 a series of option=value pairs. Sections with the same name are merged
 and if options are duplicated, later values overwrite values given
 earlier.
 
 For ease of management, any configuration file ending in .conf in the
-directory /etc/vac.d will also be read. These files are read in 
-alphanumeric order, and then /etc/vac.conf is read if present. 
+directory /etc/vac.d will be read, in 
+alphanumeric order by name, and then /etc/vac.conf is read if present. 
 
 .SH NFS SHARED DIRECTORIES
 
