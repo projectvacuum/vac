@@ -145,24 +145,27 @@ def readConf():
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
           domainType = parser.get('settings','domain_type').strip()
+          
+      if parser.has_option('settings', 'cpu_total'):
+          # Option limit on number of processors Vac can allocate.
+          numCpus = int(parser.get('settings','cpu_total').strip())
 
+          # /proc/cpuinfo wrong on Xen, so override counted number          
+          if domainType == 'xen':
+           cpuCount = numCpus
+          # Otherwise check setting against counted number
+          elif numCpus > cpuCount:
+           return 'cpu_total cannot be greater than number of processors!'
+      else:
+          # Defaults to count from /proc/cpuinfo
+          numCpus = cpuCount
+                                                 
       if parser.has_option('settings', 'total_machines'):
           # Number of VMs for Vac to auto-define.
           # No longer use [virtualmachine ...] sections!
           numVirtualmachines = int(parser.get('settings','total_machines').strip())
       else:
           numVirtualmachines = cpuCount
-                                                 
-      if parser.has_option('settings', 'cpu_total'):
-          # Option limit on number of processors Vac can allocate.
-          # Defaults to count from /proc/cpuinfo
-          numCpus = int(parser.get('settings','cpu_total').strip())
-          
-          # Unless on Xen, check numCpus vs counted number
-          if numCpus > cpuCount and not os.path.isdir('/proc/xen'):
-           return 'cpu_total cannot be greater than number of processors!'
-      else:
-          numCpus = cpuCount
                                                  
       if parser.has_option('settings', 'overload_per_cpu'):
           # Multiplier to calculate overload veto against creating more VMs
