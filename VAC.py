@@ -158,7 +158,8 @@ def readConf():
           # Defaults to count from /proc/cpuinfo
           numCpus = int(parser.get('settings','cpu_total').strip())
           
-          if numCpus > cpuCount:
+          # Unless on Xen, check numCpus vs counted number
+          if numCpus > cpuCount and not os.path.isdir('/proc/xen'):
            return 'cpu_total cannot be greater than number of processors!'
       else:
           numCpus = cpuCount
