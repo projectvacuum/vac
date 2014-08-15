@@ -1,5 +1,6 @@
 ==================== Changes in Vac version 0.17.0 =====================
 - Use uname() rather than socket to get hostname in Vac responder
+- Force VNC to listen on 127.0.0.1 only
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

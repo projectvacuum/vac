@@ -1084,7 +1084,7 @@ class VacVM:
       <source path="/var/lib/vac/machines/"""  + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + """/console.log"/>
       <target port="1"/>
     </serial>                    
-    <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'/>
+    <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
     <video>
       <model type='vga' vram='9216' heads='1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
@@ -1125,7 +1125,7 @@ class VacVM:
     <console type='pty'>
       <target type='xen' port='0'/>
     </console>
-    <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb' />
+    <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
     <interface type='network'>
       <mac address='""" + mac + """'/>
       <source network='vac_""" + natNetwork + """'/>
