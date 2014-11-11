@@ -392,103 +392,19 @@ def vacOneCycle():
    VAC.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount))
    os.chmod('/var/lib/vac/counts', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-def vacResponder():
+def sendStatusResponse(sock, query):
 
-   si = file('/dev/null', 'r')
-   os.dup2(si.fileno(), sys.stdin.fileno())
-
-   so = file('/var/log/vacd-responder', 'a+')
-   os.dup2(so.fileno(), sys.stdout.fileno())
-          
-   se = file('/var/log/vacd-responder', 'a+', 0)     
-   os.dup2(se.fileno(), sys.stderr.fileno())
- 
-   VAC.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n')
-
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   VAC.setSockBufferSize(sock)
-   sock.settimeout(60.0)
-   sock.bind(('', 995))
-   
-   VAC.logLine('vac responder starts')
-   
-   VAC.setProcessName('vacd-responder')
-
-   while True:
-   
-     try:
-       close(so)
-     except:
-       pass
-           
-     so = file('/var/log/vacd-responder', 'a+')
-     os.dup2(so.fileno(), sys.stdout.fileno())
-          
-     try:
-       close(se)
-     except:
-       pass
-
-     se = file('/var/log/vacd-responder', 'a+', 0)     
-     os.dup2(se.fileno(), sys.stderr.fileno())
-
-     readConfError = VAC.readConf()
-
-     if readConfError:
-       VAC.logLine('Reading configuration fails with: ' + readConfError)
-       time.sleep(60.0)
-       continue
-          
-     try:
-       pr = open('/var/lib/vac/responder.pid', 'r')
-       pid = int(pr.read().strip())
-       pr.close()
-       
-       if pid != os.getpid():
-         VAC.logLine('os.getpid ' + os.getpid() + ' does not match responder.pid ' + pid + ' - exiting')
-         break
-                
-     except:
-       VAC.logLine('no responder.pid - exiting')
-       break
-
-     # so log file is updated before we start waiting        
-     sys.stdout.flush()
-     sys.stderr.flush()
-
-     # Update responder heartbeat file
-     VAC.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
-     os.chmod('/var/lib/vac/responder-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
-     try:
-        data, addr = sock.recvfrom(1024)
-     except socket.error as msg:
-        continue;
-
-     try:
-        query = json.loads(data)
-     except:
-        continue
-     
-     if ('space'  in query and 
-         'cookie' in query and 
-         'method' in query and 
-         query['space']  == VAC.spaceName and
-         query['method'] == 'status'):
-          
-         VAC.logLine("Received " + data + " from " + str(addr))
-    
-         for vmName in sorted(VAC.virtualmachines):
+   for vmName in sorted(VAC.virtualmachines):
          
-           # initialise defaults in case no vmtype directories for this vmName
-           vmState      = VAC.VacState.shutdown
-           vmCtime      = None
-           vmVmtypeName = None
-           vmHS06       = VAC.hs06PerMachine
+      # initialise defaults in case no vmtype directories for this vmName
+      vmState      = VAC.VacState.shutdown
+      vmCtime      = None
+      vmVmtypeName = None
+      vmHS06       = VAC.hs06PerMachine
 
-           vmtypesDict = {}
-           
-           for vmtypeName, vmtype in VAC.vmtypes.iteritems():
+      vmtypesDict = {}
+      
+      for vmtypeName, vmtype in VAC.vmtypes.iteritems():
 
               try:
                   dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
@@ -589,9 +505,9 @@ def vacResponder():
                     if vmState == VAC.VacState.running:
                       vmHS06 = hs06
                                                         
-           VAC.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
+      VAC.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
 
-           try:
+      try:
              sock.sendto(json.dumps({
                 'version'	: VAC.vacVersion,
                 'space'		: VAC.spaceName,
@@ -605,8 +521,233 @@ def vacResponder():
                 'factoryname'	: os.uname()[1]
                               }), addr)
 
-           except socket.error as msg:
+      except socket.error as msg:
              pass
+
+def sendTotalsResponse(sock, query):
+# THIS NEEDS REWORKING STILL
+   for vmtypeName, vmtype in VAC.vmtypes.iteritems():
+   
+     # Go through the VMs, counting up things for this vmtype
+     for vmName in sorted(VAC.virtualmachines):
+         
+         # initialise defaults in case no vmtype directories for this vmName
+#         vmState      = VAC.VacState.shutdown
+#         vmCtime      = None
+#         vmVmtypeName = None
+#         vmHS06       = VAC.hs06PerMachine
+#
+#         vmtypesDict = {}
+      
+         try:
+                  dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
+         except:
+                  continue
+
+         newestUUIDByVmtype = None
+         newestCtime        = None
+     
+         for onedir in dirslist:
+
+            try:
+                     ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
+            except:
+                     pass
+            else:
+                     if not newestUUIDByVmtype or (ctime > newestCtime):
+                       newestCtime        = ctime
+                       newestUUIDByVmtype = onedir
+
+            if newestUUIDByVmtype:
+                
+                try:
+                  startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/started')
+                  timeStarted = int(startedStat.st_ctime)
+                except:
+                  timeStarted = None
+                                    
+                try:
+                  heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat')
+                  timeHeartbeat = int(heartbeatStat.st_ctime)
+                except:
+                  timeHeartbeat = None
+
+                try:                  
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machinefeatures/hs06', 'r')
+                  hs06 = float(f.readline().strip())
+                  f.close()
+                except:
+                  hs06 = VAC.hs06PerMachine
+
+                try:                  
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat', 'r')
+                  oneLine = f.readline()
+                  f.close()
+                                    
+                  cpuSeconds = int(oneLine.split(' ')[0])
+                  try:
+                    cpuPercentage = float(oneLine.split(' ')[1])
+                  except:
+                    cpuPercentage = None
+                    
+                except:
+                  cpuSeconds    = None
+                  cpuPercentage = None
+
+                hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
+
+                # some hardcoded timeouts in case old files are left lying around 
+                # this means that old files are ignored when working out the state
+                if (timeStarted and 
+                    timeHeartbeat and 
+                    (timeHeartbeat > int(time.time() - 3600)) and
+                    not hasFinished):
+                          newestVmState = VAC.VacState.running
+                elif not timeStarted and (newestCtime > int(time.time() - 3600)):
+                          newestVmState = VAC.VacState.starting
+                else:
+                          newestVmState = VAC.VacState.shutdown
+
+                try:
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
+                  shutdownMessage = f.readline().strip()
+                  f.close()
+                  timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + 
+                                                    '/shared/machineoutputs/shutdown_message').st_ctime)
+                except:
+                  shutdownMessage     = None                                    
+                  timeShutdownMessage = None
+                                
+                vmtypesDict[vmtypeName] = {
+                                            'uuid'		: newestUUIDByVmtype,
+                                            'created'		: newestCtime,
+                                            'started'		: timeStarted,
+                                            'heartbeat'		: timeHeartbeat,
+                                            'cpuseconds'	: cpuSeconds,
+                                            'cpupercentage'	: cpuPercentage,
+                                            'message'		: shutdownMessage,
+                                            'messagetime'	: timeShutdownMessage
+                                          }
+                                  
+                # if this is also the newest one for the whole VM, then save for later
+                if not vmCtime or (newestCtime > vmCtime):
+                    vmCtime      = newestCtime
+                    vmState      = newestVmState
+                    vmVmtypeName = vmtypeName
+
+                    # override the factory-wide default in case it changed
+                    if vmState == VAC.VacState.running:
+                      vmHS06 = hs06
+                                                        
+      VAC.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
+
+      try:
+             sock.sendto(json.dumps({
+                'version'	: VAC.vacVersion,
+                'space'		: VAC.spaceName,
+                'hs06'		: vmHS06,
+                'vmname'	: vmName,
+                'state'		: vmState,
+                'vmtype'	: vmVmtypeName,
+                'cookie'	: query['cookie'],
+                'method'	: query['method'],
+                'vmtypes'	: vmtypesDict,
+                'factoryname'	: os.uname()[1]
+                              }), addr)
+
+      except socket.error as msg:
+             pass
+
+def vacResponder():
+
+   si = file('/dev/null', 'r')
+   os.dup2(si.fileno(), sys.stdin.fileno())
+
+   so = file('/var/log/vacd-responder', 'a+')
+   os.dup2(so.fileno(), sys.stdout.fileno())
+          
+   se = file('/var/log/vacd-responder', 'a+', 0)     
+   os.dup2(se.fileno(), sys.stderr.fileno())
+ 
+   VAC.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n')
+
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   VAC.setSockBufferSize(sock)
+   sock.settimeout(60.0)
+   sock.bind(('', 995))
+   
+   VAC.logLine('vac responder starts')
+   
+   VAC.setProcessName('vacd-responder')
+
+   while True:
+   
+     try:
+       close(so)
+     except:
+       pass
+           
+     so = file('/var/log/vacd-responder', 'a+')
+     os.dup2(so.fileno(), sys.stdout.fileno())
+          
+     try:
+       close(se)
+     except:
+       pass
+
+     se = file('/var/log/vacd-responder', 'a+', 0)     
+     os.dup2(se.fileno(), sys.stderr.fileno())
+
+     readConfError = VAC.readConf()
+
+     if readConfError:
+       VAC.logLine('Reading configuration fails with: ' + readConfError)
+       time.sleep(60.0)
+       continue
+          
+     try:
+       pr = open('/var/lib/vac/responder.pid', 'r')
+       pid = int(pr.read().strip())
+       pr.close()
+       
+       if pid != os.getpid():
+         VAC.logLine('os.getpid ' + os.getpid() + ' does not match responder.pid ' + pid + ' - exiting')
+         break
+                
+     except:
+       VAC.logLine('no responder.pid - exiting')
+       break
+
+     # so log file is updated before we start waiting        
+     sys.stdout.flush()
+     sys.stderr.flush()
+
+     # Update responder heartbeat file
+     VAC.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
+     os.chmod('/var/lib/vac/responder-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+
+     try:
+        data, addr = sock.recvfrom(1024)
+     except socket.error as msg:
+        continue;
+
+     try:
+        query = json.loads(data)
+     except:
+        continue
+     
+     if ('space'  in query and 
+         'cookie' in query and 
+         'method' in query and 
+         query['space']  == VAC.spaceName):
+          
+         VAC.logLine("Received " + data + " from " + str(addr))
+
+         if query['method'] == 'status':
+           sendStatusResponse(sock, query)
+    
+         elif query['method'] == 'totals':
+           sendTotalsResponse(sock, query)
 
    sys.exit(0) # if we break out of while loop then we exit
 
