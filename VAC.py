@@ -1009,13 +1009,19 @@ class VacVM:
       else:
           scratch_volume_xml = ""
 
-      if self.model == 'cernvm3':
+      if self.model == 'cernvm3' and domainType == 'kvm':
           cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
                               " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
                               " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
                               " <target dev='hdc' />\n<readonly />\n</disk>")
+      elif self.model == 'cernvm3' and domainType == 'xen':
+          cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                              " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
+                              " <target dev='hdc' />\n<readonly />\n</disk>")
+          bootloader_args_xml = "\n<bootloader_args>" + vmtypes[self.vmtypeName]['root_image'] + "</bootloader_args>"
       else:
-          cernvm_cdrom_xml = ""
+          cernvm_cdrom_xml    = ""
+          bootloader_args_xml = ""
 
       ip = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
@@ -1106,7 +1112,7 @@ class VacVM:
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
   <currentMemory unit='MiB'>""" + str(mbPerMachine) + """</currentMemory>
   <vcpu>""" + str(cpuPerMachine) + """</vcpu>
-  <bootloader>/usr/bin/pygrub</bootloader>
+  <bootloader>/usr/bin/pygrub</bootloader>""" + bootloader_args_xml + """
   <os>
     <type arch='x86_64' machine='xenpv'>linux</type>
   </os>
