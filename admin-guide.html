@@ -285,6 +285,11 @@ down and brctl delbr virbr1 to remove it completely. brctl is from the RPM
 bridge-utils.
 
 <p>
+If creation of the NAT network fails with &quot;dnsmasq: failed to bind 
+listening socket for 169.254.169.254: Address already in use&quot; then
+you may be able to clear the problem with &quot;service dnsmasq stop&quot;.
+
+<p>
 libvirtd attempts to configure the factory machine's iptables rules to
 support network address translation / masquerading from the private NAT
 network. In addition, you need to allow NFS mounts of directories exported
