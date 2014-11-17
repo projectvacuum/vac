@@ -392,7 +392,7 @@ def vacOneCycle():
    VAC.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount))
    os.chmod('/var/lib/vac/counts', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-def sendStatusResponse(sock, query):
+def sendStatusResponse(sock, query, addr):
 
    for vmName in sorted(VAC.virtualmachines):
          
@@ -524,8 +524,8 @@ def sendStatusResponse(sock, query):
       except socket.error as msg:
              pass
 
-def sendTotalsResponse(sock, query):
-# THIS NEEDS REWORKING STILL
+def sendTotalsResponse(sock, query, addr):
+# THIS NEEDS CHECKING STILL
    for vmtypeName, vmtype in VAC.vmtypes.iteritems():
    
       hs06Total         = 0.0
@@ -584,12 +584,12 @@ def sendTotalsResponse(sock, query):
                 timeHeartbeat and 
                 (timeHeartbeat > int(time.time() - 3600)) and
                 not hasFinished):
-                          # Running
-                          hs06Total += hs06
-                elif not timeStarted and (newestCtime > int(time.time() - 3600)):
-                          # Starting
-                          hs06Total += hs06
-                else:
+                  # Running
+                  hs06Total += hs06
+            elif not timeStarted and (newestCtime > int(time.time() - 3600)):
+                  # Starting
+                  hs06Total += hs06
+            else:
 
                   try:
                     f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
@@ -710,10 +710,10 @@ def vacResponder():
          VAC.logLine("Received " + data + " from " + str(addr))
 
          if query['method'] == 'status':
-           sendStatusResponse(sock, query)
+           sendStatusResponse(sock, query, addr)
     
          elif query['method'] == 'totals':
-           sendTotalsResponse(sock, query)
+           sendTotalsResponse(sock, query, addr)
 
    sys.exit(0) # if we break out of while loop then we exit
 

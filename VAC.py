@@ -1211,8 +1211,8 @@ def createNetwork(conn):
         else:
          logLine('Failed to create NAT network vac_' + natNetwork)
          return False
-      except:
-        logLine('Failed to create NAT network vac_' + natNetwork + ' (Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf? Does virbr1 already exist?)')
+      except Exception as e:
+        logLine('Failed to create NAT network vac_' + natNetwork + ' due to "' + str(e) + '" (Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf? Does virbr1 already exist?)')
         return False
 
       # we never get here...
