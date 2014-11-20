@@ -186,25 +186,6 @@ gives the maximum lifetime of a VM. Vac will create
 communicate it to the VM. Vac will destroy the VM if it is still
 running after this amount of time. Default 86400.
 
-.B shutdown_command
-is the path to a file inside the VM which the VM can use to shut itself down.
-This value is written to /etc/machinefeatures/shutdown_command inside the
-VM. The script
-/var/lib/vac/bin/vac-shutdown-vm is suitable for this, and may need to be
-copied to the shared subdirectory of the vmtype's directory in
-/var/lib/vac/vmtypes/ . It will then be visible inside the VM at 
-/etc/vmtypefiles/vac-shutdown-vm .
-
-Running the vac-shutdown-vm command from a non-root user can be accomplished
-by appending lines like this to /etc/sudoers, with USER as the user name:
-
-.br
-Defaults:USER !requiretty
-.br
-Defaults:USER visiblepw
-.br
-USER ALL = NOPASSWD: /etc/vmtypefiles/vac-shutdown-vm
-
 .B root_device
 is the device name exposed to the VM that is associated with the root
 disk image. Default vda.

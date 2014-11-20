@@ -7,14 +7,6 @@ echo 'epilog.sh file has started' >>/tmp/epilog.sh.log
 
 sleep 600
 
-if [ -r /etc/machinefeatures/shutdown_command ] ; then
-  ShutdownCommand=`cat /etc/machinefeatures/shutdown_command`
-fi
-  
-if [ -x "$ShutdownCommand" ] ; then
-  $ShutdownCommand 200 Finished
-else
-  /sbin/shutdown -h now
-fi
+/sbin/shutdown -h now
       
 sleep 1234567890

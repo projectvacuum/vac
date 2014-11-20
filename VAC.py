@@ -282,6 +282,7 @@ def readConf():
              
              if parser.has_option(sectionName, 'shutdown_command'):
                  vmtype['shutdown_command'] = parser.get(sectionName, 'shutdown_command')
+                 print 'shutdown_command is deprecated and will be withdrawn before the 1.0 release'
 
              if parser.has_option(sectionName, 'backoff_seconds'):
                  vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))

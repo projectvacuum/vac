@@ -2,6 +2,8 @@
 - Use uname() rather than socket to get hostname in Vac responder
 - Force VNC to listen on 127.0.0.1 only (this was the default already)
 - Allow cpu_total to override counted CPUs on Xen platforms
+- Add a more scalable query, totals, to the UDP protocol
+- Deprecate shutdown_command 
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly
