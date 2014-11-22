@@ -42,6 +42,7 @@ import errno
 import ctypes
 import base64
 import shutil
+import string
 import libvirt
 import datetime
 import tempfile
@@ -305,7 +306,7 @@ def readConf():
              if parser.has_option(sectionName, 'accounting_fqan'):
                  vmtype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
              
-             for oneOption in parser.items(sectionName):
+             for (oneOption,oneValue) in parser.items(sectionName):
 
                  if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):
 
@@ -827,12 +828,11 @@ class VacVM:
 
       try:
         u = open(user_data_file, 'r')
+        self.userDataContents = u.read()
+        u.close()
       except:
-        raise NameError('Failed to open' + user_data_file)
+        raise NameError('Failed to read ' + user_data_file)
             
-      self.userDataContents = u.read()
-      u.close()
-
       # Default substitutions
       self.userDataContents = self.userDataContents.replace('##user_data_uuid##',          self.uuidStr)
       self.userDataContents = self.userDataContents.replace('##user_data_space##',         spaceName)
@@ -842,7 +842,7 @@ class VacVM:
       self.userDataContents = self.userDataContents.replace('##user_data_vmlm_hostname##', os.uname()[1])
 
       # Site configurable substitutions for this vmtype
-      for oneOption, oneValue in vmtypes[self.vmtypeName]:
+      for oneOption, oneValue in (vmtypes[self.vmtypeName]).iteritems():
         if oneOption[0:17] == 'user_data_option_':
           self.userDataContents = self.userDataContents.replace('##' + oneOption + '##', oneValue)
         if oneOption[0:15] == 'user_data_file_':
