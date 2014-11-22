@@ -4,6 +4,7 @@
 - Allow cpu_total to override counted CPUs on Xen platforms
 - Add a more scalable query, totals, to the UDP protocol
 - Deprecate shutdown_command 
+- Default and site configured substitutions in user_data templates
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

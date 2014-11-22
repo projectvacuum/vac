@@ -301,10 +301,19 @@ def readConf():
                  vmtype['heartbeat_seconds'] = int(parser.get(sectionName, 'heartbeat_seconds'))
              else:
                  vmtype['heartbeat_seconds'] = 0
-            
+             
              if parser.has_option(sectionName, 'accounting_fqan'):
                  vmtype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
-                          
+             
+             for oneOption in parser.items(sectionName):
+
+                 if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):
+
+                   if string.translate(oneOption, None, '0123456789abcdefghijklmnopqrstuvwyz_') != '':
+                     return 'Name of user_data_option_xxx (' + oneOption + ') must only contain a-z 0-9 and _'
+                   else:              
+                     vmtype[oneOption] = parser.get(sectionName, oneOption)                
+             
              vmtypes[sectionNameSplit[1]] = vmtype
              
          elif sectionName.lower() == 'factories':
@@ -460,6 +469,7 @@ class VacVM:
       self.finishedFile=None
       self.cpuSeconds = 0
       self.cpus = cpuPerMachine
+      self.userDataContents = None
 
       conn = libvirt.open(None)
       if conn == None:
@@ -747,19 +757,10 @@ class VacVM:
   
       if 'user_data' in vmtypes[self.vmtypeName]:
 
-          if vmtypes[self.vmtypeName]['user_data'][0] == '/':
-              user_data_file = vmtypes[self.vmtypeName]['user_data']
-          else:
-              user_data_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['user_data']
+          self.setupUserDataContents()
 
-          try:
-            u = open(user_data_file, 'r')
-          except:
-            raise NameError('Failed to open' + user_data_file)
-            
-          user_data_contents = u.read()
-          u.close()
-          f.write('EC2_USER_DATA=' +  base64.b64encode(user_data_contents) + '\n')
+          if self.userDataContents:
+            f.write('EC2_USER_DATA=' +  base64.b64encode(self.userDataContents) + '\n')
   
       f.write('ONE_CONTEXT_PATH="/var/lib/amiconfig"\n')
       f.write('MACHINEFEATURES="/etc/machinefeatures"\n')
@@ -814,7 +815,55 @@ class VacVM:
   
       os.system('genisoimage -quiet -o /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                 + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d')
-             
+
+   def setupUserDataContents(self):
+   
+      # Make substitutions in the user_data file
+          
+      if vmtypes[self.vmtypeName]['user_data'][0] == '/':
+        user_data_file = vmtypes[self.vmtypeName]['user_data']
+      else:
+        user_data_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['user_data']
+
+      try:
+        u = open(user_data_file, 'r')
+      except:
+        raise NameError('Failed to open' + user_data_file)
+            
+      self.userDataContents = u.read()
+      u.close()
+
+      # Default substitutions
+      self.userDataContents = self.userDataContents.replace('##user_data_uuid##',          self.uuidStr)
+      self.userDataContents = self.userDataContents.replace('##user_data_space##',         spaceName)
+      self.userDataContents = self.userDataContents.replace('##user_data_vmtype##',        self.vmtypeName)
+      self.userDataContents = self.userDataContents.replace('##user_data_vm_hostname##',   self.name)
+      self.userDataContents = self.userDataContents.replace('##user_data_vmlm_version##',  'Vac ' + vacVersion)
+      self.userDataContents = self.userDataContents.replace('##user_data_vmlm_hostname##', os.uname()[1])
+
+      # Site configurable substitutions for this vmtype
+      for oneOption, oneValue in vmtypes[self.vmtypeName]:
+        if oneOption[0:17] == 'user_data_option_':
+          self.userDataContents = self.userDataContents.replace('##' + oneOption + '##', oneValue)
+        if oneOption[0:15] == 'user_data_file_':
+          try:
+            if oneValue[0] == '/':
+              f = open(oneValue, 'r')
+            else:
+              f = open('/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + oneValue, 'r')
+                           
+            self.userDataContents = self.userDataContents.replace('##' + oneOption + '##', f.read())
+            f.close()
+          except:
+            raise NameError('Failed to read ' + oneValue + ' for ' + oneOption)          
+
+      try:
+        o = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/user_data', 'w')
+        o.write(self.userDataContents)
+        o.close()
+      except:
+        raise NameError('Failed to writing /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/user_data')
+      
    def exportFileSystems(self):
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures')
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
