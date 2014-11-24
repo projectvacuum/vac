@@ -43,6 +43,8 @@ import ctypes
 import base64
 import shutil
 import string
+import pycurl
+import StringIO
 import libvirt
 import datetime
 import tempfile
@@ -819,19 +821,38 @@ class VacVM:
 
    def setupUserDataContents(self):
    
-      # Make substitutions in the user_data file
-          
-      if vmtypes[self.vmtypeName]['user_data'][0] == '/':
-        user_data_file = vmtypes[self.vmtypeName]['user_data']
-      else:
-        user_data_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['user_data']
+      # Get raw user_data template file, either from network ...
+      if (vmtypes[self.vmtypeName]['user_data'][0:7] == 'http://') or (vmtypes[self.vmtypeName]['user_data'][0:8] == 'https://'):
+        buffer = StringIO.StringIO()
+        c = pycurl.Curl()
+        c.setopt(c.URL, vmtypes[self.vmtypeName]['user_data'])
+        c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.TIMEOUT, 30)
+        c.setopt(c.SSL_VERIFYPEER, 1)
+        c.setopt(c.SSL_VERIFYHOST, 2)
+        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
 
-      try:
-        u = open(user_data_file, 'r')
-        self.userDataContents = u.read()
-        u.close()
-      except:
-        raise NameError('Failed to read ' + user_data_file)
+        try:
+          c.perform()
+        except Exception as e:
+          raise NameError('Failed to read ' + vmtypes[self.vmtypeName]['user_data'] + ' (' + str(e) + ')')
+
+        c.close()
+        self.userDataContents = buffer.getvalue()
+
+      # ... or from filesystem
+      else:
+        if vmtypes[self.vmtypeName]['user_data'][0] == '/':
+          user_data_file = vmtypes[self.vmtypeName]['user_data']
+        else:
+          user_data_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['user_data']
+
+        try:
+          u = open(user_data_file, 'r')
+          self.userDataContents = u.read()
+          u.close()
+        except:
+          raise NameError('Failed to read ' + user_data_file)
             
       # Default substitutions
       self.userDataContents = self.userDataContents.replace('##user_data_uuid##',          self.uuidStr)
@@ -1035,8 +1056,8 @@ class VacVM:
 
       try:
         self.makeISO()
-      except:
-        return 'failed to make ISO image'
+      except Exception as e:
+        return 'failed to make ISO image (' + str(e) + ')'
         
       try:
         self.makeRootDisk()
