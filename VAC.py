@@ -312,7 +312,7 @@ def readConf():
 
                  if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):
 
-                   if string.translate(oneOption, None, '0123456789abcdefghijklmnopqrstuvwyz_') != '':
+                   if string.translate(oneOption, None, '0123456789abcdefghijklmnopqrstuvwxyz_') != '':
                      return 'Name of user_data_option_xxx (' + oneOption + ') must only contain a-z 0-9 and _'
                    else:              
                      vmtype[oneOption] = parser.get(sectionName, oneOption)                
@@ -826,7 +826,7 @@ class VacVM:
         buffer = StringIO.StringIO()
         c = pycurl.Curl()
         c.setopt(c.URL, vmtypes[self.vmtypeName]['user_data'])
-        c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.WRITEFUNCTION, buffer.write)
         c.setopt(c.TIMEOUT, 30)
         c.setopt(c.SSL_VERIFYPEER, 1)
         c.setopt(c.SSL_VERIFYHOST, 2)
