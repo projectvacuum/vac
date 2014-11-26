@@ -828,6 +828,7 @@ class VacVM:
         c.setopt(c.URL, vmtypes[self.vmtypeName]['user_data'])
         c.setopt(c.WRITEFUNCTION, buffer.write)
         c.setopt(c.TIMEOUT, 30)
+        c.setopt(c.FOLLOWLOCATION, True)
         c.setopt(c.SSL_VERIFYPEER, 1)
         c.setopt(c.SSL_VERIFYHOST, 2)
         
@@ -1033,11 +1034,11 @@ class VacVM:
    def getRemoteRootImage(self):
 
       try:
-        f, tempName = tempfile.mkstemp(prefix='tmp', dir='/var/lib/vac/imagecache')
+        f, tempName = tempfile.mkstemp(prefix='tmp', dir='/var/lib/vac/tmp')
       except Exception as e:
-        NameError('Failed to create temporary file in /var/lib/vac/imagecache')
+        NameError('Failed to create temporary image file in /var/lib/vac/tmp')
         
-      ff = os.fdopen(f)
+      ff = os.fdopen(f, 'wb')
    
       c = pycurl.Curl()
       c.setopt(c.URL, vmtypes[self.vmtypeName]['root_image'])
@@ -1046,6 +1047,8 @@ class VacVM:
       urlEncoded = urllib.quote(vmtypes[self.vmtypeName]['root_image'],'')
       
       try:
+        # For existing files, we get the mtime and only fetch the image itself if newer.
+        # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
         c.setopt(c.TIMEVALUE, int(os.stat('/var/lib/vac/imagecache/' + urlEncoded).st_mtime))
         c.setopt(c.TIME_CONDITION, c.TIMECOND_IFMODSINCE)
       except:
@@ -1053,6 +1056,9 @@ class VacVM:
 
 #      c.setopt(c.TIMEOUT, 30)
 
+      # You will thank me for following redirects one day :)
+      c.setopt(c.FOLLOWLOCATION, 1)
+      c.setopt(c.OPT_FILETIME,   1)
       c.setopt(c.SSL_VERIFYPEER, 1)
       c.setopt(c.SSL_VERIFYHOST, 2)
         
@@ -1060,6 +1066,8 @@ class VacVM:
         c.setopt(c.CAPATH, '/etc/grid-security/certificates')
       else:
         logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
+
+      logLine('Checking if an updated ' + vmtypes[self.vmtypeName]['root_image'] + ' needs to be fetched')
 
       try:
         c.perform()
@@ -1073,6 +1081,22 @@ class VacVM:
           os.rename(tempName, '/var/lib/vac/imagecache/' + urlEncoded)
         except:
           raise NameError('Failed renaming new image /var/lib/vac/imagecache/' + urlEncoded)
+
+        logLine('New ' + vmtypes[self.vmtypeName]['root_image'] + ' put in /var/lib/vac/imagecache')
+
+      try:
+        lastModified = float(c.getinfo(c.INFO_FILETIME))
+      except:
+        # We fail rather than use a server that doesn't give Last-Modified:
+        raise NamelogLine('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
+
+      if lastModified < 0.0:
+        # We fail rather than use a server that doesn't give Last-Modified:
+        raise NamelogLine('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
+      else:
+        # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
+        # continually downloading the image based on our faulty filesystem timestamps
+        os.utime('/var/lib/vac/imagecache/' + urlEncoded, (time.time(), lastModified))
 
       c.close()
       return '/var/lib/vac/imagecache/' + urlEncoded
