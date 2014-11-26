@@ -8,6 +8,11 @@
 - user_data can be a remote URL instead of a local file
 - For cernvm3, root_image can be a remote URL cached by Vac
 - cernvm3 is the default vm_model
+- Deprecate standalone [targetshares] section and use Vcycle-style 
+  target_share options within the [vmtype ...] sections
+- Deprecate standalone [factories] section in favour of factories option
+  in [settings]
+- Deprecate NFS-exporting /var/lib/vac/vmtypes/.../shared directories
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

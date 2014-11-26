@@ -221,25 +221,36 @@ def readConf():
       else:
           # If this isn't set, then we use the default 1.0 * cpuPerMachine
           hs06PerMachine = float(cpuPerMachine)
-          
-      # all other sections are VM types or Virtual Machines or Factories
+
+      try:
+          # Get list of factory machines to query via UDP. Leave an empty list if none.
+          factories = (parser.get('settings', 'factories')).lower().split()
+      except:
+          if parser.has_option('factories', 'names'):
+            print 'The [factories] section is deprecated and will be withdrawn before version 1.0. Please use the factories option within [settings]'
+            try:
+                factories = (parser.get('factories', 'names')).lower().split()
+            except:
+                pass
+
+      # all other sections are VM types (other types of section are ignored)
       for sectionName in parser.sections():
 
-         if (sectionName.lower() == 'settings'):
-           continue 
-           
          sectionNameSplit = sectionName.lower().split(None,1)
          
          if sectionNameSplit[0] == 'vmtype':
              vmtype = {}
              vmtype['root_image'] = parser.get(sectionName, 'root_image')
 
-             vmtype['share'] = 0.0
-                                            
-             # look in the [targetshares] section for this vmtype's share
-             if parser.has_option('targetshares', sectionNameSplit[1]):
+             if parser.has_option(sectionName, 'target_share'):
+                 vmtype['share'] = float(parser.get(sectionName, 'target_share'))
+             elif parser.has_option('targetshares', sectionNameSplit[1]):
+                 # look in an old [targetshares] section
                  vmtype['share'] = float(parser.get('targetshares', sectionNameSplit[1]))
-
+                 print "The separate [targetshares] section is deprecated and will be withdrawn before version 1.0. Please use a target_shares option within the [vmtype " + sectionNameSplit[1] + "] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
+             else:
+                 vmtype['share'] = 0.0
+                                            
              if parser.has_option(sectionName, 'vm_model'):
                  vmtype['vm_model'] = parser.get(sectionName, 'vm_model')
              else:
@@ -319,11 +330,6 @@ def readConf():
              
              vmtypes[sectionNameSplit[1]] = vmtype
              
-         elif sectionName.lower() == 'factories':
-             try:
-                 factories = (parser.get('factories', 'names')).lower().split()
-             except:
-                 pass
                           
       # Define VMs
       ordinal = 0
@@ -985,6 +991,7 @@ class VacVM:
       exportAddress = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
       if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
+         logLine('Exporting the /var/lib/vac/vmtypes/.../shared directories is deprecated and will be withdrawn before version 1.0')
          os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
 
       os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')

@@ -1,4 +1,4 @@
-.TH vac.conf 5 "Apr 2014" "vac.conf" "Vac Manual"
+.TH vac.conf 5 "Nov 2014" "vac.conf" "Vac Manual"
 .SH NAME
 .B vac.conf
 \- Vac configuration file
@@ -26,7 +26,7 @@ alphanumeric order by name, and then /etc/vac.conf is read if present.
 
 .SH NFS SHARED DIRECTORIES
 
-Vac makes directories available to the VM via NFS which are available 
+Vac makes directories available to the VM via NFS which can be mounted 
 inside the VM at:
 .br
 /etc/jobfeatures
@@ -34,8 +34,6 @@ inside the VM at:
 /etc/machinefeatures
 .br
 /etc/machineoutputs
-.br
-/etc/vmtypefiles
 
 .SH [SETTINGS] OPTIONS
 
@@ -48,6 +46,14 @@ sufficient for many sites. The space name should be a fully qualified domain
 name, like vac01.example.com and may be used as a virtual CE name in some
 monitoring and accounting systems. It should not be the canonical hostname
 of any of the factory machines.
+
+.B factories
+is a space separated list of the fully qualified domain names of all
+the factories in this Vac space, including this factory. The factories are
+queried using UDP when a factory needs to decide which vmtype to start.
+The Vac responder process on the factories replies to these queries with
+a summary of the VM and the outcome of recent attempts to run a VM of each
+vmtype.
 
 .B cycle_seconds
 is how long to wait before re-evaluating state of VMs in the main loop again.
@@ -129,14 +135,13 @@ pairs that are specific to that vmtype.
 
 .B vm_model
 is required and tells Vac how to configure the virtual hardware seen by
-the VMs of this vmtype. Currently cernvm2 or cernvm3.
+the VMs of this vmtype. Currently cernvm2 or cernvm3. Default cernvm3.
 
-.B root_image
-is the absolute path to the image file from which the VM will boot. 
-Normally these images should be placed in /var/lib/vac/images or
-installed by RPM in /usr/share/images. With the
-cernvm2 vm_model, this is the root hard disk image; with cernvm3, it is
-the ISO CDROM-style disk image.
+.B target_share
+gives the desired share of the total VMs available in this space for this
+vmtype. The shares do not need to add up to 1.0, and if a share is not given
+for a vmtype, then it is set to 0. Vac factories consult these shares
+when deciding which vmtype to start as VMs become available.
 
 .B backoff_seconds
 is the delay after a VM of this vmtype aborts. If a VM aborts, then no new
@@ -213,14 +218,36 @@ For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
 relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
 
+.B root_image
+is the path to the image file from which the VM will boot. With the
+cernvm3 vm_model, this can be a remote HTTP or HTTPS URL which Vac will
+cache in /var/lib/vac/imagecache. The remote server must supply a
+Last-Modified timestamp and Vac will re-request the image each time a 
+VM starts using an If-Modified-Since request to minimise network load.
+Alternatively, the images may be files in the local filesystem.
+With cernvm3 vm_model, the files are ISO CDROM-style boot images; 
+with the cernvm2 vm_model, they are the root hard disk image itself.
+
+.B user_data
+is the path of a contextualization file provided by the VO and perhaps 
+modified by the site. If the path is a remote HTTP or HTTPS URL, Vac
+will fetch it over the network each time a VM is started. However the
+file is obtained, Vac will apply a series of default and locally defined 
+##user_data___## substitutions to it. See USER_DATA SUBSTITUTIONS below
+for a list of the default substitutions.
+
+.B user_data_option_XXX
+and
+.B user_data_file_XXX
+are locally defined substitutions which will be applied to the user_data
+file before the VM is started. Option takes the string to be substituted.
+File takes the relative or absolute path to a file whose contents will 
+be substituted for the pattern in the user_data file.
+
 .B rootpublickey
 is the file name of a public key supplied to the contextualization which
 will be allowed root ssh access. Setting this option to 
 /root/.ssh/id_rsa.pub will give access from the factory machine.
-
-.B user_data
-is a contextualization file provided by the VO and perhaps modified by
-the site. 
 
 .B prolog
 and
@@ -228,24 +255,37 @@ and
 are file names of optional HEPiX-style prolog.sh and epilog.sh scripts
 as defined in the CernVM contextualization documentation.
 
-.SH [TARGETSHARES] SECTION
+.SH USER_DATA SUBSTITUTIONS
 
-The [targetshares] section contains a list of vmtype=share pairs giving
-the desired share of the total VMs available in this space for each
-vmtype. The shares do not need to add up to 1.0, and if a share is not given
-for a vmtype, then it is set to 0. Vac factories consult these shares
-when deciding which vmtype to start as VMs become available.
+Before the user_data file is used in starting a VM, several pattern based
+substitutions are performed by Vac. These patterns are in the form
+##user_data___##. String values given to the option user_data_option_XXX
+replace patterns of the form ##user_data_option_XXX##. The contents of
+the files given to user_data_file_XXX options replace patterns of the
+form ##user_data_file_XXX##. In both cases XXX are arbitrary strings 
+consisting of letters, numbers, and underscores.
 
-.SH [FACTORIES] SECTION
+In addition, the following substitutions are performed automatically by
+Vac using data it holds internally:
 
-The [factories] section contains the single required option 
-.B name
-which has a space separated list of the fully qualified domain names of all
-the factories in this Vac space, including this factory. The factories are
-queried using UDP when a factory needs to decide which vmtype to start.
-The Vac responder process on the factories replies to these queries with
-a summary of the VM and the outcome of recent attempts to run a VM of each
-vmtype.
+.br
+.B ##user_data_uuid##
+is the UUID assigned by Vac to the VM.
+.br
+.B ##user_data_space##
+is the Vac space given by the vac_space option.
+.br
+.B ##user_data_vmtype## 
+is the name of the vmtype of this VM.
+.br
+.B ##user_data_vm_hostname## 
+is the hostname given to the VM by Vac.
+.br
+.B ##user_data_vmlm_version## 
+has the form "Vac v.v.v" where v.v.v is the Vac version.
+.br
+.B ##user_data_vmlm_hostname##
+is the hostname of the Vac factory machine.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
