@@ -45,6 +45,7 @@ import shutil
 import string
 import pycurl
 import StringIO
+import urllib
 import libvirt
 import datetime
 import tempfile
@@ -242,8 +243,7 @@ def readConf():
              if parser.has_option(sectionName, 'vm_model'):
                  vmtype['vm_model'] = parser.get(sectionName, 'vm_model')
              else:
-                 vmtype['vm_model'] = 'cernvm2'
-                 print 'Setting vm_model=cernvm2 . Please put this in [vmtype ' + sectionNameSplit[1] + '] in vac.conf!'
+                 vmtype['vm_model'] = 'cernvm3'
              
              if parser.has_option(sectionName, 'root_device'):
                  vmtype['root_device'] = parser.get(sectionName, 'root_device')
@@ -830,7 +830,11 @@ class VacVM:
         c.setopt(c.TIMEOUT, 30)
         c.setopt(c.SSL_VERIFYPEER, 1)
         c.setopt(c.SSL_VERIFYHOST, 2)
-        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
+        
+        if os.path.isdir('/etc/grid-security/certificates'):
+          c.setopt(c.CAPATH, '/etc/grid-security/certificates')
+        else:
+          logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
 
         try:
           c.perform()
@@ -1026,6 +1030,51 @@ class VacVM:
        logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
        pass      
 
+   def getRemoteRootDisk(self):
+
+      try:
+        f, tempName = tempfile.mkstemp(prefix='tmp', dir='/var/lib/vac/imagecache')
+      except Exception as e:
+        NameError('Failed to create temporary file in /var/lib/vac/imagecache')
+   
+      c = pycurl.Curl()
+      c.setopt(c.URL, vmtypes[self.vmtypeName]['root_image'])
+      c.setopt(c.WRITEDATA, f)
+
+      urlEncoded = urllib.quote(vmtypes[self.vmtypeName]['root_image'],'')
+      
+      try:
+        c.setopt(c.TIMEVALUE, int(os.stat('/var/lib/vac/imagecache/' + urlEncoded).st_mtime)
+        c.setopt(c.TIME_CONDITION, c.TIMECOND_IFMODSINCE)
+      except:
+        pass
+
+#      c.setopt(c.TIMEOUT, 30)
+
+      c.setopt(c.SSL_VERIFYPEER, 1)
+      c.setopt(c.SSL_VERIFYHOST, 2)
+        
+      if os.path.isdir('/etc/grid-security/certificates'):
+        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
+      else:
+        logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
+
+      try:
+        c.perform()
+        f.close()
+      except Exception as e:
+        os.remove(tempName)
+        raise NameError('Failed to fetch ' + vmtypes[self.vmtypeName]['user_data'] + ' (' + str(e) + ')')
+
+      if c.getinfo(c.RESPONSE_CODE) == 200:
+        try:
+          os.rename(tempName, '/var/lib/vac/imagecache/' + urlEncoded)
+        except:
+          raise NameError('Failed renaming new image var/lib/vac/imagecache/' + urlEncoded)
+
+      c.close()
+      return '/var/lib/vac/imagecache/' + urlEncoded
+
    def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
@@ -1080,19 +1129,29 @@ class VacVM:
       else:
           scratch_volume_xml = ""
 
-      if self.model == 'cernvm3' and domainType == 'kvm':
-          cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                              " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
-                              " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
-                              " <target dev='hdc' />\n<readonly />\n</disk>")
-      elif self.model == 'cernvm3' and domainType == 'xen':
-          cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                              " <source file='" + vmtypes[self.vmtypeName]['root_image']  + "'/>\n" +
-                              " <target dev='hdc' />\n<readonly />\n</disk>")
-          bootloader_args_xml = "\n<bootloader_args>" + vmtypes[self.vmtypeName]['root_image'] + "</bootloader_args>"
-      else:
+      if self.model != 'cernvm3':
           cernvm_cdrom_xml    = ""
           bootloader_args_xml = ""
+      else:
+          if vmtypes[self.vmtypeName]['root_image'][0:7] == 'http://' or vmtypes[self.vmtypeName]['root_image'][0:8] == 'https://':
+            cernvmCdrom = self.getRemoteRootImage()
+          elif vmtypes[self.vmtypeName]['root_image'][0] == '/':
+            cernvmCdrom = vmtypes[self.vmtypeName]['root_image']
+          else:
+            cernvmCdrom = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['root_image']
+      
+          if domainType == 'kvm':
+            cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                                " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
+                                " <source file='" + cernvmCdrom  + "'/>\n" +
+                                " <target dev='hdc' />\n<readonly />\n</disk>")
+          elif domainType == 'xen':
+            cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                                " <source file='" + cernvmCdrom + "'/>\n" +
+                                " <target dev='hdc' />\n<readonly />\n</disk>")
+
+            bootloader_args_xml = "\n<bootloader_args>" + cernvmCdrom + "</bootloader_args>"
+      else:
 
       ip = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
