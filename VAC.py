@@ -1030,21 +1030,23 @@ class VacVM:
        logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
        pass      
 
-   def getRemoteRootDisk(self):
+   def getRemoteRootImage(self):
 
       try:
         f, tempName = tempfile.mkstemp(prefix='tmp', dir='/var/lib/vac/imagecache')
       except Exception as e:
         NameError('Failed to create temporary file in /var/lib/vac/imagecache')
+        
+      ff = os.fdopen(f)
    
       c = pycurl.Curl()
       c.setopt(c.URL, vmtypes[self.vmtypeName]['root_image'])
-      c.setopt(c.WRITEDATA, f)
+      c.setopt(c.WRITEDATA, ff)
 
       urlEncoded = urllib.quote(vmtypes[self.vmtypeName]['root_image'],'')
       
       try:
-        c.setopt(c.TIMEVALUE, int(os.stat('/var/lib/vac/imagecache/' + urlEncoded).st_mtime)
+        c.setopt(c.TIMEVALUE, int(os.stat('/var/lib/vac/imagecache/' + urlEncoded).st_mtime))
         c.setopt(c.TIME_CONDITION, c.TIMECOND_IFMODSINCE)
       except:
         pass
@@ -1061,16 +1063,16 @@ class VacVM:
 
       try:
         c.perform()
-        f.close()
+        ff.close()
       except Exception as e:
         os.remove(tempName)
-        raise NameError('Failed to fetch ' + vmtypes[self.vmtypeName]['user_data'] + ' (' + str(e) + ')')
+        raise NameError('Failed to fetch ' + vmtypes[self.vmtypeName]['root_image'] + ' (' + str(e) + ')')
 
       if c.getinfo(c.RESPONSE_CODE) == 200:
         try:
           os.rename(tempName, '/var/lib/vac/imagecache/' + urlEncoded)
         except:
-          raise NameError('Failed renaming new image var/lib/vac/imagecache/' + urlEncoded)
+          raise NameError('Failed renaming new image /var/lib/vac/imagecache/' + urlEncoded)
 
       c.close()
       return '/var/lib/vac/imagecache/' + urlEncoded
@@ -1151,7 +1153,6 @@ class VacVM:
                                 " <target dev='hdc' />\n<readonly />\n</disk>")
 
             bootloader_args_xml = "\n<bootloader_args>" + cernvmCdrom + "</bootloader_args>"
-      else:
 
       ip = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
