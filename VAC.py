@@ -1084,26 +1084,32 @@ class VacVM:
         raise NameError('Failed to fetch ' + vmtypes[self.vmtypeName]['root_image'] + ' (' + str(e) + ')')
 
       if c.getinfo(c.RESPONSE_CODE) == 200:
+
+        try:
+          lastModified = float(c.getinfo(c.INFO_FILETIME))
+        except:
+          # We fail rather than use a server that doesn't give Last-Modified:
+          raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
+
+        if lastModified < 0.0:
+          # We fail rather than use a server that doesn't give Last-Modified:
+          raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
+        else:
+          # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
+          # continually downloading the image based on our faulty filesystem timestamps
+          os.utime(tempName, (time.time(), lastModified))
+
         try:
           os.rename(tempName, '/var/lib/vac/imagecache/' + urlEncoded)
         except:
+          try:
+           os.remove(tempName)
+          except:
+           pass
+           
           raise NameError('Failed renaming new image /var/lib/vac/imagecache/' + urlEncoded)
 
         logLine('New ' + vmtypes[self.vmtypeName]['root_image'] + ' put in /var/lib/vac/imagecache')
-
-      try:
-        lastModified = float(c.getinfo(c.INFO_FILETIME))
-      except:
-        # We fail rather than use a server that doesn't give Last-Modified:
-        raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
-
-      if lastModified < 0.0:
-        # We fail rather than use a server that doesn't give Last-Modified:
-        raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
-      else:
-        # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
-        # continually downloading the image based on our faulty filesystem timestamps
-        os.utime('/var/lib/vac/imagecache/' + urlEncoded, (time.time(), lastModified))
 
       c.close()
       return '/var/lib/vac/imagecache/' + urlEncoded
