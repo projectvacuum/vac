@@ -13,6 +13,7 @@
 - Deprecate standalone [factories] section in favour of factories option
   in [settings]
 - Deprecate NFS-exporting /var/lib/vac/vmtypes/.../shared directories
+- vmtype names must only be a-z 0-9 or - (so can be used in DNS names)
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

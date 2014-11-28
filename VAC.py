@@ -239,6 +239,10 @@ def readConf():
          sectionNameSplit = sectionName.lower().split(None,1)
          
          if sectionNameSplit[0] == 'vmtype':
+         
+             if string.translate(sectionNameSplit[1], None, '0123456789abcdefghijklmnopqrstuvwxyz-') != '':
+                 return 'Name of vmtype section [vmtype ' + sectionNameSplit[1] + '] can only contain a-z 0-9 or -'
+         
              vmtype = {}
              vmtype['root_image'] = parser.get(sectionName, 'root_image')
 
