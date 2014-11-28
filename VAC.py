@@ -1057,7 +1057,7 @@ class VacVM:
         # For existing files, we get the mtime and only fetch the image itself if newer.
         # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
         c.setopt(c.TIMEVALUE, int(os.stat('/var/lib/vac/imagecache/' + urlEncoded).st_mtime))
-        c.setopt(c.TIME_CONDITION, c.TIMECOND_IFMODSINCE)
+        c.setopt(c.TIMECONDITION, c.TIMECONDITION_IFMODSINCE)
       except:
         pass
 
@@ -1095,11 +1095,11 @@ class VacVM:
         lastModified = float(c.getinfo(c.INFO_FILETIME))
       except:
         # We fail rather than use a server that doesn't give Last-Modified:
-        raise NamelogLine('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
+        raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
 
       if lastModified < 0.0:
         # We fail rather than use a server that doesn't give Last-Modified:
-        raise NamelogLine('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
+        raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
       else:
         # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
         # continually downloading the image based on our faulty filesystem timestamps
