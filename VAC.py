@@ -1177,7 +1177,10 @@ class VacVM:
           bootloader_args_xml = ""
       else:
           if vmtypes[self.vmtypeName]['root_image'][0:7] == 'http://' or vmtypes[self.vmtypeName]['root_image'][0:8] == 'https://':
-            cernvmCdrom = self.getRemoteRootImage()
+            try:
+              cernvmCdrom = self.getRemoteRootImage()
+            except Exception as e:
+              return str(e)
           elif vmtypes[self.vmtypeName]['root_image'][0] == '/':
             cernvmCdrom = vmtypes[self.vmtypeName]['root_image']
           else:
