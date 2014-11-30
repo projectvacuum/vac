@@ -14,6 +14,9 @@
   in [settings]
 - Deprecate NFS-exporting /var/lib/vac/vmtypes/.../shared directories
 - vmtype names must only be a-z 0-9 or - (so can be used in DNS names)
+- Deprecate prolog and epilog vmtype options
+- Vac no longer creates NFS mounts or sets hostname in prolog.sh, as 
+  this is now the job of the supplied user_data etc
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

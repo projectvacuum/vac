@@ -59,6 +59,7 @@ natNetmask     = '255.255.0.0'
 natPrefix      = '169.254.169.'
 factoryAddress = '169.254.169.254'
 udpBufferSize  = 16777216
+fixNetwork     = None
 
 cycleSeconds = None
 deleteOldFiles = None
@@ -85,10 +86,10 @@ volumeGroup = None
 
 def readConf():
       global cycleSeconds, deleteOldFiles, domainType, \
-             factories, hs06PerMachine, mbPerMachine, \
+             factories, hs06PerMachine, mbPerMachine, fixNetwork, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
-             volumeGroup, overloadPerCpu
+             volumeGroup, overloadPerCpu, fixNetwork
 
       # reset to defaults
       cycleSeconds = 60
@@ -99,6 +100,7 @@ def readConf():
       factories = []
       hs06PerMachine = None
       mbPerMachine = 2048
+      fixNetwork = True
 
       numVirtualmachines = None
       numCpus = None
@@ -187,6 +189,12 @@ def readConf():
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
+
+      if (parser.has_option('settings', 'fix_network') and
+          parser.get('settings','fix_network').strip().lower() == 'false'):
+           fixNetwork = False
+      else:
+           fixNetwork = True
 
       if (parser.has_option('settings', 'version_logger') and
           parser.get('settings','version_logger').strip().lower() == 'false'):
@@ -278,9 +286,11 @@ def readConf():
 
              if parser.has_option(sectionName, 'prolog'):
                  vmtype['prolog'] = parser.get(sectionName, 'prolog')
+                 print 'prolog is deprecated and will be withdrawn before the 1.0 release'
 
              if parser.has_option(sectionName, 'epilog'):
                  vmtype['epilog'] = parser.get(sectionName, 'epilog')
+                 print 'epilog is deprecated and will be withdrawn before the 1.0 release'
 
              if parser.has_option(sectionName, 'log_machineoutputs') and \
                 parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
@@ -780,26 +790,43 @@ class VacVM:
       f.write('JOBFEATURES="/etc/jobfeatures"\n')
       f.close()
                                      
-      f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
-
-      f.write('#!/bin/sh\n')
-      f.write('if [ "$1" = "start" ] ; then\n')
-      f.write('  hostname ' + self.name + '\n')
-      f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')
-      f.write('  cat <<EOF >/etc/cernvm/cernvm.d/S50vac.sh\n')
-      f.write('#!/bin/sh\n')
-      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
-      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
-      f.write('mount -o rw,nfsvers=3 ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
-
-      if os.path.isdir('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
-        f.write('mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
-
-      f.write('EOF\n')
-      f.write('  chmod ugo+x /etc/cernvm/cernvm.d/S50vac.sh\n')
-      f.write('fi\n# end of vac prolog.sh\n\n')
-
-      # if a prolog is given for this vmtype, we append that to vac's part of the script
+#      f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
+#
+#      f.write('#!/bin/sh\n')
+#      f.write('if [ "$1" = "start" ] ; then\n')
+#      f.write('  hostname ' + self.name + '\n')
+#      f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')
+#      f.write('  cat <<EOF >/etc/cernvm/cernvm.d/S50vac.sh\n')
+#      f.write('#!/bin/sh\n')
+#      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
+#      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
+#      f.write('mount -o rw,nfsvers=3 ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
+#
+#      if os.path.isdir('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
+#        f.write('mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
+#
+#      f.write('EOF\n')
+#      f.write('  chmod ugo+x /etc/cernvm/cernvm.d/S50vac.sh\n')
+#      f.write('fi\n# end of vac prolog.sh\n\n')
+#
+#      # if a prolog is given for this vmtype, we append that to vac's part of the script
+#      if 'prolog' in vmtypes[self.vmtypeName]:
+#
+#          if vmtypes[self.vmtypeName]['prolog'][0] == '/':
+#              prolog_file = vmtypes[self.vmtypeName]['prolog']
+#          else:
+#              prolog_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['prolog']
+#
+#          try:
+#            g = open(prolog_file, "r")
+#            f.write(g.read())
+#            g.close()
+#          except:
+#            raise NameError('Failed to read prolog file ' + prolog_file)
+#  
+#      f.close()
+      
+      # we include any specified prolog or epilog in the CD-ROM image without modification
       if 'prolog' in vmtypes[self.vmtypeName]:
 
           if vmtypes[self.vmtypeName]['prolog'][0] == '/':
@@ -807,16 +834,8 @@ class VacVM:
           else:
               prolog_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['prolog']
 
-          try:
-            g = open(prolog_file, "r")
-            f.write(g.read())
-            g.close()
-          except:
-            raise NameError('Failed to read prolog file ' + prolog_file)
+          shutil.copy2(prolog_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh')
   
-      f.close()
-      
-      # we include any specified epilog in the CD-ROM image without modification
       if 'epilog' in vmtypes[self.vmtypeName]:
 
           if vmtypes[self.vmtypeName]['epilog'][0] == '/':
