@@ -22,15 +22,15 @@
 # fileserver's tree, with the location indicated by the etc_path parameter
 # of the class. In the simplest case, a files subdirectory can be included
 # when installing the vac module in Puppet which the default etc_path will 
-# point to. With etc_path='modules/vac/etc', the tree would be like:
+# point to. With etc_path='modules/vac/vac.d', the tree would be like:
 #
-#  puppet:///modules/vac/etc/HOSTNAME/
-#  puppet:///modules/vac/etc/SUBSPACE/
-#  puppet:///modules/vac/etc/SUBSPACE1/
+#  puppet:///modules/vac/vac.d/HOSTNAME/
+#  puppet:///modules/vac/vac.d/SUBSPACE/
+#  puppet:///modules/vac/vac.d/SUBSPACE1/
 #  ...
-#  puppet:///modules/vac/etc/SUBSPACE9/
-#  puppet:///modules/vac/etc/SPACE/
-#  puppet:///modules/vac/etc/site/
+#  puppet:///modules/vac/vac.d/SUBSPACE9/
+#  puppet:///modules/vac/vac.d/SPACE/
+#  puppet:///modules/vac/vac.d/site/
 #
 # where HOSTNAME, SUBSPACE, SUBSPACE1-9, SPACE are specific to the host.
 #
@@ -38,12 +38,12 @@
 # the first one found with each name being used in case of conflicts.
 #
 # This module does not install or manage the file /etc/vac.conf which Vac
-# read last. This allows you to manually override the options from Puppet's 
+# reads last. This allows you to manually override the options from Puppet's 
 # configuration file segments on a particular machine for testing and 
 # debugging, without your changes being continually reverted by Puppet.
 # 
 # In most cases, it will be sufficient to create and populate the directory
-# for the space(s) at the site and leave all the others directories empty 
+# for the space(s) at the site and leave all the other directories empty 
 # (or not created).
 #
 #
@@ -93,7 +93,7 @@ class vac ($space        = "vac01.${domain}",
            $subspace7    = '',
            $subspace8    = '',
            $subspace9    = '',
-           $etc_path     = 'modules/vac/etc',
+           $etc_path     = 'modules/vac/vac.d',
            $vmtypes_path = 'modules/vac/vmtypes',
            $nagios_nrpe  = false )
 {
