@@ -17,6 +17,7 @@
 - Deprecate prolog and epilog vmtype options
 - Vac no longer creates NFS mounts or sets hostname in prolog.sh, as 
   this is now the job of the supplied user_data etc
+- Include init.pp Puppet module and install in /var/lib/vac/doc
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

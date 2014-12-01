@@ -38,7 +38,7 @@ INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           example.vac.conf example.README example.user_data \
           example.prolog.sh example.epilog.sh admin-guide.html \
-          testkvm.xml
+          testkvm.xml init.pp
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
 
@@ -63,7 +63,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d
 	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
-	cp VERSION vac.conf.5 vacd.8 CHANGES \
+	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
 	   testkvm.xml cernvm3iso.spec \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
