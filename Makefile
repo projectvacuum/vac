@@ -33,7 +33,7 @@
 
 include VERSION
 
-INSTALL_FILES=vacd vac VAC.py vac-shutdown-vm vacd.init \
+INSTALL_FILES=vacd vac VAC.py vacd.init \
           check-vacd VERSION vacd.logrotate cernvm3iso.spec \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           example.vac.conf example.README example.user_data \
@@ -61,7 +61,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d
-	cp vacd vac VAC.py vac-shutdown-vm check-vacd \
+	cp vacd vac VAC.py check-vacd \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
@@ -77,10 +77,6 @@ install: $(INSTALL_FILES)
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/prolog.sh
 	cp example.epilog.sh \
            $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/epilog.sh
-	cp vac-shutdown-vm \
-           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared
-	chmod +x \
-           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared/vac-shutdown-vm
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	cp vacd.logrotate \
