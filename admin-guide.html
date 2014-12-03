@@ -162,58 +162,23 @@ virtualization but this is not supported on RHEL6/SL6. (6.x RPMs
 are <a href="http://xen.crc.id.au/support/guides/install/">available
 from Steven Haigh</a>.)
 
-<h3>CernVM 2 &amp; 3 images</h3>
+<h3>CernVM images</h3>
 
 <p>
 Vac currently requires the use of CernVM images with HEPiX 
-contexualization based on EC2/ISO (&quot;CD-ROM&quot;) images.
+contexualization based on EC2/ISO (&quot;CD-ROM&quot;) images,
+and we recommend the use of CernVM 3 micro boot images.
 
 <p>
-You can download a recent compressed kvm-style CernVM 2 batch 
-image from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
-downloads page</a>. You can use gunzip or zcat to extract the image
-itself. It will be a large file: more than 9GB. gunzip creates
-non-sparse files but you can convert the image to sparse with cp:
-<pre>
-cd /tmp
-zcat cernvm-batch-node-2.6.0-4-1-x86_64.hdd.gz >cernvm-batch-node-2.6.0-4-1-x86_64.hdd
-cp --sparse=always cernvm-batch-node-2.6.0-4-1-x86_64.hdd /var/lib/vac/images
-</pre>
-Sparse files not only use less disk space and are quicker to 
-copy, but they are also quicker to read.
-
-<p>
-The cernvm-batch-node-2.6.0-4-1-x86_64 image was distributed with a
-filesystem check interval of 6 months, and after 3rd April 2013 a check
-automatically happened when it was used as a Linux root partition. You
-can disable this problem using tune2fs:
-<pre>
-losetup /dev/loop7 cernvm-batch-node-2.6.0-4-1-x86_64.hdd
-kpartx -a /dev/loop7
-tune2fs -i 0 -c -1 /dev/mapper/loop7p1
-kpartx -d /dev/loop7 
-losetup -d /dev/loop7
-</pre>
-If loop7 is in use on your system, replace it with a different number.
-For different partitions layouts, you will need to adapt the use of
-kpartx and the partition numbers.
-
-<p>
-From 0.15.0, Vac can also use Micro CernVM 3 ISO images. These can be
-downloaded from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM
-downloads page</a> and are much smaller (~12MB) <b>You must get the 
+If you need to download an image, they can be found on   
+the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
+downloads page</a>. <b>You must get the 
 generic .iso image file and not the .hdd file listed for KVM.</b> 
 
 <p>
-Alternatively, you can use the cernvm3iso.spec file from /var/lib/vac/doc
-to build a binary RPM. This SPEC file is self-contained, in that it 
-downloads the ISO image itself, using the major, minor, and release version 
-numbers
-given in the first few lines of the SPEC file. When the RPM is installed,
-the ISO file will be placed in /usr/share/images. The major and minor
-numbers are included in the package name so you can install RPMs containing
-more than one version at the same time.
-You can build the RPM with something like  rpmbuild -ba cernvm3iso.spec
+However, most experiments will supply you with their own
+URL from which Vac can automatically fetch their current
+designated image version, which Vac caches in /var/lib/vac/imagecache .
 
 <h3>DNS, IP, MAC</h3>
 
@@ -359,16 +324,16 @@ During the creation of each virtual machine instance, Vac will identify the
 logical volume it has been told to use, measure its size using lvs, and 
 provide it to the VM as vdb by default.
  
-<h3>Installation: tar vs RPM</h3>
+<h3>Installation of Vac: tar vs RPM</h3>
 
 <p>
 RPM is the recommended installation procedure, and RPMs are available
 from the <a href="http://www.gridpp.ac.uk/vac/versions/">Downloads
-directory</a> on the Vac website.
+directory</a> on the Vac website. 
 
 <p>
 It is possible to install Vac from a tar file, using the install Makefile
-target.
+target. 
 
 <h3>Configuration of the Vac space</h3>
 
@@ -377,8 +342,8 @@ The [settings] section must include a vac_space name, which is also used
 as the virtual CE name. 
 
 <p>
-A separate [factories] section contains the single required option name
-which has a space separated list of the fully qualified domain names of all
+The factories option takes 
+a space separated list of the fully qualified domain names of all
 the factories in this Vac space, including this factory. The factories are
 queried using UDP when a factory needs to decide which vmtype to start.
 The Vac responder process on the factories replies to these queries with
@@ -386,8 +351,9 @@ a summary of the VM and the outcome of recent attempts to run a VM of each
 vmtype.
 
 <p>
-For ease of management, the [factories] section can be placed in
-a configuration file in /etc/vac.d which could be automatically generated 
+For ease of management, the factories option can be placed in its own
+[settings] section in a separate
+configuration file in /etc/vac.d which can be automatically generated 
 and maintained from another source, such as the site's assets database.
 
 <h3>Setting up vmtypes</h3>
@@ -395,29 +361,39 @@ and maintained from another source, such as the site's assets database.
 <p>
 One [vmtype ...] section must exist for each vmtype in the system, with
 the name of the vmtype given in the section name, such as [vmtype example].
-A vmtype name must only consist of lowercase letters, numbers, periods,
-underscores, and hyphens. The vac.conf(5) man page lists the options
+A vmtype name must only consist of lowercase letters, numbers,
+and hyphens. The vac.conf(5) man page lists the options
 that can be give for each vmtype.
 
 <p>
-The [targetshares] section contains a list of vmtype=share pairs giving
-the desired share of the total VMs available in this space for each
+The target_share option for the vmtype gives
+the desired share of the total VMs available in this space for that
 vmtype. The shares do not need to add up to 1.0, and if a share is not given
 for a vmtype, then it is set to 0. The creation of new VMs can be completely
 disabled by setting all shares to 0. Vac factories consult these shares
 when deciding which vmtype to start as VMs become available.
 
 <p>
-For ease of management, the [targetshares] section can be placed in
-a file in /etc/vac.d, which is convenient if
-it is generated automatically or frequently edited by hand and pushed
-out to the factory machines.
+For ease of management, the target_shares options can be grouped 
+together in a separate file in /etc/vac.d apart from the main [vmtype ...]
+sections, which is convenient if shares
+are generated automatically or frequently edited by hand and pushed
+out to the factory machines. For example:
+<pre>
+[vmtype example1]
+target_share = 1.0
+[vmtype example2]
+target_share = 2.0
+[vmtype example3]
+target_share = 3.0
+</pre>
 
 <p>
 The experiment or VO responsible for each vmtype should supply 
 step by step intructions on how to set up the rest of the [vmtype ...]
-section and how to configure the files to be placed in its subdirectory
-of /var/lib/vac/vmtypes .
+section and how to create the files to be placed in its subdirectory
+of /var/lib/vac/vmtypes (likely to be a hostcert.pem and hostkey.pem
+pair to give to the VM.)
 
 <h2>Starting and stopping vacd</h2>
 
@@ -483,32 +459,44 @@ from cron to publish accounting records into the site's APEL publisher
 database.
 
 <p>
-For APEL 2, a configuration file modelled on this example can be placed in 
-/etc/glite-apel-pbs/parser-config-vac.xml:
-
+For APEL 3, a configuration file modelled on this example can be placed in 
+/etc/apel/parser.cfg:
 <pre>
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;ApelConfiguration enableDebugLogging="yes"&gt;
-&lt;SiteName&gt;EXAMPLE-COM&lt;/SiteName&gt;
-&lt;DBURL&gt;jdbc:mysql://apel.example.com:3306/accounting&lt;/DBURL&gt;
-  &lt;DBUsername&gt;accounting&lt;/DBUsername&gt;
-  &lt;DBPassword&gt;REPLACE-WITH-PASSWORD&lt;/DBPassword&gt;
-  &lt;DBProcessor inspectTables="no"/&gt;
+[db]
+hostname = apel.YOUR.DOMAIN.NAME
+port = 3306
+name = apelclient
+username = YOUR-USERNAME
+password = YOUR-PASSWORD
 
-  &lt;EventLogProcessor&gt;
-    &lt;Logs searchSubDirs="yes"
-     reprocess="no"&gt;&lt;Dir&gt;/var/log/vacd-accounting&lt;/Dir&gt;&lt;/Logs&gt;
-    &lt;Timezone&gt;UTC&lt;/Timezone&gt;
-    &lt;SubmitHost&gt;vac01.example.com&lt;/SubmitHost&gt;
-  &lt;/EventLogProcessor&gt;
+[site_info]
+site_name = YOUR-GOCDB-SITE-NAME
+lrms_server = YOUR-VAC-SPACE-NAME
 
-  &lt;BlahdLogProcessor&gt;
-    &lt;BlahdLogPrefix&gt;blahp.log-&lt;/BlahdLogPrefix&gt;
-    &lt;Logs searchSubDirs="yes" reprocess="no"&gt;
-      &lt;Dir&gt;/var/log/vacd-accounting&lt;/Dir&gt;
-    &lt;/Logs&gt;
-  &lt;/BlahdLogProcessor&gt;
-&lt;/ApelConfiguration&gt;
+[blah]
+enabled = true
+dir = /var/log/vacd-accounting
+filename_prefix = blahp.log
+subdirs = false
+
+[batch]
+enabled = true
+
+# Reparse all batch system log files and replace them in the database.
+# Use with caution!
+reparse = false
+
+type = PBS
+parallel = true
+dir = /var/log/vacd-accounting
+
+filename_prefix = 201
+subdirs = false
+
+[logging]
+logfile = /var/log/apelparser.log
+level = DEBUG
+console = true
 </pre>
 
 <p>
@@ -520,25 +508,19 @@ before.
 The parser can be run once a day by placing the file
 glite-apel-pbs-parser-cron in /etc/cron.d:
 <pre>
-25 01 * * * root env APEL_HOME=/ /usr/bin/apel-pbs-log-parser  -f /etc/glite-apel-pbs/parser-config-vac.xml >> /var/log/apel.log 2>&amp;1
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+25 1,13 * * * root /usr/bin/apelparser >>/var/log/apelparser-cron.log 2>&amp;1
 </pre>
 
 <p>
-A similar approach can be taken for APEL 3 based sites, using the new
-APEL configuration file format and scripts.
-
-<p>
-In either case, it is necessary to ensure that HEPSPEC06 benchmark values are 
+It is also necessary to ensure that HEPSPEC06 benchmark values are 
 present in the publisher database, either by placing them in the BDII and 
 using the APEL SpecUpdater, or by inserting them by hand in the 
 database. New rows only need to be inserted if the benchmark changes for some
 reason. 
 
-<!--
-<h2>Tuning backoff</h2>
-
-<h2>Troubleshooting</h2>
--->
+<!-- Puppet -->
+<!-- Backoff tuning -->
 
 </body>
 </html>
