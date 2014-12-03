@@ -1,2 +1,56 @@
+#!/bin/sh
+#
+# This is the example user_data template file for testing a new or 
+# upgraded installation of Vac, as described in the Vac Admin Guide.
+# See http://www.gridpp.ac.uk/vac/ for the guide and more about Vac.
+#
+# Inside the VM, the user_data script section creates a file in
+# the machineoutputs directory, waits 5 minutes, then shuts down
+# the VM. 
+#
+# In the [vmtype example] section of your /etc/vac.conf you must
+# include this option to tell the VMs where the proxy cache that
+# you use for cvmfs is located:
+#
+# user_data_option_cvmfs_proxy = http://YOUR.HTTP.PROXY:PORT
+#
+# All other ##user_data__## sustitutions for this template are
+# generated automatically by Vac.
+#
+# Andrew.McNab@cern.ch December 2014
+#
+
+# Set the hostname if available; display otherwise
+hostname ##user_data_vm_hostname##
+
+# Possibly make MJF directories and mount the three NFS directories
+# provided to this VM by Vac
+if [ `echo "##user_data_vmlm_version##" | cut -f1 -d' '` == 'Vac' ] ; then
+ mkdir -p /etc/machineoutputs /etc/machinefeatures /etc/jobfeatures
+ mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_vmtype##/##user_data_uuid##/shared/jobfeatures" /etc/jobfeatures
+ mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_vmtype##/##user_data_uuid##/shared/machinefeatures" /etc/machinefeatures
+ mount -o rw,nfsvers=3 "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_vmtype##/##user_data_uuid##/shared/machineoutputs" /etc/machineoutputs
+fi
+
+# Create the epilog.sh which is run at the end of set up 
+# within the CernVM virtual machine
+cat <<EP_EOF >>/var/lib/hepix/context/epilog.sh
+#!/bin/sh
+(
+echo 'Created by example user_data' > /etc/machineoutputs/example.txt
+sleep 300
+/sbin/shutdown -h now
+sleep 1234567890
+) > /etc/machineoutputs/example.log 2&1
+EP_EOF
+chmod +x /var/lib/hepix/context/epilog.sh
+exit 0
+[amiconfig]
+plugins=cernvm
 [cernvm]
 repositories = grid
+proxy=##user_data_option_cvmfs_proxy##
+[ucernvm-begin]
+resize_rootfs=off
+cvmfs_http_proxy=##user_data_option_cvmfs_proxy##
+[ucernvm-end]

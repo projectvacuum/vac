@@ -37,7 +37,7 @@ INSTALL_FILES=vacd vac VAC.py vacd.init \
           check-vacd VERSION vacd.logrotate cernvm3iso.spec \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           example.vac.conf example.README example.user_data \
-          example.prolog.sh example.epilog.sh admin-guide.html \
+          admin-guide.html \
           testkvm.xml init.pp
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
