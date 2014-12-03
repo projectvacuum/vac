@@ -77,6 +77,8 @@
 # to true you can install a Vac file in /etc/nrpe.d to enable Nagios NRPE
 # monitoring using Vac's check-vacd script. This will ensure the nrpe RPM
 # is installed and will restart the nrpe service to reread the configuration.
+# This assumes that you have an nrpe module already or have declared nrpe
+# as a service.
 #
 # Andrew.McNab@cern.ch  December 2014  http://www.gridpp.ac.uk/vac/
 #
