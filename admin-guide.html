@@ -56,14 +56,10 @@ It's not necessary to configure the NFS server, as Vac uses exportfs
 commands to create and destroy exports dynamically. If you have any iptables
 rules blocking NFS you should disable them before starting vacd.
 
-
-
-
-
 <p>
 Now you need to create the /etc/vac.conf configuration file. Copy
 /var/lib/vac/doc/example.vac.conf to /etc/vac.conf and read through its
-comments. There are 6 lines you need to check and probably change.
+comments. There are 4 lines you need to check and probably change.
 
 <dl>
 <dt><b>vac_space =</b> in [settings]
@@ -73,7 +69,7 @@ machines that communicate with each other, and is equivalent to a subcluster
 or subsite. A space's name is a fully qualified domain name (FQDN), and can be 
 used as a virtual CE name where necessary in other systems.
 
-<dt><b>names =</b> in [factories]
+<dt><b>factories =</b> in [settings]
 <dd>Since we're creating a space that contains a single factory machine, 
     set this to be the FQDN of the factory machine you're workng on.
 
@@ -82,11 +78,6 @@ used as a virtual CE name where necessary in other systems.
     Vac will create hostnames for the VMs from the factory name. For
     example, factory1.example.com will lead to factory1-00.example.com,
     factory1-01.example.com, ...
-    
-<dt><b>root_image =</b> in [vmtype example]
-<dd>The path and filename given in this setting must point to the CernVM
-    image you created for Vac in /var/lib/vac/images. Double check the
-    version numbers are correct.
   
 <dt><b>rootpublickey =</b> in [vmtype example]
 <dd>This setting is not strictly necessary but is very useful. By copying
@@ -98,9 +89,12 @@ used as a virtual CE name where necessary in other systems.
 </dl>
 
 <p>
-The files needed for the example vmtype are installed by the RPM in
-/var/lib/vac/vmtypes/example and with /etc/vac.conf done and the CernVM
-image in place you're ready to go. Just do <b>service vacd restart</b>
+The files needed for the example vmtype are fetched over HTTPS, as 
+indicated by the root_disk and user_data options which should not be
+changed. 
+
+<p> 
+Just do <b>service vacd restart</b>
 to make sure vacd is running and look in the log files.
 
 <p>
@@ -113,7 +107,7 @@ and /var/log/vacd-responder .
 <p>
 In its log file, you should be able to see the factory
 daemon trying to decide what to do and then creating the example
-VM which runs for 10 minutes then shuts itself down. When deciding
+VM which runs for 5 minutes then shuts itself down. When deciding
 what to do, the factory queries its own responder via UDP and this
 should be visible in the responder's log file.
 
