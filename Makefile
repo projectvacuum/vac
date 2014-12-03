@@ -34,9 +34,9 @@
 include VERSION
 
 INSTALL_FILES=vacd vac VAC.py vacd.init \
-          check-vacd VERSION vacd.logrotate cernvm3iso.spec \
+          check-vacd VERSION vacd.logrotate \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
-          example.vac.conf example.README example.user_data \
+          example.vac.conf example.user_data \
           admin-guide.html \
           testkvm.xml init.pp
           
@@ -54,9 +54,8 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/etc \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/doc \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/images \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/imagecache \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/shared \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machineoutputs \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
@@ -65,18 +64,10 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
-	   testkvm.xml cernvm3iso.spec \
+	   testkvm.xml \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
 	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
 	 > $(RPM_BUILD_ROOT)/var/lib/vac/doc/admin-guide.html
-	cp example.README \
-           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/README
-	cp example.user_data \
-           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/user_data
-	cp example.prolog.sh \
-           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/prolog.sh
-	cp example.epilog.sh \
-           $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes/example/epilog.sh
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	cp vacd.logrotate \

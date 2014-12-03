@@ -56,7 +56,6 @@ fi
 /var/lib/vac/etc
 /var/lib/vac/doc
 /var/lib/vac/tmp
-/var/lib/vac/images
 /var/lib/vac/imagecache
 /var/lib/vac/vmtypes
 /var/lib/vac/machines
