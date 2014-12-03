@@ -7,10 +7,6 @@
     <boot dev='hd'/>
   </os>
   <devices>
-    <disk type='file' device='disk'>
-      <source file='/tmp/cernvm-batch-node-2.6.0-4-1-x86_64.hdd' />
-      <target dev='hda'/>
-    </disk>
     <console type='pty' tty='/dev/pts/2'>
      <source path='/dev/pts/2'/>
      <target port='0'/>

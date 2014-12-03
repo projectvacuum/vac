@@ -23,58 +23,42 @@ are all there.
 To follow the quick start, you need an x86_64 Intel or AMD machine 
 with hardware virtualization (Intel VT-x or AMD-V) enabled in its BIOS; and
 the machine needs to be installed with a version of Scientific Linux 6, 
-with libvirt installed and enabled. (In particular, the packages
-libvirt, libvirt-client, libvirt-python, qemu-kvm, qemu-kvm-tools, and then
+with libvirt installed and enabled. In particular, the packages
+libvirt, libvirt-client, libvirt-python, qemu-kvm, and then
 run &quot;service libvirtd restart&quot; to make sure libvirtd daemon is
-running.)
+running. 
 
 <p>
-Install the vac RPM, and download a recent compressed kvm-style CernVM 2 batch 
-image from the <a href="http://cernvm.cern.ch/portal/downloads">CernVM 
-downloads page</a> to /tmp. Use zcat to extract the image itself to a
-file in /tmp. It will be a large file: more than 9GB.
-
-<p>
-Copy the file /var/lib/vac/doc/testkvm.xml to /tmp as well, and edit the
-&quot;source file=&quot; path and filename to point to your CernVM 2 image.
+Install the vac RPM and copy the file /var/lib/vac/doc/testkvm.xml to /tmp .
 
 <p>
 At the command line, excecute
 <pre>
-virsh create --console testkvm.xml
-</pre>
-You should see the familiar Linux boot messages and eventually a login
-prompt as the virtual machine boots using the CernVM image file as its root
-filesystem. If all this doesn't happen, then something is wrong with your
-installation or hardware virtualization isn't enabled. Please check the
-libvirt documentation to try to identify where the problem is.
-
-<p>
-To get out of the login prompt, just press Ctrl and ] and then use the
-command 
-<pre>
+virsh list
+virsh create testkvm.xml
+virsh list
 virsh destroy testkvm
+virsh list
 </pre>
-to kill the VM. We're now ready to set up Vac itself.
+You should no VMs listed as runining to start with. After the create 
+command, the testkvm VM should belisted as running. Afer destroying it,
+an empty list of VMs should be returned. If all this doesn't happen, 
+then something is wrong with yourinstallation or hardware virtualization 
+isn't enabled. Please check the libvirt documentation to try to identify
+where the problem is.
 
 <p>
-To create another pristine disk image, use zcat again to make another copy
-in /tmp and then use cp to make a sparse copy of this image in Vac's
-area (you may need to change the exact version numbers in these file names):
-<pre>
-cd /tmp
-zcat cernvm-batch-node-2.6.0-4-1-x86_64.hdd.gz >cernvm-batch-node-2.6.0-4-1-x86_64.hdd
-cp --sparse=always cernvm-batch-node-2.6.0-4-1-x86_64.hdd /var/lib/vac/images
-</pre>
-We do this because zcat (and gunzip) won't create sparse files, but cp can
-and they are much quicker to read and copy around.
-
-<p>
-Vac uses NFS to share some directories from the factory machine to its virtual
-machines, and needs to have the standard NFS server installed and running.
+To start using Vac to manage VMs, it's necessary to have a standard NFS
+server installed and running. Vac uses NFS to share some directories from
+the factory machine to its virtual machines. and needs to have the standard 
+NFS server installed and running.
 It's not necessary to configure the NFS server, as Vac uses exportfs
 commands to create and destroy exports dynamically. If you have any iptables
 rules blocking NFS you should disable them before starting vacd.
+
+
+
+
 
 <p>
 Now you need to create the /etc/vac.conf configuration file. Copy
