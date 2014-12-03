@@ -39,9 +39,9 @@ cat <<EP_EOF >>/var/lib/hepix/context/epilog.sh
 (
 echo 'Created by example user_data' > /etc/machineoutputs/example.txt
 sleep 300
-/sbin/shutdown -h now
+/sbin/shutdown -h now 'VM shutting down ...'
 sleep 1234567890
-) > /etc/machineoutputs/example.log 2&1
+) > /etc/machineoutputs/example.log 2>&1
 EP_EOF
 chmod +x /var/lib/hepix/context/epilog.sh
 exit 0

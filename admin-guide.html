@@ -40,24 +40,28 @@ virsh list
 virsh destroy testkvm
 virsh list
 </pre>
-You should no VMs listed as runining to start with. After the create 
-command, the testkvm VM should belisted as running. Afer destroying it,
+You should see no VMs listed as running to start with. After the create 
+command, the testkvm VM should be listed as running. Afer destroying it,
 an empty list of VMs should be returned. If all this doesn't happen, 
-then something is wrong with yourinstallation or hardware virtualization 
+then something is wrong with your installation or hardware virtualization 
 isn't enabled. Please check the libvirt documentation to try to identify
 where the problem is.
 
 <p>
 To start using Vac to manage VMs, it's necessary to have a standard NFS
 server installed and running. Vac uses NFS to share some directories from
-the factory machine to its virtual machines. and needs to have the standard 
+the factory machine to its virtual machines, and needs to have the standard 
 NFS server installed and running.
 It's not necessary to configure the NFS server, as Vac uses exportfs
 commands to create and destroy exports dynamically. If you have any iptables
 rules blocking NFS you should disable them before starting vacd.
+The 169.254.0.0 network should not be configured on the factory machine
+before you start Vac. In particular, Zeroconf support should be disabled
+by adding NOZEROCONF=yes to /etc/sysconfig/network and restarting
+networking.
 
 <p>
-Now you need to create the /etc/vac.conf configuration file. Copy
+Next create the /etc/vac.conf configuration file. Copy
 /var/lib/vac/doc/example.vac.conf to /etc/vac.conf and read through its
 comments. There are 4 lines you need to check and probably change.
 
