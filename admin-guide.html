@@ -381,11 +381,11 @@ are generated automatically or frequently edited by hand and pushed
 out to the factory machines. For example:
 <pre>
 [vmtype example1]
-target_share = 1.0
+target_share = 5.0
 [vmtype example2]
-target_share = 2.0
+target_share = 6.0
 [vmtype example3]
-target_share = 3.0
+target_share = 7.0
 </pre>
 
 <p>
@@ -468,31 +468,24 @@ port = 3306
 name = apelclient
 username = YOUR-USERNAME
 password = YOUR-PASSWORD
-
 [site_info]
 site_name = YOUR-GOCDB-SITE-NAME
 lrms_server = YOUR-VAC-SPACE-NAME
-
 [blah]
 enabled = true
 dir = /var/log/vacd-accounting
 filename_prefix = blahp.log
 subdirs = false
-
 [batch]
 enabled = true
-
 # Reparse all batch system log files and replace them in the database.
 # Use with caution!
 reparse = false
-
 type = PBS
 parallel = true
 dir = /var/log/vacd-accounting
-
 filename_prefix = 201
 subdirs = false
-
 [logging]
 logfile = /var/log/apelparser.log
 level = DEBUG
