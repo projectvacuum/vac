@@ -122,6 +122,9 @@ def readConf():
         f.close()
       except:
         pass
+
+      if not '.' in os.uname()[1]:
+        return 'The hostname of the factory machine must be a fully qualified domain name!'
       
       parser = RawConfigParser()
 

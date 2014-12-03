@@ -20,6 +20,7 @@
 - Include init.pp Puppet module and install in /var/lib/vac/doc
 - Remove unused vac-shutdown-vm script
 - Update example to use CernVM 3 and remote boot image and user_data
+- Check that factory hostname really is the FQDN as suggested by Rob Fay
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly
