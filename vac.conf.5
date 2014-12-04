@@ -125,6 +125,12 @@ VMs' fully qualified domain names as their names. For example,
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
+.B fix_networking
+can be set to false to stop Vac trying to reset the lowlevel networking
+state if the vac_169.254.0.0 virtual network does not exist or cannot
+be created with libvirt. /var/log/vacd-factory receives details of what
+Vac detects and tries to do. Default true.
+
 .SH [VMTYPE ...] SECTIONS
 
 One [vmtype ...] section must exist for each vmtype in the system, with

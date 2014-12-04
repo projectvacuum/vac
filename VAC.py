@@ -59,7 +59,7 @@ natNetmask     = '255.255.0.0'
 natPrefix      = '169.254.169.'
 factoryAddress = '169.254.169.254'
 udpBufferSize  = 16777216
-fixNetwork     = None
+fixNetworking  = None
 
 cycleSeconds = None
 deleteOldFiles = None
@@ -86,10 +86,10 @@ volumeGroup = None
 
 def readConf():
       global cycleSeconds, deleteOldFiles, domainType, \
-             factories, hs06PerMachine, mbPerMachine, fixNetwork, \
+             factories, hs06PerMachine, mbPerMachine, fixNetworking, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
-             volumeGroup, overloadPerCpu, fixNetwork
+             volumeGroup, overloadPerCpu, fixNetworking
 
       # reset to defaults
       cycleSeconds = 60
@@ -100,7 +100,7 @@ def readConf():
       factories = []
       hs06PerMachine = None
       mbPerMachine = 2048
-      fixNetwork = True
+      fixNetworking = True
 
       numVirtualmachines = None
       numCpus = None
@@ -193,11 +193,11 @@ def readConf():
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
 
-      if (parser.has_option('settings', 'fix_network') and
-          parser.get('settings','fix_network').strip().lower() == 'false'):
-           fixNetwork = False
+      if (parser.has_option('settings', 'fix_networking') and
+          parser.get('settings','fix_networking').strip().lower() == 'false'):
+           fixNetworking = False
       else:
-           fixNetwork = True
+           fixNetworking = True
 
       if (parser.has_option('settings', 'version_logger') and
           parser.get('settings','version_logger').strip().lower() == 'false'):
@@ -1409,7 +1409,13 @@ def createNetwork(conn):
          logLine('Failed to create NAT network vac_' + natNetwork)
          return False
       except Exception as e:
-        logLine('Failed to create NAT network vac_' + natNetwork + ' due to "' + str(e) + '" (Need dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
+        logLine('Failed to create NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+
+        if fixNetworking:
+          fixNetworkingCommands()
+        else:
+          logLine('Do you need to install dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
+
         return False
 
       # we never get here...
@@ -1452,6 +1458,36 @@ def checkIpTables(bridgeName):
         logLine('iptables NAT check failed for ' + bridgeName)
       else:
         logLine('iptables NAT check passed for ' + bridgeName)
+
+def fixNetworkingCommands():
+      # Called if network doesn't exist and creation fails. Almost always this is
+      # due to a restart/upgrade of libvirt and the same things need doing.
+      #
+      # This feature can be disabled with fix_networking = false in vac.conf
+
+      # We assume the libvirt defaults so the desired bridge is virbr1
+      logLine('Trying to fix networking so can create virbr1 bridge in next cycle')
+      
+      try:
+        cmd = '/sbin/ifconfig virbr1 down'
+        logLine('Trying  ' + cmd)
+        os.system(cmd)
+      except:
+        pass
+
+      try:
+        cmd = '/usr/sbin/brctl delbr virbr1'
+        logLine('Trying  ' + cmd)
+        os.system(cmd)
+      except:
+        pass
+       
+      try:
+        cmd = '/bin/kill -9 `/bin/ps -C dnsmasq -o pid,args | /bin/grep -- "--listen-address ' + factoryAddress + '" | /bin/cut -f1 -d" "`'
+        logLine('Trying  ' + cmd)
+        os.system(cmd)
+      except:
+        pass
 
 def createFile(targetname, contents, mode=None):
       # Create a text file containing contents in the vac tmp directory
