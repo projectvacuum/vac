@@ -235,16 +235,34 @@ def vacOneCycle():
    conn = libvirt.open(None)
      
    try:
+       # Find the network if exists already
        vacNetwork = conn.networkLookupByName('vac_' + VAC.natNetwork)
    except:
-       VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT.')       
+       # Doesn't exist so we define and start it
+       VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT')
 
        if not VAC.createNetwork(conn):
         conn.close()
         return
    else:
-       VAC.logLine('NAT network vac_' + VAC.natNetwork + ' using device ' + vacNetwork.bridgeName())
-       VAC.checkIpTables(vacNetwork.bridgeName())
+       # Check the network is actually running, not just defined
+       if not vacNetwork.isActive():
+         try:
+           # Try starting it if not running
+           vacNetwork.create()
+         except Exception as e:
+           VAC.logLine('Starting defined network vac_' + VAC.natNetwork + ' fails with "' + str(e) + '"')
+           return
+         else:
+           VAC.logLine('Started previously defined network vac_' + VAC.natNetwork)
+
+       # In case starting it silently failed somehow
+       if vacNetwork.isActive():
+         VAC.logLine('NAT network vac_' + VAC.natNetwork + ' is active, using device ' + vacNetwork.bridgeName())
+         VAC.checkIpTables(vacNetwork.bridgeName())
+       else:
+         VAC.logLine("Defined network vac_" + VAC.natNetwork + " doesn't start")
+         return
 
    conn.close()
      
@@ -711,9 +729,10 @@ def vacResponder():
 
          if query['method'] == 'status':
            sendStatusResponse(sock, query, addr)
-    
-         elif query['method'] == 'totals':
-           sendTotalsResponse(sock, query, addr)
+ 
+# Skip for now, until tested thoroughly   
+#         elif query['method'] == 'totals':
+#           sendTotalsResponse(sock, query, addr)
 
    sys.exit(0) # if we break out of while loop then we exit
 

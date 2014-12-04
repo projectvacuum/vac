@@ -1402,24 +1402,30 @@ def createNetwork(conn):
       netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
       
       try:
-        if conn.networkCreateXML(netXML):
-         logLine('Network vac_' + natNetwork + ' created.')
-         return True
-        else:
-         logLine('Failed to create NAT network vac_' + natNetwork)
-         return False
-      except Exception as e:
-        logLine('Failed to create NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
-
-        if fixNetworking:
-          fixNetworkingCommands()
-        else:
+        newNet = conn.networkDefineXML(netXML)
+      except Exception as e:  
+        logLine('Failed to define NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+        return False
+      else:
+        try:
+          newNet.create()
+        except Exception as e:
+          logLine('Failed to create NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
           logLine('Do you need to install dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
 
-        return False
+          if fixNetworking:
+            fixNetworkingCommands()
 
-      # we never get here...
-      return False     
+          return False
+        else:
+          try:
+            newNet.setAutostart(True)
+          except Exception as e:
+            logLine('Failed to set autostart for NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+            return False
+        
+      logLine('Persistent, auto-starting Network vac_' + natNetwork + ' created')
+      return True
      
 def checkIpTables(bridgeName):
       # Do a quick check of the output of iptables-save, looking for

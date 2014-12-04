@@ -22,6 +22,7 @@
 - Update example to use CernVM 3 and remote boot image and user_data
 - Check that factory hostname really is the FQDN as suggested by Rob Fay
 - Add fixNetworkingCommands() to do usual post-restart fixes for libvirt
+- Define and create a persistent, auto-starting network
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

@@ -187,7 +187,7 @@ designated image version, which Vac caches in /var/lib/vac/imagecache .
 <h3>DNS, IP, MAC</h3>
 
 <p>
-Vac uses a private NAT network for each set of virtual machines on a
+Vac uses a private NAT network for the set of virtual machines on a
 given factory. Vac then creates the VM FQDNs from the factory name
 by adding -00, -01, ... So factory1.example.com has factory1-00.example.com,
 factory1-01.example.com, ... as its VMs. The total number of virtual
@@ -214,27 +214,31 @@ by adding NOZEROCONF=yes to /etc/sysconfig/network and restarting
 networking.
 
 <p>
-You can check the vac private network exists with the command 
-virsh net-list which should list the vac_169.254.0.0 network and
-the &quot;default&quot; network defined by libvirtd. The Vac network should
-be using the virbr1 virtual interface, with virbr0 still used by the default
-network.
+Vac tries to create the vac private network itself if it doesn't already
+exist. You can check the private network exists with the command 
+virsh net-list --all which should list the vac_169.254.0.0 network and
+the &quot;default&quot; network defined by libvirtd as both being active. 
+The vac network should be using the virbr1 virtual interface, with virbr0 
+still used by the default network. The vac network is set up as persistent
+and auto-starting, so it should survive reboots and restart of libvirtd.
 
 <p>
-Vac will print the error &quot;Failed to create NAT network vac_169.254.0.0 
-(Need dnsmasq RPM >= 2.48-13? Did you disable Zeroconf? Does
-virbr1 already exist?)&quot; if it cannot use libvirtd to create that
-network. Check dnsmasq is installed, that Zeroconf is disabled, and that
-virbr1 does not already exist with the commands 
-ifconfig <b>and</b> brctl show. If virbr1 is already there, use 
-ifconfig virbr1
-down and brctl delbr virbr1 to remove it completely. brctl is from the RPM
-bridge-utils.
+However, Vac will log the error &quot;Failed to create NAT network
+vac_169.254.0.0&quot; if it doesn't exist and cannot be created. This is 
+usually after a restart or an upgrade of libvirtd which leaves settings
+which block the new network. Vac will attempt to fix this too unless the
+setting fix_networking = false is given in the Vac configuration.
 
 <p>
-If creation of the NAT network fails with &quot;dnsmasq: failed to bind 
-listening socket for 169.254.169.254: Address already in use&quot; then
-you may be able to clear the problem with &quot;service dnsmasq stop&quot;.
+Network problems are usually caused by: 
+<ul>
+<li>Still needing to upgrade dnsmasq to an RPM >= 2.48-13
+<li>Not disabling Zeroconf
+<li>An old dnsmasq process running with argument &quot;--listen-address 
+    169.254.169.254&quot; (Use &quot;service dnsmasq stop&quot;)
+<li>virbr1 already existing (remove with &quot;ifconfig virbr1 down&quot; and
+    &quot;brctl delbr virbr1&quot;, using brctl from the RPM bridge-utils.)
+</ul>
 
 <p>
 libvirtd attempts to configure the factory machine's iptables rules to
@@ -516,7 +520,13 @@ using the APEL SpecUpdater, or by inserting them by hand in the
 database. New rows only need to be inserted if the benchmark changes for some
 reason. 
 
-<!-- Puppet -->
+<h2>Puppet</h2>
+
+<p>
+A simple Puppet module for Vac exists as the file init.pp which is installed
+in the /var/lib/vac/doc directory. There are extensive comments at the start
+of the file which outline how to use it.
+
 <!-- Backoff tuning -->
 
 </body>
