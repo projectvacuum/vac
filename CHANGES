@@ -23,6 +23,9 @@
 - Check that factory hostname really is the FQDN as suggested by Rob Fay
 - Add fixNetworkingCommands() to do usual post-restart fixes for libvirt
 - Define and create a persistent, auto-starting network
+- writeApel() to write accounting records to an outgoing directory for
+  APEL SSM
+- Require gocdb_sitename option in [settings] for APEL
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

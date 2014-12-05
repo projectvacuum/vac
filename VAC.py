@@ -65,6 +65,7 @@ cycleSeconds = None
 deleteOldFiles = None
 domainType = None
 overloadPerCpu = None
+gocdbSitename = None
 
 factories = None
 hs06PerMachine = None
@@ -85,7 +86,7 @@ vmtypes = None
 volumeGroup = None
 
 def readConf():
-      global cycleSeconds, deleteOldFiles, domainType, \
+      global cycleSeconds, deleteOldFiles, domainType, gocdbSiteName, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
@@ -96,6 +97,7 @@ def readConf():
       deleteOldFiles = True      
       domainType = 'kvm'
       overloadPerCpu = 2.0
+      gocdbSitename = None
 
       factories = []
       hs06PerMachine = None
@@ -146,10 +148,17 @@ def readConf():
       if not parser.has_section('settings'):
         return 'Must have a settings section!'
       
+      # Must have a space name
       if not parser.has_option('settings', 'vac_space'):
         return 'Must give vac_space in [settings]!'
         
       spaceName = parser.get('settings','vac_space').strip()
+
+      # GOCDB site name is needed for APEL accounting: fail safe to require it
+      if not parser.has_option('settings', 'gocdb_sitename'):
+        return 'Must give gocdb_sitename in [settings]!'
+        
+      gocdbSitename = parser.get('settings','gocdb_sitename').strip()
              
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
@@ -710,12 +719,12 @@ class VacVM:
       nowTime = time.localtime()
 
       try:
-        os.makedirs(time.strftime('/var/log/vacd-apel/outgoing/%Y%m%d' % nowTime)
+        os.makedirs(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d' % nowTime)
       except:
         pass
 
       try:
-        os.makedirs(time.strftime('/var/log/vacd-apel/archive/%Y%m%d' % nowTime)
+        os.makedirs(time.strftime('/var/lib/vac/apel-archive/%Y%m%d' % nowTime)
       except:
         pass
       
@@ -728,41 +737,40 @@ class VacVM:
       else:
         userFQANField = ''
 
-      mesg = 'APEL-individual-job-message: v0.3\n' + 
-             'Site: ' + gocdbSitename + '\n' +
-             'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
-             'LocalJobId: ' + self.uuidStr + '\n' +
-             'LocalUserId: ' + self.uuidStr + '\n' +
-             'GlobalUserName: ' + userDN + '\n' +
-             userFQANField +
-             'WallDuration: ' + str(self.heartbeat - self.started) + '\n' +
-             'CpuDuration: ' + str(self.cpuSeconds) + '\n' +
-             'Processors: ' + str(self.cpus) + '\n' +
-             'NodeCount: 1\n' +
-             'InfrastructureDescription: APEL-VAC\n' +
-             'InfrastructureType: grid\n' +
-             'StartTime: ' + str(self.started) + '\n' +
-             'EndTime: ' + str(self.heartbeat) + '\n' +
-             'MemoryReal: ' + str(mbPerMachine * 1024) + '\n' +
-             'MemoryVirtual: ' + str(mbPerMachine * 1024) + '\n' +
-             'ServiceLevelType: HEPSPEC\n' +
-             'ServiceLevel: ' + str(hs06PerMachine) + '\n'
+      mesg = ('APEL-individual-job-message: v0.3\n' + 
+              'Site: ' + gocdbSitename + '\n' +
+              'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
+              'LocalJobId: ' + self.uuidStr + '\n' +
+              'LocalUserId: ' + self.uuidStr + '\n' +
+              'GlobalUserName: ' + userDN + '\n' +
+              userFQANField +
+              'WallDuration: ' + str(self.heartbeat - self.started) + '\n' +
+              'CpuDuration: ' + str(self.cpuSeconds) + '\n' +
+              'Processors: ' + str(self.cpus) + '\n' +
+              'NodeCount: 1\n' +
+              'InfrastructureDescription: APEL-VAC\n' +
+              'InfrastructureType: grid\n' +
+              'StartTime: ' + str(self.started) + '\n' +
+              'EndTime: ' + str(self.heartbeat) + '\n' +
+              'MemoryReal: ' + str(mbPerMachine * 1024) + '\n' +
+              'MemoryVirtual: ' + str(mbPerMachine * 1024) + '\n' +
+              'ServiceLevelType: HEPSPEC\n' +
+              'ServiceLevel: ' + str(hs06PerMachine) + '\n')
                           
       fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
                           
       try:
-        open(time.strftime('/var/log/vacd-apel/outgoing/%Y%m%d/', nowTime) + fileName).write(mesg)
+        createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg)
       except:
-        logLine('Failed opening ' + time.strftime('/var/log/vacd-apel/outgoing/%Y%m%d/', nowTime) + fileName)
+        logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
         return
-      
-      try:
-        open(time.strftime('/var/log/vacd-apel/archive/%Y%m%d/', nowTime) + fileName).write(mesg)
-      except:
-        logLine('Failed opening ' + time.strftime('/var/log/vacd-apel/archive/%Y%m%d/', nowTime) + fileName)
-        return
-      
 
+      try:
+        createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg)
+      except:
+        logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
+        return
+      
    def logMachineoutputs(self):
    
       try:

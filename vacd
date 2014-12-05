@@ -344,6 +344,7 @@ def vacOneCycle():
        # create the finished file for the responder if not already there
        if vm.started and not vm.finishedFile:
                vm.writeAccounting()
+               vm.writeApel()
                if VAC.vmtypes[vm.vmtypeName]['log_machineoutputs']:
                  vm.logMachineoutputs()
                VAC.logLine('Create finished file for ' + vm.name)
