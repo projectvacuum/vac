@@ -698,6 +698,71 @@ class VacVM:
                            
       blahpFile.close()
 
+   def writeApel(self):
+      # Write accounting information about a VM that has finished
+      if self.state != VacState.shutdown or not self.started or not self.heartbeat:
+        return
+
+      # If the VM just ran for fizzle_seconds, then we don't log it
+      if (self.heartbeat - self.started) < vmtypes[self.vmtypeName]['fizzle_seconds']:
+        return
+        
+      nowTime = time.localtime()
+
+      try:
+        os.makedirs(time.strftime('/var/log/vacd-apel/outgoing/%Y%m%d' % nowTime)
+      except:
+        pass
+
+      try:
+        os.makedirs(time.strftime('/var/log/vacd-apel/archive/%Y%m%d' % nowTime)
+      except:
+        pass
+      
+      userDN = ''
+      for component in spaceName.split('.'):
+        userDN = '/DC=' + component + userDN
+        
+      if 'accounting_fqan' in vmtypes[self.vmtypeName]:
+        userFQANField = 'FQAN: ' + vmtypes[self.vmtypeName]['accounting_fqan'] + '\n'
+      else:
+        userFQANField = ''
+
+      mesg = 'APEL-individual-job-message: v0.3\n' + 
+             'Site: ' + gocdbSitename + '\n' +
+             'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
+             'LocalJobId: ' + self.uuidStr + '\n' +
+             'LocalUserId: ' + self.uuidStr + '\n' +
+             'GlobalUserName: ' + userDN + '\n' +
+             userFQANField +
+             'WallDuration: ' + str(self.heartbeat - self.started) + '\n' +
+             'CpuDuration: ' + str(self.cpuSeconds) + '\n' +
+             'Processors: ' + str(self.cpus) + '\n' +
+             'NodeCount: 1\n' +
+             'InfrastructureDescription: APEL-VAC\n' +
+             'InfrastructureType: grid\n' +
+             'StartTime: ' + str(self.started) + '\n' +
+             'EndTime: ' + str(self.heartbeat) + '\n' +
+             'MemoryReal: ' + str(mbPerMachine * 1024) + '\n' +
+             'MemoryVirtual: ' + str(mbPerMachine * 1024) + '\n' +
+             'ServiceLevelType: HEPSPEC\n' +
+             'ServiceLevel: ' + str(hs06PerMachine) + '\n'
+                          
+      fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
+                          
+      try:
+        open(time.strftime('/var/log/vacd-apel/outgoing/%Y%m%d/', nowTime) + fileName).write(mesg)
+      except:
+        logLine('Failed opening ' + time.strftime('/var/log/vacd-apel/outgoing/%Y%m%d/', nowTime) + fileName)
+        return
+      
+      try:
+        open(time.strftime('/var/log/vacd-apel/archive/%Y%m%d/', nowTime) + fileName).write(mesg)
+      except:
+        logLine('Failed opening ' + time.strftime('/var/log/vacd-apel/archive/%Y%m%d/', nowTime) + fileName)
+        return
+      
+
    def logMachineoutputs(self):
    
       try:
