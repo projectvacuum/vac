@@ -81,9 +81,9 @@ Defaults to 1.
 sets the memory allocated to each VM in MiB (1024^2). Defaults to 2048.
 
 .B hs06_per_cpu
-gives the HEPSPEC06 power of each CPU in a virtual machine. This is
-available as /etc/machinefeatures/hs06 inside the VM and used when 
-writing APEL accounting records. Defaults to 1.
+gives the HEPSPEC06 power of each CPU in a virtual machine. This used
+to calculate the total value /etc/machinefeatures/hs06 inside the VM and 
+when writing APEL accounting records. Defaults to 1.
 
 .B gocdb_sitename
 gives the GOCDB site name to use when writing APEL accounting records.
@@ -131,10 +131,10 @@ VMs' fully qualified domain names as their names. For example,
 factory1-00.example.com. Defaults to vac_volume_group.
 
 .B fix_networking
-can be set to false to stop Vac trying to reset the lowlevel networking
-state if the vac_169.254.0.0 virtual network does not exist or cannot
+can be set to False to stop Vac trying to reset the lowlevel networking
+state if the vac_169.254.0.0 virtual network does not exist and cannot
 be created with libvirt. /var/log/vacd-factory receives details of what
-Vac detects and tries to do. Default true.
+Vac detects and tries to do. Default True.
 
 .SH [VMTYPE ...] SECTIONS
 
@@ -222,8 +222,8 @@ sets the expiration time in days for per-VM directories created under
 /var/lib/vac/machineoutputs.
 
 .B accounting_fqan
-is used to specify a userFQAN to include in the blahp accounting 
-entries in the /var/log/vacd-accounting/ log files. 
+is used to specify a FQAN to include when writing APEL accounting 
+records, to associate usage with particular experiments.
 
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
@@ -231,8 +231,8 @@ relative to the vmtype's subdirectory of /var/lib/vac/vmtypes
 
 .B root_image
 is the path to the image file from which the VM will boot. With the
-cernvm3 vm_model, this can be a remote HTTP or HTTPS URL which Vac will
-cache in /var/lib/vac/imagecache. The remote server must supply a
+cernvm3 vm_model, this can also be a remote HTTP or HTTPS URL which Vac 
+will cache in /var/lib/vac/imagecache. The remote server must supply a
 Last-Modified timestamp and Vac will re-request the image each time a 
 VM starts using an If-Modified-Since request to minimise network load.
 Alternatively, the images may be files in the local filesystem.
