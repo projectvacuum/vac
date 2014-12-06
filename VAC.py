@@ -86,7 +86,7 @@ vmtypes = None
 volumeGroup = None
 
 def readConf():
-      global cycleSeconds, deleteOldFiles, domainType, gocdbSiteName, \
+      global cycleSeconds, deleteOldFiles, domainType, gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
@@ -223,7 +223,7 @@ def readConf():
       if parser.has_option('settings', 'vcpu_per_machine'):
           # Warn that this deprecated
           cpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
-          print 'vcpu_per_machine is deprecated: please use cpu_per_machine in vac.conf'
+          print 'vcpu_per_machine is deprecated: please use cpu_per_machine in [settings]'
       elif parser.has_option('settings', 'cpu_per_machine'):
           # If this isn't set, then we allocate one cpu per VM
           cpuPerMachine = int(parser.get('settings','cpu_per_machine'))
@@ -235,7 +235,7 @@ def readConf():
       if parser.has_option('settings', 'hs06_per_machine'):
           # Warn that this is deprecated
           hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
-          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in vac.conf'
+          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in [settings]'
       elif parser.has_option('settings', 'hs06_per_cpu'):
           hs06PerMachine = cpuPerMachine * float(parser.get('settings','hs06_per_cpu'))
       else:
@@ -719,12 +719,12 @@ class VacVM:
       nowTime = time.localtime()
 
       try:
-        os.makedirs(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d' % nowTime)
+        os.makedirs(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d', nowTime))
       except:
         pass
 
       try:
-        os.makedirs(time.strftime('/var/lib/vac/apel-archive/%Y%m%d' % nowTime)
+        os.makedirs(time.strftime('/var/lib/vac/apel-archive/%Y%m%d', nowTime))
       except:
         pass
       

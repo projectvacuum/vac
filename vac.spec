@@ -59,6 +59,8 @@ fi
 /var/lib/vac/imagecache
 /var/lib/vac/vmtypes
 /var/lib/vac/machines
+/var/lib/vac/apel-archive
+/var/lib/vac/apel-outgoing
 /var/lib/vac/machineoutputs
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd
