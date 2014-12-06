@@ -509,6 +509,8 @@ class VacVM:
       self.cpuSeconds = 0
       self.cpus = cpuPerMachine
       self.userDataContents = None
+      self.mbPerMachine = None
+      self.hs06PerMachine = None
 
       conn = libvirt.open(None)
       if conn == None:
@@ -587,20 +589,31 @@ class VacVM:
       except:
            self.heartbeat = None
 
-      if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/machinefeatures/shutdowntime') :
-          f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/machinefeatures/shutdowntime', 'r')
-          self.shutdownTime = int(f.read().strip())
-          f.close()
+      try: 
+           self.shutdownTime = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                         + '/shared/machinefeatures/shutdowntime', 'r').read().strip())
+      except:
+           pass
       
-      if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/jobfeatures/allocated_CPU') :
-          f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                                         + '/shared/jobfeatures/allocated_CPU', 'r')
-          self.cpus = int(f.read().strip())
-          f.close()
-
+      try: 
+           self.cpus = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                + '/shared/jobfeatures/allocated_CPU', 'r').read().strip())
+      except:
+           pass
+      
+      try: 
+           self.hs06 = float(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                + '/shared/machinefeatures/hs06', 'r').read().strip())
+      except:
+           self.hs06 = hs06PerMachine
+      
+      try: 
+           # we use our mem_limit_bytes to avoid usage of 1000^2 for memory in MJF mem_limit_MB spec
+           self.mb = (int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+                                + '/shared/jobfeatures/mem_limit_bytes', 'r').read().strip()) / 1048576)
+      except:
+           self.mb = mbPerMachine
+      
       if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                          + '/finished') :
           self.finishedFile = True
@@ -686,8 +699,8 @@ class VacVM:
               ' end=' + str(self.heartbeat) + 
               ' Exit_status=0' +
               ' resources_used.cput=' + secondsToHHMMSS(self.cpuSeconds) + 
-              ' resources_used.mem=' + str(mbPerMachine * 1024) + 'kb resources_used.ncpus=' + str(self.cpus) + 
-              ' resources_used.vmem=' + str(mbPerMachine * 1024) + 'kb' +
+              ' resources_used.mem=' + str(self.mb * 1024) + 'kb resources_used.ncpus=' + str(self.cpus) + 
+              ' resources_used.vmem=' + str(self.mb * 1024) + 'kb' +
               ' resources_used.walltime=' + secondsToHHMMSS(self.heartbeat - self.started) + '\n')
                           
       pbsFile.close()
@@ -756,10 +769,10 @@ class VacVM:
               'InfrastructureType: grid\n' +
               'StartTime: ' + str(self.started) + '\n' +
               'EndTime: ' + str(self.heartbeat) + '\n' +
-              'MemoryReal: ' + str(mbPerMachine * 1024) + '\n' +
-              'MemoryVirtual: ' + str(mbPerMachine * 1024) + '\n' +
+              'MemoryReal: ' + str(self.mb * 1024) + '\n' +
+              'MemoryVirtual: ' + str(self.mb * 1024) + '\n' +
               'ServiceLevelType: HEPSPEC\n' +
-              'ServiceLevel: ' + str(hs06PerMachine) + '\n')
+              'ServiceLevel: ' + str(self.hs06) + '\n')
                           
       fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
                           
@@ -1081,9 +1094,11 @@ class VacVM:
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
                  str(int(time.time())) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
-      # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2
+      # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
-                 str(int(mbPerMachine * 1.048576)) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 str((mbPerMachine * 1048576) / 1000000) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
+                 str(mbPerMachine * 1048576) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
                         
       # cpuPerMachine again
       createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
