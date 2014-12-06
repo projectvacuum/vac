@@ -82,7 +82,12 @@ sets the memory allocated to each VM in MiB (1024^2). Defaults to 2048.
 
 .B hs06_per_cpu
 gives the HEPSPEC06 power of each CPU in a virtual machine. This is
-available as /etc/machinefeatures/hs06 inside the VM. Defaults to 1.
+available as /etc/machinefeatures/hs06 inside the VM and used when 
+writing APEL accounting records. Defaults to 1.
+
+.B gocdb_sitename
+gives the GOCDB site name to use when writing APEL accounting records.
+Defaults to the space name as a placeholder.
 
 .B version_logger
 can be used to disable the logging of the version in use. Normally

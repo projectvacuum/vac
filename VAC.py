@@ -154,11 +154,15 @@ def readConf():
         
       spaceName = parser.get('settings','vac_space').strip()
 
-      # GOCDB site name is needed for APEL accounting: fail safe to require it
-      if not parser.has_option('settings', 'gocdb_sitename'):
-        return 'Must give gocdb_sitename in [settings]!'
-        
-      gocdbSitename = parser.get('settings','gocdb_sitename').strip()
+      
+      if parser.has_option('settings', 'gocdb_sitename'):
+          gocdbSitename = parser.get('settings','gocdb_sitename').strip()
+      else:
+          # Default to space name so always have something to give APEL
+          # Site can replace this in archived ssm files with real GOCDB 
+          # sitename if they forgot to set it properly. Best to always 
+          # write the per-VM accounting records and perhaps fix it later.
+          gocdbSitename = spaceName
              
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
