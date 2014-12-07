@@ -1472,10 +1472,10 @@ def checkNetwork():
       
       try:
            # Find the network is already defined
-           vacNetwork = conn.networkLookupByName('vac_' + VAC.natNetwork)
+           vacNetwork = conn.networkLookupByName('vac_' + natNetwork)
       except:
            # Doesn't exist so we define and start it
-           VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT') 
+           logLine('No libvirt network vac_' + natNetwork + ' defined for NAT') 
            
            nameParts = os.uname()[1].split('.',1)
 
@@ -1484,21 +1484,21 @@ def checkNetwork():
            ordinal = 0
            while ordinal < 100:
     
-           ip      = natPrefix + str(ordinal)
-           ipBytes = ip.split('.')        
-           mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
-           vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
-           hostsLine = ip + ' ' + nameParts[0] + '-%02d' % ordinal + ' ' + vmName + ' # added by Vac'
+              ip      = natPrefix + str(ordinal)
+              ipBytes = ip.split('.')        
+              mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
+              vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
+              hostsLine = ip + ' ' + nameParts[0] + '-%02d' % ordinal + ' ' + vmName + ' # added by Vac'
 
-           dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
-           ordinal += 1
+              dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
+              ordinal += 1
 
-           # append a line for this VM to /etc/hosts if not already present
-           with open('/etc/hosts', 'r') as f:
-           if not hostsLine in f.read():
-              f.close()
-              with open('/etc/hosts', 'a') as g:
-                 g.write(hostsLine + '\n')
+              # append a line for this VM to /etc/hosts if not already present
+              with open('/etc/hosts', 'r') as f:
+                if not hostsLine in f.read():
+                  f.close()
+                  with open('/etc/hosts', 'a') as g:
+                    g.write(hostsLine + '\n')
 
            netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
            netXML += " <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
@@ -1507,8 +1507,10 @@ def checkNetwork():
            try:
              vacNetwork = conn.networkDefineXML(netXML)
            except Exception as e:  
-             logLine('Failed to define NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+             logLine('Failed to define network vac_' + natNetwork + ' due to "' + str(e) + '"')
              return False
+           else:
+             logLine('Defined network vac_' + natNetwork)
 
       # Check the network is actually running, not just defined    
       if not vacNetwork.isActive():    
@@ -1532,10 +1534,10 @@ def checkNetwork():
              # Try setting autostart
              vacNetwork.setAutostart(True)
            except Exception as e:
-             logLine('Failed to set autostart for NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+             logLine('Failed to set autostart for network vac_' + natNetwork + ' due to "' + str(e) + '"')
              return False
            else:
-             logLine('Set auto-start for  Network vac_' + natNetwork)
+             logLine('Set auto-start for network vac_' + natNetwork)
         
       return True
      
