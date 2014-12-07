@@ -73,6 +73,7 @@
 # local modules or by directly inserting them. You can use the etc_path and
 # vmtypes_path parameters to point to your dedicated trees.
 #
+# Nagios/NRPE: 
 # In addition to the configuration and vmtype files, by setting nagios_nrpe
 # to true you can install a Vac file in /etc/nrpe.d to enable Nagios NRPE
 # monitoring using Vac's check-vacd script. This will ensure the nrpe RPM
@@ -80,24 +81,33 @@
 # This assumes that you have an nrpe module already or have declared nrpe
 # as a service.
 #
+# APEL:
+# If you give the apel_cert_path and apel_key_path parameters when invoking
+# the class, the APEL ssmsend client will be run each hour from cron to
+# send usage data to the production APEL service. The two path parameters
+# must be full paths on the Puppet fileserver starting with puppet:/// .
+# YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
+#
 # Andrew.McNab@cern.ch  December 2014  http://www.gridpp.ac.uk/vac/
 #
 
 #
-class vac ($space        = "vac01.${domain}",
-           $subspace     = '',
-           $subspace1    = '',
-           $subspace2    = '',
-           $subspace3    = '',
-           $subspace4    = '',
-           $subspace5    = '',
-           $subspace6    = '',
-           $subspace7    = '',
-           $subspace8    = '',
-           $subspace9    = '',
-           $etc_path     = 'modules/vac/vac.d',
-           $vmtypes_path = 'modules/vac/vmtypes',
-           $nagios_nrpe  = false )
+class vac ($space          = "vac01.${domain}",
+           $subspace       = '',
+           $subspace1      = '',
+           $subspace2      = '',
+           $subspace3      = '',
+           $subspace4      = '',
+           $subspace5      = '',
+           $subspace6      = '',
+           $subspace7      = '',
+           $subspace8      = '',
+           $subspace9      = '',
+           $etc_path       = 'modules/vac/vac.d',
+           $vmtypes_path   = 'modules/vac/vmtypes',
+           $nagios_nrpe    = false,
+           $apel_cert_path = '',
+           $apel_key_path  = '')
 {
   #
   # Install site-wide or increasingly specific configuration files in /etc/vac.d
@@ -227,6 +237,36 @@ class vac ($space        = "vac01.${domain}",
              group   => 'root',
              mode    => '0644',
              notify  => Service['nrpe'],
+           }
+    }
+
+  #
+  # Run APEL ssmsend
+  #
+  if ($apel_cert_path != '') and ($apel_key_path != '')
+    {
+      file { '/etc/grid-security/vac-apel-cert.pem':
+             ensure  => 'file',
+             source  => "$apel_cert_path",
+             owner   => 'root',
+             group   => 'root',
+             mode    => '0644',
+           }
+
+      file { '/etc/grid-security/vac-apel-key.pem':
+             ensure  => 'file',
+             source  => "$apel_key_path",
+             owner   => 'root',
+             group   => 'root',
+             mode    => '0600',
+           }
+
+      file { '/etc/cron.d/vac-ssmsend-cron':
+             ensure  => 'file',
+             content => "RANDOM_DELAY=55\n0 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend-cron.log 2>&1\n",
+             owner   => 'root',
+             group   => 'root',
+             mode    => '0644',
            }
     }
 }
