@@ -25,7 +25,7 @@
 - Define and create a persistent, auto-starting network
 - writeApel() to write accounting records to an outgoing directory for
   APEL SSM
-- Require gocdb_sitename option in [settings] for APEL
+- Require gocdb_sitename in [settings] for APEL
 - Use per-instance MB and HS06 in accounting, not global settings
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file

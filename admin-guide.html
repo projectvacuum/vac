@@ -448,77 +448,34 @@ last 600 seconds.
 <h2>APEL accounting</h2>
 
 <p>
-When Vac detects that a VM has finished, it writes one line with
-accounting information to two daily log files in /var/log/vacd-accounting .
-One log file is in PBS format, and one in BLAHP format. Vac uses the 
-UUID of the VM as the local and grid job ID, and the vmtype name as the
-local user and group. A unique user DN is constructed from the components 
+When Vac detects that a VM has run for at least fizzle_seconds and
+now finished, it writes a copy of the APEL
+accounting message to subdirectories of /var/lib/vac/apel-outgoing and
+/var/lib/vac/apel-archive . Vac uses the UUID of the VM as the local job 
+ID, the factory hostname as the local user ID, and the vmtype name as the
+batch queue name. A unique user DN is constructed from the components 
 of the Vac space name. For example, vac01.example.com becomes
 /DC=com/DC=example/DC=vac01 . If the accounting_fqan option is present in a
-[vmtype ...]
-section, then for VMs of that type the value of that option is included in
-the log files as the user FQAN, which indicates the VO associated with the
-VM.
+[vmtype ...] section, then for VMs of that type the value of that option 
+is included as the user FQAN, which indicates the VO associated with the VM.
 
 <p>
-The format of these accounting log files is designed to work with the
-standard APEL PBS log file parser, which can be run on each factory machine
-from cron to publish accounting records into the site's APEL publisher
-database.
+These accounting messages are designed to be published to the central
+APEL service using the
+standard APEL ssmsend command, which can be run on each factory machine
+from cron. Please see the <a href="https://wiki.egi.eu/wiki/APEL">APEL 
+SSM client documentation for details</a>. It should be sufficient that
+you install the apel-ssm RPM, install a host certificate and key 
+authorized to talk to APEL, edit the /etc/apel/sender.cfg file, and 
+arrange to run the ssmsend command from cron. 
 
 <p>
-For APEL 3, a configuration file modelled on this example can be placed in 
-/etc/apel/parser.cfg:
-<pre>
-[db]
-hostname = apel.YOUR.DOMAIN.NAME
-port = 3306
-name = apelclient
-username = YOUR-USERNAME
-password = YOUR-PASSWORD
-[site_info]
-site_name = YOUR-GOCDB-SITE-NAME
-lrms_server = YOUR-VAC-SPACE-NAME
-[blah]
-enabled = true
-dir = /var/log/vacd-accounting
-filename_prefix = blahp.log
-subdirs = false
-[batch]
-enabled = true
-# Reparse all batch system log files and replace them in the database.
-# Use with caution!
-reparse = false
-type = PBS
-parallel = true
-dir = /var/log/vacd-accounting
-filename_prefix = 201
-subdirs = false
-[logging]
-logfile = /var/log/apelparser.log
-level = DEBUG
-console = true
+The ssmsend command can be run once a day between 2 and 3am by placing 
+the file vac-ssmsend-cron in /etc/cron.d:
+<pre> 
+RANDOM_DELAY=60
+00 02 * * * root /usr/bin/ssmsend >> /var/log/vac-ssmsend.log 2>&amp;1
 </pre>
-
-<p>
-The SiteName is the EGI/WLCG site name used by the GOCDB, and 
-the other example.com values should be replaced with your chosen names as 
-before.
-
-<p>
-The parser can be run once a day by placing the file
-glite-apel-pbs-parser-cron in /etc/cron.d:
-<pre>
-PATH=/sbin:/bin:/usr/sbin:/usr/bin
-25 1,13 * * * root /usr/bin/apelparser >>/var/log/apelparser-cron.log 2>&amp;1
-</pre>
-
-<p>
-It is also necessary to ensure that HEPSPEC06 benchmark values are 
-present in the publisher database, either by placing them in the BDII and 
-using the APEL SpecUpdater, or by inserting them by hand in the 
-database. New rows only need to be inserted if the benchmark changes for some
-reason. 
 
 <h2>Puppet</h2>
 

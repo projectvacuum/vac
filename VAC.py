@@ -154,16 +154,16 @@ def readConf():
         
       spaceName = parser.get('settings','vac_space').strip()
 
-      
-      if parser.has_option('settings', 'gocdb_sitename'):
-          gocdbSitename = parser.get('settings','gocdb_sitename').strip()
-      else:
-          # Default to space name so always have something to give APEL
-          # Site can replace this in archived ssm files with real GOCDB 
-          # sitename if they forgot to set it properly. Best to always 
-          # write the per-VM accounting records and perhaps fix it later.
-          gocdbSitename = spaceName
-             
+      # Must give something as the GOCDB sitename used in
+      # accounting records. We force them to give a name to
+      # avoid (a) not recording usage at all or (b) using
+      # some default value, such as spaceName, which will
+      # end up in the central APEL database.      
+      if not parser.has_option('settings', 'gocdb_sitename'):
+        return 'Must give gocdb_sitename in [settings]!'
+
+      gocdbSitename = parser.get('settings','gocdb_sitename').strip()
+
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
           domainType = parser.get('settings','domain_type').strip()
@@ -758,7 +758,8 @@ class VacVM:
               'Site: ' + gocdbSitename + '\n' +
               'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
               'LocalJobId: ' + self.uuidStr + '\n' +
-              'LocalUserId: ' + self.uuidStr + '\n' +
+              'LocalUserId: ' + os.uname()[1] + '\n' +
+              'Queue: ' + self.vmtypeName + '\n' +
               'GlobalUserName: ' + userDN + '\n' +
               userFQANField +
               'WallDuration: ' + str(self.heartbeat - self.started) + '\n' +
