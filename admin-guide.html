@@ -470,11 +470,13 @@ authorized to talk to APEL, edit the /etc/apel/sender.cfg file, and
 arrange to run the ssmsend command from cron. 
 
 <p>
-The ssmsend command can be run once a day between 2 and 3am by placing 
-the file vac-ssmsend-cron in /etc/cron.d:
+The ssmsend command can safely be run multiple times per day as it does
+not connect to APEL if there are no new messages, and deletes messages 
+once they are sent. It can be run at a random time during each hour by
+placing the file vac-ssmsend-cron in /etc/cron.d:
 <pre> 
-RANDOM_DELAY=60
-00 02 * * * root /usr/bin/ssmsend >> /var/log/vac-ssmsend.log 2>&amp;1
+RANDOM_DELAY=55
+0 * * * * root /usr/bin/ssmsend >> /var/log/vac-ssmsend.log 2>&amp;1
 </pre>
 
 <h2>Puppet</h2>
