@@ -245,6 +245,10 @@ class vac ($space          = "vac01.${domain}",
   #
   if ($apel_cert_path != '') and ($apel_key_path != '')
     {
+      package { 'apel-ssm':
+                ensure  => 'installed',
+              }
+
       file { '/etc/grid-security/vac-apel-cert.pem':
              ensure  => 'file',
              source  => "$apel_cert_path",
