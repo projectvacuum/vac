@@ -27,6 +27,7 @@
   APEL SSM
 - Require gocdb_sitename in [settings] for APEL
 - Use per-instance MB and HS06 in accounting, not global settings
+- Add APEL SSM support to init.pp
 ==================== Changes in Vac version 0.16.0 =====================
 - Fix mtime exception when using heartbeat_file
 - Apply cpu_per_machine properly

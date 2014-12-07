@@ -239,9 +239,15 @@ class vac ($space          = "vac01.${domain}",
              notify  => Service['nrpe'],
            }
     }
+  else # uninstall if not set true
+    {
+      file { '/etc/nrpe.d/nagios-plugins-check-vacd.cfg':
+             ensure  => 'absent',
+           }      
+    }
 
   #
-  # Run APEL ssmsend
+  # Enable and run APEL ssmsend from cron
   #
   if ($apel_cert_path != '') and ($apel_key_path != '')
     {
@@ -272,5 +278,11 @@ class vac ($space          = "vac01.${domain}",
              group   => 'root',
              mode    => '0644',
            }
+    }
+  else # remove cron to disable if not both set
+    {
+      file { '/etc/cron.d/vac-ssmsend-cron':
+             ensure  => 'absent',
+           }      
     }
 }
