@@ -64,4 +64,4 @@ fi
 /var/lib/vac/machineoutputs
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd
-/etc/apel/vac-sender-prod.cfg
+/etc/apel/vac-ssmsend-prod.cfg
