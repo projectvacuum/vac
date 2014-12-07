@@ -37,7 +37,7 @@ INSTALL_FILES=vacd vac VAC.py vacd.init \
           check-vacd VERSION vacd.logrotate \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           example.vac.conf example.user_data \
-          admin-guide.html \
+          admin-guide.html vac-sender-prod.cfg \
           testkvm.xml init.pp
           
 TGZ_FILES=$(INSTALL_FILES) Makefile vac.spec
@@ -61,7 +61,8 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machineoutputs \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
-	         $(RPM_BUILD_ROOT)/etc/logrotate.d
+	         $(RPM_BUILD_ROOT)/etc/logrotate.d \
+	         $(RPM_BUILD_ROOT)/etc/apel
 	cp vacd vac VAC.py check-vacd \
 	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
@@ -74,6 +75,8 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	cp vacd.logrotate \
 	   $(RPM_BUILD_ROOT)/etc/logrotate.d/vacd
+	cp vac-sender-prod.cfg \
+	   $(RPM_BUILD_ROOT)/etc/apel
 	
 rpm: vac.tgz
 	rm -Rf RPMTMP
