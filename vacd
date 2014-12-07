@@ -231,41 +231,12 @@ def vacOneCycle():
              sock.close()
            except:
              pass
-     
-   conn = libvirt.open(None)
-     
-   try:
-       # Find the network if exists already
-       vacNetwork = conn.networkLookupByName('vac_' + VAC.natNetwork)
-   except:
-       # Doesn't exist so we define and start it
-       VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT')
 
-       if not VAC.createNetwork(conn):
-        conn.close()
-        return
-   else:
-       # Check the network is actually running, not just defined
-       if not vacNetwork.isActive():
-         try:
-           # Try starting it if not running
-           vacNetwork.create()
-         except Exception as e:
-           VAC.logLine('Starting defined network vac_' + VAC.natNetwork + ' fails with "' + str(e) + '"')
-           return
-         else:
-           VAC.logLine('Started previously defined network vac_' + VAC.natNetwork)
+   # Check and possibly (re)create Vac NAT network
+   if not VAC.checkNetwork():
+      # In case of unresolvable problems, we end this cycle
+      return
 
-       # In case starting it silently failed somehow
-       if vacNetwork.isActive():
-         VAC.logLine('NAT network vac_' + VAC.natNetwork + ' is active, using device ' + vacNetwork.bridgeName())
-         VAC.checkIpTables(vacNetwork.bridgeName())
-       else:
-         VAC.logLine("Defined network vac_" + VAC.natNetwork + " doesn't start")
-         return
-
-   conn.close()
-     
    VAC.logLine('VMs available to this factory machine: ' + str(VAC.virtualmachines))
    VAC.logLine('VM Types configuration: ' + str(VAC.vmtypes))
    VAC.logLine('Factories in the space ' + VAC.spaceName + ': ' + str(VAC.factories))

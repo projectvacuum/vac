@@ -1465,59 +1465,78 @@ class VacVM:
       # Everything ok so return no error message
       return None
 
-def createNetwork(conn):
+def checkNetwork():
+      # Check and if necessary create network and set its attributes
 
-      nameParts = os.uname()[1].split('.',1)
-
-      dhcpXML = ""
- 
-      ordinal = 0
-      while ordinal < 100:
-    
-        ip      = natPrefix + str(ordinal)
-        ipBytes = ip.split('.')        
-        mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
-        vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
-        hostsLine = ip + ' ' + nameParts[0] + '-%02d' % ordinal + ' ' + vmName + ' # added by Vac'
-
-        dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
-        ordinal += 1
-
-        # append a line for this VM to /etc/hosts if not already present
-        with open('/etc/hosts', 'r') as f:
-          if not hostsLine in f.read():
-           f.close()
-           with open('/etc/hosts', 'a') as g:
-            g.write(hostsLine + '\n')
-
-      netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
-      netXML += " <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
-      netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
+      conn = libvirt.open(None)
       
       try:
-        newNet = conn.networkDefineXML(netXML)
-      except Exception as e:  
-        logLine('Failed to define NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
-        return False
-      else:
-        try:
-          newNet.create()
-        except Exception as e:
-          logLine('Failed to create NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
-          logLine('Do you need to install dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
+           # Find the network is already defined
+           vacNetwork = conn.networkLookupByName('vac_' + VAC.natNetwork)
+      except:
+           # Doesn't exist so we define and start it
+           VAC.logLine('No libvirt network vac_' + VAC.natNetwork + ' defined for NAT') 
+           
+           nameParts = os.uname()[1].split('.',1)
 
-          if fixNetworking:
-            fixNetworkingCommands()
+           dhcpXML = ""
+ 
+           ordinal = 0
+           while ordinal < 100:
+    
+           ip      = natPrefix + str(ordinal)
+           ipBytes = ip.split('.')        
+           mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
+           vmName  = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
+           hostsLine = ip + ' ' + nameParts[0] + '-%02d' % ordinal + ' ' + vmName + ' # added by Vac'
 
-          return False
-        else:
-          try:
-            newNet.setAutostart(True)
-          except Exception as e:
-            logLine('Failed to set autostart for NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
-            return False
+           dhcpXML += "   <host mac='" + mac + "' name='" + vmName + "' ip='" + ip + "'/>\n"
+           ordinal += 1
+
+           # append a line for this VM to /etc/hosts if not already present
+           with open('/etc/hosts', 'r') as f:
+           if not hostsLine in f.read():
+              f.close()
+              with open('/etc/hosts', 'a') as g:
+                 g.write(hostsLine + '\n')
+
+           netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
+           netXML += " <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
+           netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
+      
+           try:
+             vacNetwork = conn.networkDefineXML(netXML)
+           except Exception as e:  
+             logLine('Failed to define NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+             return False
+
+      # Check the network is actually running, not just defined    
+      if not vacNetwork.isActive():    
+           try:  
+             # Try starting it if not running
+             vacNetwork.create()
+           except Exception as e:  
+             logLine('Starting defined network vac_' + natNetwork + ' fails with "' + str(e) + '"')
+             logLine('Do you need to install dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
+
+             if fixNetworking:
+               fixNetworkingCommands()
+
+             return False
+           else:  
+             logLine('Started previously defined network vac_' + natNetwork)
+
+      # Check the network is set to auto-start
+      if not vacNetwork.autostart():
+           try:
+             # Try setting autostart
+             vacNetwork.setAutostart(True)
+           except Exception as e:
+             logLine('Failed to set autostart for NAT network vac_' + natNetwork + ' due to "' + str(e) + '"')
+             return False
+           else:
+             logLine('Set auto-start for  Network vac_' + natNetwork)
         
-      logLine('Persistent, auto-starting Network vac_' + natNetwork + ' created')
       return True
      
 def checkIpTables(bridgeName):
