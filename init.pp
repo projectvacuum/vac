@@ -85,7 +85,7 @@
 # If you give the apel_cert_path and apel_key_path parameters when invoking
 # the class, the APEL ssmsend client will be run each hour from cron to
 # send usage data to the production APEL service. The two path parameters
-# must be full paths on the Puppet fileserver starting with puppet:/// .
+# must be paths on the Puppet fileserver (without the leading puppet:///).
 # YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
 #
 # Andrew.McNab@cern.ch  December 2014  http://www.gridpp.ac.uk/vac/
@@ -251,7 +251,7 @@ class vac ($space          = "vac01.${domain}",
 
       file { '/etc/grid-security/vac-apel-cert.pem':
              ensure  => 'file',
-             source  => "$apel_cert_path",
+             source  => "puppet:///${apel_cert_path}",
              owner   => 'root',
              group   => 'root',
              mode    => '0644',
@@ -259,7 +259,7 @@ class vac ($space          = "vac01.${domain}",
 
       file { '/etc/grid-security/vac-apel-key.pem':
              ensure  => 'file',
-             source  => "$apel_key_path",
+             source  => "puppet:///${apel_key_path}",
              owner   => 'root',
              group   => 'root',
              mode    => '0600',
