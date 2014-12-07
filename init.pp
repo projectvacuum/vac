@@ -267,7 +267,7 @@ class vac ($space          = "vac01.${domain}",
 
       file { '/etc/cron.d/vac-ssmsend-cron':
              ensure  => 'file',
-             content => "RANDOM_DELAY=55\n0 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend-cron.log 2>&1\n",
+             content => "22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend-cron.log 2>&1\n",
              owner   => 'root',
              group   => 'root',
              mode    => '0644',
