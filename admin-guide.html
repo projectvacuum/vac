@@ -299,7 +299,7 @@ the rules you have are sufficient for Vac.
 <h3>Logical volumes</h3>
 
 <p>
-Vac virtual machines can use logical volumes that exist on the factory machine
+Vac virtual machines can use logical volumes that on the factory machine
 to provide additional, faster disk space. Normally these will be mounted at
 /scratch by the VM, as they are on conventional grid worker nodes. 
 
@@ -309,28 +309,29 @@ the VM is vdb, but this can changed with the scratch_device option in a
 [vmtype ...] section. 
 
 <p>
-For each virtual machine Vac will look for a logical volume
-to use with it. The global volume_group option in [settings] (default
+The global volume_group option in [settings] (default
 vac_volume_group) and the virtual machine's name are used to construct the
-logical volume paths to try. For example, 
+logical volume path for each VM. For example, 
 /dev/vac_volume_group/factory1-01.example.com
 
 <p>
-You must create the volume group and logical volumes
-to be used by Vac, with something similar to this, where /dev/sda9 is a
-physical volume (partition):
+You <b>must</b> create the volume group with a name that matches the volume_group
+setting and you <b>may</b> create the individual logical volumes, with something 
+similar to this, where /dev/sda9 is a physical volume (partition):
 <pre>
 vgcreate vac_volume_group /dev/sda9
-lvcreate --name factory1-00.example.com -L 25G vac_volume_group
-lvcreate --name factory1-01.example.com -L 25G vac_volume_group
-lvcreate --name factory1-02.example.com -L 25G vac_volume_group
+lvcreate --name factory1-00.example.com -L 40G vac_volume_group
+lvcreate --name factory1-01.example.com -L 40G vac_volume_group
+lvcreate --name factory1-02.example.com -L 40G vac_volume_group
 ...
 </pre>
 
 <p>
-During the creation of each virtual machine instance, Vac will identify the 
-logical volume it has been told to use, measure its size using lvs, and 
-provide it to the VM as vdb by default.
+During the creation of each virtual machine instance, Vac will attempt to
+create the logical volume in volume_group with lvcreate if it doesn't exist 
+already. The setting scratch_gb (default 40) will be used when doing this.
+Vac will then check the logical volume is satisfactory,
+measure its size using lvs, and provide it to the VM as vdb by default.
  
 <h3>Installation of Vac: tar vs RPM</h3>
 

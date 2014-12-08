@@ -84,13 +84,14 @@ virtualmachines = None
 vmtypes = None
 
 volumeGroup = None
+gbScratch = None
 
 def readConf():
       global cycleSeconds, deleteOldFiles, domainType, gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
-             volumeGroup, overloadPerCpu, fixNetworking
+             volumeGroup, gbScratch, overloadPerCpu, fixNetworking
 
       # reset to defaults
       cycleSeconds = 60
@@ -117,6 +118,7 @@ def readConf():
       vmtypes = {}
 
       volumeGroup = 'vac_volume_group'
+      gbScratch   = 40
 
       try:
         f = open('/var/lib/vac/doc/VERSION', 'r')
@@ -196,6 +198,10 @@ def readConf():
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
           volumeGroup = parser.get('settings','volume_group').strip()
+             
+      if parser.has_option('settings', 'scratch_gb'):
+          # Size in GB (1000^3) of scratch volumes, 0 to disable, default is 40
+          gbScratch = int(parser.get('settings','scratch_gb').strip())
              
       if parser.has_option('settings', 'cycle_seconds'):
           # How long to wait before re-evaluating state of VMs in the
@@ -373,9 +379,8 @@ def readConf():
            
            vmName = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
                       
-           if os.path.exists('/dev/' + volumeGroup + '/' + vmName) and \
-              stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + vmName).st_mode):
-                virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
+           if gbScratch > 0:
+              virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
            
            virtualmachines[vmName] = virtualmachine
            ordinal += 1
@@ -1272,6 +1277,14 @@ class VacVM:
         return 'failed to make root disk image'
         
       if 'scratch_volume' in virtualmachines[self.name]:
+
+          if not os.path.exists(virtualmachines[self.name]['scratch_volume']):
+            logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
+            system('/sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup)
+
+          if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
+            return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not a block device'
+
           self.measureScratchDisk()
           if domainType == 'kvm':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +

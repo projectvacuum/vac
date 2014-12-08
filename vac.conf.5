@@ -133,6 +133,12 @@ VMs' fully qualified domain names as their names. For example,
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
+.B scratch_gb
+gives the size in GB (1000^3) when creating per-VM logical volumes for
+scratch partitions in volume_group. If set to zero then no logical
+volumes are created or used. The size of a logical volume is not 
+modified if it already exists. Defaults to 40.
+
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking
 state if the vac_169.254.0.0 virtual network does not exist and cannot
