@@ -1154,7 +1154,7 @@ class VacVM:
 
       try:
        # get logical volume size in GB (1000^3 not 1024^3)
-       f = os.popen('lvs --nosuffix --units G --noheadings -o lv_size ' + virtualmachines[self.name]['scratch_volume'] + ' 2>/dev/null', 'r')
+       f = os.popen('/sbin/lvs --nosuffix --units G --noheadings -o lv_size ' + virtualmachines[self.name]['scratch_volume'] + ' 2>/dev/null', 'r')
        sizeGB = float(f.readline())
        f.close()
        virtualmachines[self.name]['scratch_volume_gb'] = sizeGB
@@ -1280,7 +1280,7 @@ class VacVM:
 
           if not os.path.exists(virtualmachines[self.name]['scratch_volume']):
             logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
-            system('/sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup)
+            os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup + ' 2>&1')
 
           if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
             return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not a block device'
