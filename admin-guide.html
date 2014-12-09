@@ -61,7 +61,7 @@ networking.
 <p>
 Next create the /etc/vac.conf configuration file. Copy
 /var/lib/vac/doc/example.vac.conf to /etc/vac.conf and read through its
-comments. There are 4 lines you need to check and probably change.
+comments. There are 5 lines you need to check and probably change.
 
 <dl>
 <dt><b>vac_space =</b> in [settings]
@@ -70,6 +70,12 @@ then set it to vac01.example.com . A Vac space is a group of factory
 machines that communicate with each other, and is equivalent to a subcluster
 or subsite. A space's name is a fully qualified domain name (FQDN), and can be 
 used as a virtual CE name where necessary in other systems.
+
+<dt><b>gocdb_sitename =</b> in [settings]
+<dd>Set this to your site's name in the <a href="http://goc.egi.eu/">GOCDB</a>
+    or use the space name as a placeholder if you're not registered in the
+    GOCDB. In production, this value is used when writing APEL accounting
+    records.
 
 <dt><b>factories =</b> in [settings]
 <dd>Since we're creating a space that contains a single factory machine, 
@@ -368,6 +374,14 @@ For ease of management, the factories option can be placed in its own
 [settings] section in a separate
 configuration file in /etc/vac.d which can be automatically generated 
 and maintained from another source, such as the site's assets database.
+
+<p>
+Vac writes APEL accounting records as described below. The GOCDB site
+name given by gocdb_sitename in [settings] is included in these records.
+To avoid the risk of polluting the central APEL database with incorrect
+site names, please use your real GOCDB sitename. If your site is 
+genuinely not registered, you can use the space name as a placeholder
+instead.
 
 <h3>Setting up vmtypes</h3>
 
