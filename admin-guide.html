@@ -8,7 +8,7 @@
 
 <p align=center><b>Andrew McNab &lt;Andrew.McNab&nbsp;AT&nbsp;cern.ch&gt;</b>
 
-<h2>Quick start</h2>
+<h2 style="border-bottom: 1px solid">Quick start</h2>
 
 <p>
 By following this quick start recipe you can verify that your installation 
@@ -118,7 +118,7 @@ You should also be able to see the state of the VM using the
 command <b>vac scan</b>, where vac is a command line tool that the
 RPM installs in /usr/sbin.
 
-<h2>Configuration step-by-step</h2>
+<h2 style="border-bottom: 1px solid">Configuration step-by-step</h2>
 
 <p>
 This part of the guide covers the same ground as the quick start
@@ -138,7 +138,8 @@ directory /etc/vac.d will also be read. These files are read in
 alphanumeric order, and then /etc/vac.conf is read if present.
 
 <p>
-So in /etc/vac.d/, options from space.conf will be override any given
+Based on this ordering in /etc/vac.d/, options from space.conf 
+would override any given
 in site.conf, but themselves be overwritten by options from 
 subspace.conf or vacfactory.conf .
 
@@ -150,9 +151,9 @@ state on individual development machines or if a machine is being
 drained of work for maintenance. Site-wide configuration, such 
 as vmtype definitions, can be included in /etc/vac.d files present on 
 every factory, but host specific options, such as HEPSPEC06 values 
-and the total number of VMs to create, can be given in files which
-are specific to particular subsets of machines. Vac will merge
-all of this information as outlined above.
+and the total number of VMs to create, can be given in /etc/vac.d
+files which are specific to particular subsets of machines. Vac 
+will merge all of this information as outlined above.
 
 <h3>Xen vs kvm</h3>
 
@@ -211,7 +212,7 @@ of SL6 updates, is suitable.
 
 <p>
 The 169.254.0.0 network should not be configured on the factory machine
-before you start Vac. In particular, Zeroconf support should be disabled
+before you start Vac. For example, Zeroconf support can be disabled
 by adding NOZEROCONF=yes to /etc/sysconfig/network and restarting
 networking.
 
@@ -222,7 +223,7 @@ virsh net-list --all which should list the vac_169.254.0.0 network and
 the &quot;default&quot; network defined by libvirtd as both being active. 
 The vac network should be using the virbr1 virtual interface, with virbr0 
 still used by the default network. The vac network is set up as persistent
-and auto-starting, so it should survive reboots and restart of libvirtd.
+and auto-starting, so it should survive reboots and restarts of libvirtd.
 
 <p>
 However, Vac will log the error &quot;Failed to create NAT network
@@ -301,7 +302,7 @@ the rules you have are sufficient for Vac.
 <h3>Logical volumes</h3>
 
 <p>
-Vac virtual machines can use logical volumes that on the factory machine
+Vac virtual machines can use logical volumes on the factory machine
 to provide additional, faster disk space. Normally these will be mounted at
 /scratch by the VM, as they are on conventional grid worker nodes. 
 
@@ -319,7 +320,8 @@ logical volume path for each VM. For example,
 <p>
 You <b>must</b> create the volume group with a name that matches the volume_group
 setting and you <b>may</b> create the individual logical volumes, with something 
-similar to this, where /dev/sda9 is a physical volume (partition):
+similar to this, where /dev/sda9 is a physical volume created 
+during Kickstart or with pvcreate:
 <pre>
 vgcreate vac_volume_group /dev/sda9
 lvcreate --name factory1-00.example.com -L 40G vac_volume_group
@@ -343,7 +345,7 @@ from the <a href="http://www.gridpp.ac.uk/vac/versions/">Downloads
 directory</a> on the Vac website. 
 
 <p>
-It is possible to install Vac from a tar file, using the install Makefile
+It is also possible to install Vac from a tar file, using the install Makefile
 target. 
 
 <h3>Configuration of the Vac space</h3>
@@ -374,7 +376,7 @@ One [vmtype ...] section must exist for each vmtype in the system, with
 the name of the vmtype given in the section name, such as [vmtype example].
 A vmtype name must only consist of lowercase letters, numbers,
 and hyphens. The vac.conf(5) man page lists the options
-that can be give for each vmtype.
+that can be given for each vmtype.
 
 <p>
 The target_share option for the vmtype gives
@@ -406,14 +408,14 @@ section and how to create the files to be placed in its subdirectory
 of /var/lib/vac/vmtypes (likely to be a hostcert.pem and hostkey.pem
 pair to give to the VM.)
 
-<h2>Starting and stopping vacd</h2>
+<h2 style="border-bottom: 1px solid">Starting and stopping vacd</h2>
 
 <p>
 The Vac daemon, vacd, is started and stopped by /etc/rc.d/init.d/vacd 
 on conjunction with the usual service and chkconfig commands. As the 
 configuration files are reread at the start of each cycle (by default, 
-one per minute) it is not necessary to restart vacd after changing the 
-configuration.
+one per minute) <b>it is not necessary to restart vacd after changing the 
+configuration</b>.
 
 <p>
 Furthermore, as vacd rereads the current state of the VMs from status
@@ -422,16 +424,22 @@ restarted without disrupting running VMs or losing information about
 their state. 
 In most cases it will even be possible to upgrade vacd from one patch
 level to another within the same minor release without having to
-drain the factory of running VMs.
+drain the factory of running VMs. If problems arise during upgrades,
+the most likely outcome is that Vac will fail to create new VMs until 
+the configuration is fixed, but the existing VMs will continue to run.
+(&quot;We want Vac failures to look like planned draining.&quot;) 
+Furthermore, since Vac factory machines are autonomous, it is 
+straightforward to upgrade one factory in a production Vac space
+to check the consequences.
 
-<h2>Using vac command</h2>
+<h2 style="border-bottom: 1px solid">Using the vac command</h2>
 
 <p>
 The vac(1) man page explains how the vac command can be used to
 scan the current Vac space and display the VMs running, along with
 statistics about their CPU load and wall clock time.
 
-<h2>Setting up Nagios</h2>
+<h2 style="border-bottom: 1px solid">Setting up Nagios</h2>
 
 <p>
 The check-vacd script installed in /var/lib/vac/bin can be used with
@@ -448,7 +456,7 @@ command[check-vacd]=/var/lib/vac/bin/check-vacd 600
 which raises an alarm if the vacd heartbeat wasn't updated in the
 last 600 seconds.
 
-<h2>APEL accounting</h2>
+<h2 style="border-bottom: 1px solid">APEL accounting</h2>
 
 <p>
 When Vac detects that a VM has run for at least fizzle_seconds and
@@ -458,8 +466,8 @@ accounting message to subdirectories of /var/lib/vac/apel-outgoing and
 ID, the factory hostname as the local user ID, and the vmtype name as the
 batch queue name. A unique user DN is constructed from the components 
 of the Vac space name. For example, vac01.example.com becomes
-/DC=com/DC=example/DC=vac01 . If the accounting_fqan option is present in a
-[vmtype ...] section, then for VMs of that type the value of that option 
+/DC=com/DC=example/DC=vac01 . If the accounting_fqan option is present in
+the [vmtype ...] section, then for VMs of that type the value of that option 
 is included as the user FQAN, which indicates the VO associated with the VM.
 
 <p>
@@ -484,7 +492,12 @@ placing the file vac-ssmsend-cron in /etc/cron.d:
 22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend-cron.log 2>&amp;1
 </pre>
 
-<h2>Puppet</h2>
+<p>
+If you use the vac-ssmsend-prod.cfg file for production, please change the 
+value of the bdii option to a local or regional top bdii to avoid loading 
+the default service included in the file.
+
+<h2 style="border-bottom: 1px solid">Puppet</h2>
 
 <p>
 A simple Puppet module for Vac exists as the file init.pp which is installed
