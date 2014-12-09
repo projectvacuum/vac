@@ -61,9 +61,10 @@ networking.
 <p>
 Next create the /etc/vac.conf configuration file. Copy
 /var/lib/vac/doc/example.vac.conf to /etc/vac.conf and read through its
-comments. There are 5 lines you need to check and probably change.
+comments. There are 6 lines you need to check and probably change.
 
 <dl>
+
 <dt><b>vac_space =</b> in [settings]
 <dd>Set this to vac01 in your site's domain. So if your site is .example.com
 then set it to vac01.example.com . A Vac space is a group of factory
@@ -92,8 +93,15 @@ used as a virtual CE name where necessary in other systems.
     an RSA key pair to /root/.ssh on the factory machine, or creating
     one with ssh-keygen you will be able to ssh into the VM as root and
     see how it is laid out and how it is running. If you don't
-    place a public key at the location given in this setting, you need 
-    to comment out this setting.
+    place a public key at the location given in this option, you need 
+    to comment the line out.
+
+<dt><b>user_data_option_cvmfs_proxy =</b> in [vmtype example]
+<dd>The value of this option is included in the user_data file given to the
+    VM. It must be set to the URL of an HTTP cache you have access to. If 
+    you are already using cvmfs for grid worker nodes, you can use the same
+    value.
+
 </dl>
 
 <p>
@@ -375,13 +383,30 @@ For ease of management, the factories option can be placed in its own
 configuration file in /etc/vac.d which can be automatically generated 
 and maintained from another source, such as the site's assets database.
 
+<h3>GOCDB and GGUS</h3>
+
+<p>
+Vac is designed to work within the WLCG/EGI grid model of sites composed
+of one or more CEs. Each Vac space name corresponds to one CE within a site,
+and can co-exist with conventional CREAM or ARC CEs. If you are at a
+site registered in the <a href="http://goc.egi.eu/">GOCDB</a>, you
+should add your space name(s) to your site in GOCDB as services. There 
+is a registered service type (uk.ac.gridpp.vac) for Vac spaces. 
+
+<p>
+Problems encountered during the operation of Vac in production may 
+appear as tickets in <a href="https://ggus.eu/">GGUS</a>. The 
+<a href="https://wiki.egi.eu/wiki/GGUS:Vac_FAQ">Vac/Vcycle Support Unit</a>
+appears under &quot;Second Level - Software&quot; on the GGUS
+&quot;Assign ticket to support unit&quot; menu.
+
 <p>
 Vac writes APEL accounting records as described below. The GOCDB site
 name given by gocdb_sitename in [settings] is included in these records.
 To avoid the risk of polluting the central APEL database with incorrect
-site names, please use your real GOCDB sitename. If your site is 
-genuinely not registered, you can use the space name as a placeholder
-instead.
+site names, please use your real GOCDB sitename for this option. If your
+site is genuinely not registered, you can use the space name as a 
+placeholder instead.
 
 <h3>Setting up vmtypes</h3>
 
@@ -483,6 +508,7 @@ of the Vac space name. For example, vac01.example.com becomes
 /DC=com/DC=example/DC=vac01 . If the accounting_fqan option is present in
 the [vmtype ...] section, then for VMs of that type the value of that option 
 is included as the user FQAN, which indicates the VO associated with the VM.
+The GOCDB sitename set by gocdb_sitename is also included.
 
 <p>
 These accounting messages are designed to be published to the central
