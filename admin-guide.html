@@ -29,13 +29,10 @@ run &quot;service libvirtd restart&quot; to make sure libvirtd daemon is
 running. 
 
 <p>
-Install the vac RPM and copy the file /var/lib/vac/doc/testkvm.xml to /tmp .
-
-<p>
-At the command line, excecute
+Install the vac RPM and at the command line excecute:
 <pre>
 virsh list
-virsh create testkvm.xml
+virsh create /var/lib/vac/doc/testkvm.xml
 virsh list
 virsh destroy testkvm
 virsh list
