@@ -188,23 +188,23 @@ class vac ($space              = "vac01.${domain}",
              enable => true,
              ensure => "running",
           }
-  service { "vacd":
+  service { 'vacd':
              enable => true,
              ensure => "running",
           }
-  service { "rpcbind":
+  service { 'rpcbind':
              enable => true,
              ensure => "running",
           }
-  service { "nfs":
+  service { 'nfs':
              enable => true,
              ensure => "running",
           }
-  service { "ksm":
+  service { 'ksm':
              enable => true,
              ensure => "running",
           }
-  service { "ksmtuned":
+  service { 'ksmtuned':
              enable => true,
              ensure => "running",
           }
@@ -222,7 +222,8 @@ class vac ($space              = "vac01.${domain}",
          owner   => 'root',
          group   => 'root',
          mode    => '0644',
-         notify  => Service['network']
+         notify  => Service['network'],
+         before  => Service['vacd'],
        }
 
   #
