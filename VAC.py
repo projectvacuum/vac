@@ -1661,12 +1661,12 @@ def cleanupByNameUUID(name, vmtypeName, uuidStr):
    except:
       pass
 
-   f = os.popen('exportfs', 'r')
+   f = os.popen('/usr/sbin/exportfs', 'r')
    pathname = f.readline().strip()
 
    while pathname and name:
       if ('/var/lib/vac/machines/' + name + '/' + vmtypeName + '/' + uuidStr + '/shared' == pathname):
-         os.system('exportfs -u ' + name + ':' + pathname)
+         os.system('/usr/sbin/exportfs -u ' + name + ':' + pathname)
 
       pathname = f.readline().strip()
 
