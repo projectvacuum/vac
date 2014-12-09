@@ -82,37 +82,41 @@
 # as a service.
 #
 # APEL:
-# If you give the apel_cert_path and apel_key_path parameters when invoking
-# the class, the APEL ssmsend client will be run each hour from cron to
-# send usage data to the production APEL service. The two path parameters
-# must be paths on the Puppet fileserver (without the leading puppet:///).
+# If you give the apel_bdii_hostport, apel_cert_path, and apel_key_path 
+# parameters when invoking the class, the APEL ssmsend client will be run 
+# each hour from cron to send usage data to the production APEL service. 
+# The BDII service to use much be specified as HOST:PORT (without the 
+# leading ldap://). The two path parameters must be paths on the Puppet 
+# fileserver (without the leading puppet:///). 
 # YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
 #
 # Andrew.McNab@cern.ch  December 2014  http://www.gridpp.ac.uk/vac/
 #
 
 #
-class vac ($space          = "vac01.${domain}",
-           $subspace       = '',
-           $subspace1      = '',
-           $subspace2      = '',
-           $subspace3      = '',
-           $subspace4      = '',
-           $subspace5      = '',
-           $subspace6      = '',
-           $subspace7      = '',
-           $subspace8      = '',
-           $subspace9      = '',
-           $etc_path       = 'modules/vac/vac.d',
-           $vmtypes_path   = 'modules/vac/vmtypes',
-           $nagios_nrpe    = false,
-           $apel_cert_path = '',
-           $apel_key_path  = '')
+class vac ($space              = "vac01.${domain}",
+           $subspace           = '',
+           $subspace1          = '',
+           $subspace2          = '',
+           $subspace3          = '',
+           $subspace4          = '',
+           $subspace5          = '',
+           $subspace6          = '',
+           $subspace7          = '',
+           $subspace8          = '',
+           $subspace9          = '',
+           $etc_path           = 'modules/vac/vac.d',
+           $vmtypes_path       = 'modules/vac/vmtypes',
+           $nagios_nrpe        = false,
+           $apel_bdii_hostport = '',
+           $apel_cert_path     = '',
+           $apel_key_path      = '')
 {
   #
   # Install site-wide or increasingly specific configuration files in /etc/vac.d
   #
   file { '/etc/vac.d':
+         require => Package['vac'],
          ensure  => directory,
          recurse => true,
          purge   => true,
@@ -144,6 +148,7 @@ class vac ($space          = "vac01.${domain}",
   # and hostkey.pem) under /var/lib/vac/vmtypes/...
   #
   file { '/var/lib/vac/vmtypes':
+         require => Package['vac'],
          ensure  => directory,
          recurse      => true,
          purge        => true,
@@ -184,6 +189,10 @@ class vac ($space          = "vac01.${domain}",
              ensure => "running",
           }
   service { "vacd":
+             enable => true,
+             ensure => "running",
+          }
+  service { "rpcbind":
              enable => true,
              ensure => "running",
           }
@@ -232,7 +241,7 @@ class vac ($space          = "vac01.${domain}",
       file { '/etc/nrpe.d/nagios-plugins-check-vacd.cfg':
              ensure  => 'file',
              content => "# Use Vac's script to check status\ncommand[check-vacd]=/var/lib/vac/bin/check-vacd 600\n",
-             require => Package['nrpe'],
+             require => Package['nrpe','vac'],
              owner   => 'root',
              group   => 'root',
              mode    => '0644',
@@ -249,7 +258,7 @@ class vac ($space          = "vac01.${domain}",
   #
   # Enable and run APEL ssmsend from cron
   #
-  if ($apel_cert_path != '') and ($apel_key_path != '')
+  if ($apel_bdii_hostport != '') and ($apel_cert_path != '') and ($apel_key_path != '')
     {
       package { 'apel-ssm':
                 ensure  => 'installed',
@@ -272,12 +281,20 @@ class vac ($space          = "vac01.${domain}",
            }
 
       file { '/etc/cron.d/vac-ssmsend-cron':
+             require => Package['vac'],
              ensure  => 'file',
              content => "22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend-cron.log 2>&1\n",
              owner   => 'root',
              group   => 'root',
              mode    => '0644',
            }
+
+      exec { 'update_apel_bdii':
+             require => Package['vac'],
+             command => "/bin/sed -i 's|^bdii:.*|bdii: ldap://${apel_bdii_hostport}|' /etc/apel/vac-ssmsend-prod.cfg",
+             unless  => "/bin/grep '^bdii: ldap://${apel_bdii_hostport}\$' /etc/apel/vac-ssmsend-prod.cfg",
+           }
+
     }
   else # remove cron to disable if not both set
     {
