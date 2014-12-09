@@ -195,6 +195,7 @@ class vac ($space              = "vac01.${domain}",
   service { 'rpcbind':
              enable => true,
              ensure => "running",
+             before  => Service['nfs'],
           }
   service { 'nfs':
              enable => true,
@@ -207,6 +208,7 @@ class vac ($space              = "vac01.${domain}",
   service { 'ksmtuned':
              enable => true,
              ensure => "running",
+             before  => Service['ksm'],
           }
 
   # "Network As A Service"!

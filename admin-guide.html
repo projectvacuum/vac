@@ -47,11 +47,12 @@ where the problem is.
 <p>
 To start using Vac to manage VMs, it's necessary to have a standard NFS
 server installed and running. Vac uses NFS to share some directories from
-the factory machine to its virtual machines, and needs to have the standard 
-NFS server installed and running.
+the factory machine to its virtual machines.
 It's not necessary to configure the NFS server, as Vac uses exportfs
 commands to create and destroy exports dynamically. If you have any iptables
 rules blocking NFS you should disable them before starting vacd.
+The factory machine must have a fully qualified domain name (FDQN) as
+its hostname. So factory1.example.com not just factory1. 
 The 169.254.0.0 network should not be configured on the factory machine
 before you start Vac. In particular, Zeroconf support should be disabled
 by adding NOZEROCONF=yes to /etc/sysconfig/network and restarting
@@ -182,6 +183,10 @@ URL from which Vac can automatically fetch their current
 designated image version, which Vac caches in /var/lib/vac/imagecache .
 
 <h3>DNS, IP, MAC</h3>
+
+<p>
+The factory machines must have fully qualified domain names (FDQN) as
+their hostname. So factory1.example.com etc, not just factory1. 
 
 <p>
 Vac uses a private NAT network for the set of virtual machines on a
