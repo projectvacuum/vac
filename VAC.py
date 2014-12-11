@@ -709,7 +709,7 @@ class VacVM:
       fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
                           
       try:
-        createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH))
+        createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
       except:
         logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
         return
@@ -814,43 +814,7 @@ class VacVM:
       f.write('MACHINEFEATURES="/etc/machinefeatures"\n')
       f.write('JOBFEATURES="/etc/jobfeatures"\n')
       f.close()
-                                     
-#      f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh', 'w')
-#
-#      f.write('#!/bin/sh\n')
-#      f.write('if [ "$1" = "start" ] ; then\n')
-#      f.write('  hostname ' + self.name + '\n')
-#      f.write('  mkdir -p /etc/machinefeatures /etc/jobfeatures /etc/machineoutputs /etc/vmtypefiles\n')
-#      f.write('  cat <<EOF >/etc/cernvm/cernvm.d/S50vac.sh\n')
-#      f.write('#!/bin/sh\n')
-#      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures /etc/jobfeatures\n')
-#      f.write('mount ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures /etc/machinefeatures\n')
-#      f.write('mount -o rw,nfsvers=3 ' + factoryAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs /etc/machineoutputs\n')
-#
-#      if os.path.isdir('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
-#        f.write('mount ' + factoryAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared /etc/vmtypefiles\n')
-#
-#      f.write('EOF\n')
-#      f.write('  chmod ugo+x /etc/cernvm/cernvm.d/S50vac.sh\n')
-#      f.write('fi\n# end of vac prolog.sh\n\n')
-#
-#      # if a prolog is given for this vmtype, we append that to vac's part of the script
-#      if 'prolog' in vmtypes[self.vmtypeName]:
-#
-#          if vmtypes[self.vmtypeName]['prolog'][0] == '/':
-#              prolog_file = vmtypes[self.vmtypeName]['prolog']
-#          else:
-#              prolog_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['prolog']
-#
-#          try:
-#            g = open(prolog_file, "r")
-#            f.write(g.read())
-#            g.close()
-#          except:
-#            raise NameError('Failed to read prolog file ' + prolog_file)
-#  
-#      f.close()
-      
+
       # we include any specified prolog or epilog in the CD-ROM image without modification
       if 'prolog' in vmtypes[self.vmtypeName]:
 
