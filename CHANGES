@@ -1,5 +1,6 @@
 ==================== Changes in Vac version 1.0.0 =====================
--
+- APEL messages are now created world readable on disk 
+  (chmod o-x /var/lib/vac/apel-* can be used to negate this)
 ==================== Changes in Vac version 0.17.0 =====================
 - Use uname() rather than socket to get hostname in Vac responder
 - Force VNC to listen on 127.0.0.1 only (this was the default already)

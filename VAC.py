@@ -655,80 +655,6 @@ class VacVM:
       except:
         logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
 
-   def writeAccounting(self):
-      # Write accounting information about a VM that has finished
-      if self.state != VacState.shutdown or not self.started or not self.heartbeat:
-        return
-
-      # If the VM just ran for fizzle_seconds, then we don't log it
-      if (self.heartbeat - self.started) < vmtypes[self.vmtypeName]['fizzle_seconds']:
-        return
-
-      # Just in case it's been cleaned away somehow
-      try:
-        os.makedirs('/var/log/vacd-accounting', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      except:
-        pass
-
-      # PBS/Torque accounting file (uses localtime)
-      try:
-        pbsFile = open(time.strftime('/var/log/vacd-accounting/%Y%m%d', time.localtime()), 'a+')
-      except:
-        logLine('Failed opening ' + time.strftime('/var/log/vacd-accounting/%Y%m%d', time.localtime()))
-        return
-      
-      # BLAHP accounting file (uses UTC/GMT!)
-      try:
-        blahpFile = open(time.strftime('/var/log/vacd-accounting/blahp.log-%Y%m%d', time.gmtime()), 'a+')
-      except:
-        logLine('Failed opening ' + time.strftime('/var/log/vacd-accounting/blahp.log-%Y%m%d', time.gmtime()))
-        pbsFile.close()
-        return
-      
-      pbsFile.write(time.strftime('%m/%d/%Y %H:%M:%S;E;', time.localtime()) + 
-              self.uuidStr + ';user=' + self.vmtypeName +
-              ' group=' + self.vmtypeName + 
-              ' jobname=' + self.uuidStr + 
-              ' queue=' + self.vmtypeName + 
-              ' ctime=' + str(self.started) +
-              ' qtime=' + str(self.started) +
-              ' etime=' + str(self.started) +
-              ' start=' + str(self.started) +
-              ' owner=' + self.vmtypeName + '@' + spaceName + 
-              ' exec_host=' + os.uname()[1] + '/' + str(virtualmachines[self.name]['ordinal']) + 
-              ' Resource_List.cput=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
-              ' Resource_List.ncpus=' + str(self.cpus) +
-              ' Resource_List.neednodes=1 Resource_List.nodect=1 Resource_List.nodes=1' +
-              ' Resource_List.walltime=' + secondsToHHMMSS(vmtypes[self.vmtypeName]['max_wallclock_seconds']) +
-              ' session=0' +
-              ' end=' + str(self.heartbeat) + 
-              ' Exit_status=0' +
-              ' resources_used.cput=' + secondsToHHMMSS(self.cpuSeconds) + 
-              ' resources_used.mem=' + str(self.mb * 1024) + 'kb resources_used.ncpus=' + str(self.cpus) + 
-              ' resources_used.vmem=' + str(self.mb * 1024) + 'kb' +
-              ' resources_used.walltime=' + secondsToHHMMSS(self.heartbeat - self.started) + '\n')
-                          
-      pbsFile.close()
-
-      userDN = ''
-      for component in spaceName.split('.'):
-        userDN = '/DC=' + component + userDN
-        
-      if 'accounting_fqan' in vmtypes[self.vmtypeName]:
-        userFQANField = '"userFQAN=' + vmtypes[self.vmtypeName]['accounting_fqan'] + '" '
-      else:
-        userFQANField = ''
-
-      blahpFile.write(time.strftime('"timestamp=%Y-%m-%d %H:%M:%S" ', time.gmtime()) + 
-              '"userDN=' + userDN + '" ' + userFQANField +
-              '"ceID=' + spaceName + '/vac-' + self.vmtypeName + '" ' +
-              '"jobID=' + self.uuidStr + '" ' +
-              '"lrmsID=' + self.uuidStr + '" ' +
-              '"localUser=99" ' +
-              '"clientID=' + self.uuidStr + '"\n')
-                           
-      blahpFile.close()
-
    def writeApel(self):
       # Write accounting information about a VM that has finished
       if self.state != VacState.shutdown or not self.started or not self.heartbeat:
@@ -783,13 +709,13 @@ class VacVM:
       fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
                           
       try:
-        createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg)
+        createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH))
       except:
         logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
         return
 
       try:
-        createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg)
+        createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
       except:
         logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
         return
