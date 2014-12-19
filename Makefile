@@ -50,10 +50,10 @@ vac.tgz: $(TGZ_FILES)
 	rm -R TEMPDIR
 
 install: $(INSTALL_FILES)
-	mkdir -p $(RPM_BUILD_ROOT)/var/lib/vac/bin \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/etc \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/doc \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
+	mkdir -p $(RPM_BUILD_ROOT)/usr/sbin \
+		 $(RPM_BUILD_ROOT)/usr/lib64/python2.6/site-packages \
+	         $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION) \
+		 $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/imagecache \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/apel-archive \
@@ -63,14 +63,24 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d \
 	         $(RPM_BUILD_ROOT)/etc/apel
-	cp vacd vac VAC.py check-vacd \
-	   $(RPM_BUILD_ROOT)/var/lib/vac/bin
+	cp vac vacd check-vacd \
+	   $(RPM_BUILD_ROOT)/usr/sbin
+	cp VAC.py \
+	   $(RPM_BUILD_ROOT)/usr/lib64/python2.6/site-packages
+	cp VERSION \
+	   $(RPM_BUILD_ROOT)/var/lib/vac
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
 	   testkvm.xml \
-	   $(RPM_BUILD_ROOT)/var/lib/vac/doc
+	   $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)
 	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
-	 > $(RPM_BUILD_ROOT)/var/lib/vac/doc/admin-guide.html
+	 > $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)/admin-guide.html
+	cp vac.1 \
+	   $(RPM_BUILD_ROOT)/usr/share/man/man1
+	cp vac.conf.5 \
+	   $(RPM_BUILD_ROOT)/usr/share/man/man5	   
+	cp vacd.8 \
+	   $(RPM_BUILD_ROOT)/usr/share/man/man8
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
 	cp vacd.logrotate \

@@ -42,9 +42,6 @@ import shutil
 import hashlib,base64
 import optparse
 
-# so vac command can go in /usr/sbin
-sys.path.append('/var/lib/vac/bin')
-
 import VAC
    
 def vmtypeResults(vmtypeName):
