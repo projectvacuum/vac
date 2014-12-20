@@ -8,7 +8,7 @@
 #   ../modules/vac/manifests/init.pp
 #
 # The original version of this file is distributed along with Vac and is 
-# included in the /var/lib/vac/doc directory when Vac is installed.
+# included in the /usr/share/doc/vac-VERSION directory when Vac is installed.
 #
 # The module takes static segments of Vac configuration file and installs
 # them in /etc/vac.d which Vac will then assemble in memory at the start of 
@@ -243,7 +243,7 @@ class vac ($space              = "vac01.${domain}",
     {
       file { '/etc/nrpe.d/nagios-plugins-check-vacd.cfg':
              ensure  => 'file',
-             content => "# Use Vac's script to check status\ncommand[check-vacd]=/var/lib/vac/bin/check-vacd 600\n",
+             content => "# Use Vac's script to check status\ncommand[check-vacd]=/usr/sbin/check-vacd 600\n",
              require => Package['nrpe','vac'],
              owner   => 'root',
              group   => 'root',

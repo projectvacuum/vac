@@ -42,25 +42,25 @@ import shutil
 import hashlib,base64
 import optparse
 
-import VAC
+import vac.shared
    
 def vmtypeResults(vmtypeName):
    
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(VAC.udpTimeoutSeconds)
-   VAC.setSockBufferSize(sock)
+   sock.settimeout(vac.shared.udpTimeoutSeconds)
+   vac.shared.setSockBufferSize(sock)
 
    totalcount    = 0
    runningcount  = 0
    startingcount = 0
 
-   for factoryName in VAC.factories:
+   for factoryName in vac.shared.factories:
       try:
-        sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(),
+        sock.sendto(json.dumps({'space':vac.shared.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(),
                               'method':'status'}),(factoryName,995))
       except:
-        print 'Failed sending UDP query to ' + VAC.canonicalFQDN(factoryName)
+        print 'Failed sending UDP query to ' + vac.shared.canonicalFQDN(factoryName)
 
    while True:
    
@@ -82,7 +82,7 @@ def vmtypeResults(vmtypeName):
               'vmtype'			in response and \
               'vmtypes'			in response and \
               vmtypeName in response['vmtypes'] and \
-              response['space']  == VAC.spaceName and \
+              response['space']  == vac.shared.spaceName and \
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
                                 
@@ -91,9 +91,9 @@ def vmtypeResults(vmtypeName):
                 if response['vmtype'] == vmtypeName:
                   state = response['state']
                   
-                  if state == VAC.VacState.running:
+                  if state == vac.shared.VacState.running:
                     runningcount += 1
-                  elif state == VAC.VacState.starting:
+                  elif state == vac.shared.VacState.starting:
                     startingcount += 1
 
                   try:
@@ -106,15 +106,15 @@ def vmtypeResults(vmtypeName):
 
                     hours = (response['vmtypes'][vmtypeName]['heartbeat'] - response['vmtypes'][vmtypeName]['started']) / 3600.0
 
-                    if state == VAC.VacState.running and \
+                    if state == vac.shared.VacState.running and \
                        'cpupercentage' in response['vmtypes'][response['vmtype']] and \
                        response['vmtypes'][response['vmtype']]['cpupercentage']:
                      cpuPercentageStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
                     else:
                      cpuPercentageStr = ''
 
-                    if state == VAC.VacState.running and \
-                       (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+                    if state == vac.shared.VacState.running and \
+                       (time.time() - response['vmtypes'][response['vmtype']]['started']) > vac.shared.vmtypes[response['vmtype']]['fizzle_seconds']:
                      stateStr = '* Running  '
                     else:
                      stateStr = '  ' + state
@@ -130,7 +130,7 @@ def vmtypeResults(vmtypeName):
                     print response['vmname'].split('.')[0] + ' ' + state + ' ????'
 
                 else:
-                  state = VAC.VacState.shutdown
+                  state = vac.shared.VacState.shutdown
                   
                   try:
 
@@ -175,12 +175,12 @@ def vmtypeResults(vmtypeName):
 def scanFactories(options, factoriesList):
    
    if factoriesList is None:
-     factoriesList = VAC.factories
+     factoriesList = vac.shared.factories
    
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(VAC.udpTimeoutSeconds)
-   VAC.setSockBufferSize(sock)
+   sock.settimeout(vac.shared.udpTimeoutSeconds)
+   vac.shared.setSockBufferSize(sock)
 
    start = time.time()
    totalcount    = 0
@@ -189,10 +189,10 @@ def scanFactories(options, factoriesList):
 
    for factoryName in factoriesList:
       try:
-        sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(),
-                              'method':'status'}),(VAC.canonicalFQDN(factoryName), 995))
+        sock.sendto(json.dumps({'space':vac.shared.spaceName,'cookie':hashlib.sha256(salt + vac.shared.canonicalFQDN(factoryName)).hexdigest(),
+                              'method':'status'}),(vac.shared.canonicalFQDN(factoryName), 995))
       except:
-        print 'Failed sending UDP query to ' + VAC.canonicalFQDN(factoryName)
+        print 'Failed sending UDP query to ' + vac.shared.canonicalFQDN(factoryName)
       
    while True:
    
@@ -211,15 +211,15 @@ def scanFactories(options, factoriesList):
               'factoryname'		in response and \
               'method'			in response and \
               'state'			in response and \
-              response['space']  == VAC.spaceName and \
+              response['space']  == vac.shared.spaceName and \
               response['method'] == 'status' and \
               response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
                 
                 stateStr = ('  ' + response['state'] + 10 * ' ')[0:11]
 
-                if response['state'] == VAC.VacState.running:
+                if response['state'] == vac.shared.VacState.running:
                                        runningcount += 1
-                elif response['state'] == VAC.VacState.starting:
+                elif response['state'] == vac.shared.VacState.starting:
                                        startingcount += 1
                 totalcount += 1
 
@@ -227,7 +227,7 @@ def scanFactories(options, factoriesList):
                   hoursStr = 22 * ' '
                   percentStr = '      '
 
-                elif response['state'] == VAC.VacState.running:
+                elif response['state'] == vac.shared.VacState.running:
                   hoursStr = '%5.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0)
 
                   if response['vmtypes'][response['vmtype']]['heartbeat'] > response['vmtypes'][response['vmtype']]['started']:
@@ -235,7 +235,7 @@ def scanFactories(options, factoriesList):
                     
                   hoursStr +=  22 * ' '
 
-                  if (time.time() - response['vmtypes'][response['vmtype']]['started']) > VAC.vmtypes[response['vmtype']]['fizzle_seconds']:
+                  if (time.time() - response['vmtypes'][response['vmtype']]['started']) > vac.shared.vmtypes[response['vmtype']]['fizzle_seconds']:
                     stateStr = '* Running  '
 
                   if 'cpupercentage' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['cpupercentage'] != None:
@@ -243,11 +243,11 @@ def scanFactories(options, factoriesList):
                   else:
                     percentStr = '      '
 
-                elif response['state'] == VAC.VacState.starting:
+                elif response['state'] == vac.shared.VacState.starting:
                   hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
                   percentStr = '      '
 
-                elif response['state'] == VAC.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
+                elif response['state'] == vac.shared.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
                   hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
                   percentStr = '      '
                   
@@ -282,20 +282,20 @@ def scanFactories(options, factoriesList):
       except socket.error as msg:
            break
 
-   print totalcount,'replies in',"%.2f" % (time.time() - start - VAC.udpTimeoutSeconds),'seconds;',runningcount,'running;',startingcount,'starting.'
+   print totalcount,'replies in',"%.2f" % (time.time() - start - vac.shared.udpTimeoutSeconds),'seconds;',runningcount,'running;',startingcount,'starting.'
 
 def rawFactory(factoryName):
    
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(VAC.udpTimeoutSeconds)
-   VAC.setSockBufferSize(sock)
+   sock.settimeout(vac.shared.udpTimeoutSeconds)
+   vac.shared.setSockBufferSize(sock)
 
    try:
-     sock.sendto(json.dumps({'space':VAC.spaceName,'cookie':hashlib.sha256(salt + VAC.canonicalFQDN(factoryName)).hexdigest(), 
-                          'method':'status'}),(VAC.canonicalFQDN(factoryName), 995))
+     sock.sendto(json.dumps({'space':vac.shared.spaceName,'cookie':hashlib.sha256(salt + vac.shared.canonicalFQDN(factoryName)).hexdigest(), 
+                          'method':'status'}),(vac.shared.canonicalFQDN(factoryName), 995))
    except:
-     print 'Failed sending UDP query to ' + VAC.canonicalFQDN(factoryName)
+     print 'Failed sending UDP query to ' + vac.shared.canonicalFQDN(factoryName)
 
    else:
      n = 1 
@@ -356,7 +356,7 @@ if __name__ == '__main__':
 
     if len(args) > 0 and args[0]:
     
-        readConfError = VAC.readConf()
+        readConfError = vac.shared.readConf()
         
         if readConfError:
 # Perhaps we should try to ignore these errors in case the command
@@ -366,10 +366,10 @@ if __name__ == '__main__':
           sys.exit(1)
                 
         if options.spaceName:
-             VAC.spaceName = options.spaceName.strip()
+             vac.shared.spaceName = options.spaceName.strip()
 
         if options.udpTimeoutSeconds:
-             VAC.udpTimeoutSeconds = float(options.udpTimeoutSeconds.strip())
+             vac.shared.udpTimeoutSeconds = float(options.udpTimeoutSeconds.strip())
 
         if args[0] == 'scan' and len(args) > 1:
             scanFactories(options, args[1:])

@@ -32,7 +32,7 @@ running.
 Install the vac RPM and at the command line excecute:
 <pre>
 virsh list
-virsh create /var/lib/vac/doc/testkvm.xml
+virsh create /usr/share/doc/vac-*/testkvm.xml
 virsh list
 virsh destroy testkvm
 virsh list
@@ -481,7 +481,7 @@ statistics about their CPU load and wall clock time.
 <h2 style="border-bottom: 1px solid">Setting up Nagios</h2>
 
 <p>
-The check-vacd script installed in /var/lib/vac/bin can be used with
+The check-vacd script installed in /usr/sbin can be used with
 Nagios to monitor the state of the vacd on a factory node. 
 
 <p>
@@ -489,7 +489,7 @@ It can be run from the local Nagios nrpe daemon with a line like this
 in its configuration file:
 
 <pre>
-command[check-vacd]=/var/lib/vac/bin/check-vacd 600
+command[check-vacd]=/usr/sbin/check-vacd 600
 </pre>
 
 which raises an alarm if the vacd heartbeat wasn't updated in the

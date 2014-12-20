@@ -44,14 +44,8 @@ fi
 /usr/share/man/man5
 /usr/share/man/man8
 /usr/share/doc/vac-%{version}
-/usr/lib64/python2.6/site-packages
-/var/lib/vac/tmp
-/var/lib/vac/imagecache
-/var/lib/vac/vmtypes
-/var/lib/vac/machines
-/var/lib/vac/apel-archive
-/var/lib/vac/apel-outgoing
-/var/lib/vac/machineoutputs
+/usr/lib64/python2.6/site-packages/vac
+/var/lib/vac
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd
 /etc/apel/vac-ssmsend-prod.cfg

@@ -1,5 +1,5 @@
 #
-#  VAC.py - common functions, classes, and variables for Vac
+#  shared.py - common functions, classes, and variables for Vac
 #
 #  Andrew McNab, University of Manchester.
 #  Copyright (c) 2013-4. All rights reserved.
@@ -43,16 +43,16 @@ import ctypes
 import base64
 import shutil
 import string
-import pycurl
 import StringIO
 import urllib
-import libvirt
 import datetime
 import tempfile
 import socket
 import stat
 
-from ConfigParser import RawConfigParser
+import pycurl
+import libvirt
+import ConfigParser
 
 natNetwork     = '169.254.0.0'
 natNetmask     = '255.255.0.0'
@@ -121,7 +121,7 @@ def readConf():
       gbScratch   = 40
 
       try:
-        f = open('/var/lib/vac/doc/VERSION', 'r')
+        f = open('/var/lib/vac/VERSION', 'r')
         vacVersion = f.readline().split('=',1)[1].strip()
         f.close()
       except:
@@ -130,7 +130,7 @@ def readConf():
       if not '.' in os.uname()[1]:
         return 'The hostname of the factory machine must be a fully qualified domain name!'
       
-      parser = RawConfigParser()
+      parser = ConfigParser.RawConfigParser()
 
       # Look for configuration files in /etc/vac.d
       try:

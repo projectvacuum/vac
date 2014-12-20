@@ -11,11 +11,11 @@
 
 start() {
 	[ "$EUID" != "0" ] && exit 1
-	[ -x /var/lib/vac/bin/vacd ] || exit 2
+	[ -x /usr/sbin/vacd ] || exit 2
 
         # Start daemon
         echo -n $"Starting vacd: "
-        daemon /var/lib/vac/bin/vacd
+        daemon /usr/sbin/vacd
 	RETVAL=$?
         echo
 	return $RETVAL
