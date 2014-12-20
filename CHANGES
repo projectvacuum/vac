@@ -4,6 +4,7 @@
 - Put vacd and check-vacd in /usr/sbin
   Put docs in /usr/share/doc/vac-VERSION
 - VAC.py becomes /usr/lib64/python2.6/site-packages/vac
+- Options deprecated in 0.17.0 are now removed
 ==================== Changes in Vac version 0.17.0 =====================
 - Use uname() rather than socket to get hostname in Vac responder
 - Force VNC to listen on 127.0.0.1 only (this was the default already)

@@ -33,7 +33,7 @@
 #  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
 #
 
-from vac.shared  import *
-from vac.vacutil import *
+from vac.shared   import *
+from vac.vacutils import *
 
-__all__ = [ 'shared', 'vacutil' ]
+__all__ = [ 'shared', 'vacutils' ]

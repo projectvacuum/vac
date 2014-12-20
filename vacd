@@ -50,6 +50,7 @@ import stat
 import libvirt
 
 import vac.shared
+import vac.vacutils
 
 def vacLibvirtErrorHandler(ctxt, err):
     global errno    
@@ -93,7 +94,7 @@ def pollFactories():
            try:
                 response = json.loads(data)
            except:
-              vac.shared.logLine('json.loads failed for ' + data)
+              vac.vacutils.logLine('json.loads failed for ' + data)
               continue
 
            if 'space' 			in response and \
@@ -114,7 +115,7 @@ def pollFactories():
 
                    # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
                    factoryVmtypeTotals[response['vmtype']] += response['hs06'] / vac.shared.vmtypes[response['vmtype']]['share']
-                   vac.shared.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
+                   vac.vacutils.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
                                ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
                                
                    if response['state'] == vac.shared.VacState.starting:
@@ -156,7 +157,7 @@ def pollFactories():
       except socket.error as msg:
            break
 
-   vac.shared.logLine('Final totals ' + str(factoryVmtypeTotals) + ' HS06')
+   vac.vacutils.logLine('Final totals ' + str(factoryVmtypeTotals) + ' HS06')
 
    preferredVmtypeName = None
 
@@ -174,10 +175,10 @@ def pollFactories():
       
    for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
       if vmtype['share'] > 0.0:
-           vac.shared.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+           vac.vacutils.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
                           str(int(time.time()) - vmtype['backoff_seconds'] - vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
                           ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time')
-#           vac.shared.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+#           vac.vacutils.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
 #                          str(int(time.time()) - vmtype['backoff_seconds'] - vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
 #                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
 
@@ -196,13 +197,12 @@ def pollFactories():
 def vacOneCycle():
 
    # Update factory heartbeat file
-   vac.shared.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
-   os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+   vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    readConfError = vac.shared.readConf()
    
    if readConfError:
-     vac.shared.logLine('Reading configuration fails with: ' + readConfError)
+     vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
      return
       
    # Check we can talk to the hypervisor
@@ -210,7 +210,7 @@ def vacOneCycle():
    try:
      conn = libvirt.open(None)
    except:
-     vac.shared.logLine('Failed to open libvirt connection')
+     vac.vacutils.logLine('Failed to open libvirt connection')
      return
    else:     
      conn.close()
@@ -224,7 +224,7 @@ def vacOneCycle():
 
    if not os.path.exists('/var/lib/vac/factory-daily') or \
       time.time() > (os.stat('/var/lib/vac/factory-daily').st_ctime + 86400.0):
-         vac.shared.createFile('/var/lib/vac/factory-daily', '')
+         vac.vacutils.createFile('/var/lib/vac/factory-daily', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
    
          if vac.shared.versionLogger:
            try:
@@ -240,9 +240,9 @@ def vacOneCycle():
       # In case of unresolvable problems, we end this cycle
       return
 
-   vac.shared.logLine('VMs available to this factory machine: ' + str(vac.shared.virtualmachines))
-   vac.shared.logLine('VM Types configuration: ' + str(vac.shared.vmtypes))
-   vac.shared.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
+   vac.vacutils.logLine('VMs available to this factory machine: ' + str(vac.shared.virtualmachines))
+   vac.vacutils.logLine('VM Types configuration: ' + str(vac.shared.vmtypes))
+   vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
    # These are updated at the END of each cycle of the for loop
    # --> So we do not use  continue  within this loop! <--
@@ -255,9 +255,9 @@ def vacOneCycle():
      vm = vac.shared.VacVM(vmname)
 
      if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage:
-      vac.shared.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
+      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
      else:
-      vac.shared.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "" ' + str(vm.uuidStr) + ')')
+      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "" ' + str(vm.uuidStr) + ')')
      
      if vm.state == vac.shared.VacState.running:
        # VM is happily running so we redo the machine's heartbeat file
@@ -266,7 +266,7 @@ def vacOneCycle():
        # ah, but are WE happy that it is still running?
        try:
            if int(time.time()) > vm.shutdownTime:
-             vac.shared.logLine('VM ' + vm.name + ' has passed shutdowntime without stopping - destroying!')
+             vac.vacutils.logLine('VM ' + vm.name + ' has passed shutdowntime without stopping - destroying!')
              vm.destroyVM()
        except:
            pass
@@ -282,7 +282,7 @@ def vacOneCycle():
                             vm.uuidStr + '/shared/machineoutputs/' + vac.shared.vmtypes[vm.vmtypeName]['heartbeat_file']).st_mtime)
           except:
             #  destroy VM if file does not exist (even if heartbeat_seconds is zero)
-            vac.shared.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
+            vac.vacutils.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
                         str(vac.shared.vmtypes[vm.vmtypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
                         vac.shared.vmtypes[vm.vmtypeName]['heartbeat_file'] + ') has been created - destroying!')
             vm.destroyVM()
@@ -291,7 +291,7 @@ def vacOneCycle():
             if (vac.shared.vmtypes[vm.vmtypeName]['heartbeat_seconds'] > 0) and \
                (int(time.time()) > (mtime + vac.shared.vmtypes[vm.vmtypeName]['heartbeat_seconds'])):
 
-              vac.shared.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - mtime) + 
+              vac.vacutils.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - mtime) + 
                           ' seconds without updating heartbeat file (' + 
                           vac.shared.vmtypes[vm.vmtypeName]['heartbeat_file'] + ') - destroying!')
               vm.destroyVM()
@@ -299,16 +299,16 @@ def vacOneCycle():
      elif vm.state == vac.shared.VacState.zombie:
        # VM running but no corresponding vac directory structure
        # We kill zombies on sight! 
-       vac.shared.logLine('VM ' + vm.name + ' running without vac directories - destroying!')
+       vac.vacutils.logLine('VM ' + vm.name + ' running without vac directories - destroying!')
        vm.destroyVM()
        
      elif vm.state == vac.shared.VacState.paused:
        # suspended internally somehow? kill it to be safe
-       vac.shared.logLine('VM ' + vm.name + ' paused without shutting down - destroying!')
+       vac.vacutils.logLine('VM ' + vm.name + ' paused without shutting down - destroying!')
        vm.destroyVM()
 
      if vm.state == vac.shared.VacState.starting and vm.vmtypeName:
-       vac.shared.logLine('VM ' + vm.name + ' still in starting state in a new cycle - cleaning up!')
+       vac.vacutils.logLine('VM ' + vm.name + ' still in starting state in a new cycle - cleaning up!')
        # If VM is still starting and we've come round again, then starting failed!
        vm.state = vac.shared.VacState.shutdown
        # Something has gone wrong, so we clean up
@@ -320,15 +320,15 @@ def vacOneCycle():
                vm.writeApel()
                if vac.shared.vmtypes[vm.vmtypeName]['log_machineoutputs']:
                  vm.logMachineoutputs()
-               vac.shared.logLine('Create finished file for ' + vm.name)
+               vac.vacutils.logLine('Create finished file for ' + vm.name)
                vm.createFinishedFile()
 
        elif not vm.finishedFile:
-               vac.shared.logLine('No finished file but no started time for ' + vm.name)
+               vac.vacutils.logLine('No finished file but no started time for ' + vm.name)
   
        # we will only start one VM per cycle
        if startedOne:
-         vac.shared.logLine('VM not recreated because one already recreated this cycle')
+         vac.vacutils.logLine('VM not recreated because one already recreated this cycle')
        else:
          # count up the running VMs' CPUs on the this factory
          totalCpusForCount = 0
@@ -341,26 +341,24 @@ def vacOneCycle():
               
          # as VM is shutdown, we see if we can restart it
          if vac.shared.loadAvg() > (vac.shared.overloadPerCpu * vac.shared.cpuCount):
-           vac.shared.logLine('VM not recreated as load average is > overload_per_cpu(' + str(vac.shared.overloadPerCpu) + ') * cpu count(' + str(vac.shared.cpuCount) + ')')
+           vac.vacutils.logLine('VM not recreated as load average is > overload_per_cpu(' + str(vac.shared.overloadPerCpu) + ') * cpu count(' + str(vac.shared.cpuCount) + ')')
          elif (totalCpusForCount + vac.shared.cpuPerMachine) > vac.shared.numCpus:
-           vac.shared.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
+           vac.vacutils.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
          else:
-           vac.shared.logLine('Query factories and try to recreate ' + vm.name)
+           vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
            preferredVmtypeName = pollFactories()
        
            if preferredVmtypeName:
-             vac.shared.logLine('Creating ' + vm.name + ' with vmtype ' + preferredVmtypeName)
+             vac.vacutils.logLine('Creating ' + vm.name + ' with vmtype ' + preferredVmtypeName)
              createError = vm.createVM(preferredVmtypeName)
 
              if createError:
-               vac.shared.logLine('VM creation fails with: ' + createError)
-               vac.shared.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError)
-               os.chmod('/var/lib/vac/factory-error', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+               vac.vacutils.logLine('VM creation fails with: ' + createError)
+               vac.vacutils.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              else:
                # we update heartbeat after creating a VM in case that took a while
                # (several minutes for Xen, without COW disk images)
-               vac.shared.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n')
-               os.chmod('/var/lib/vac/factory-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+               vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
                # remember we've started one this cycle
                startedOne = True
@@ -371,7 +369,7 @@ def vacOneCycle():
                except OSError:
                  pass
            else:
-             vac.shared.logLine('No vmtype suitable for creation in this cycle')
+             vac.vacutils.logLine('No vmtype suitable for creation in this cycle')
 
      # finished with this vm, update counts
      totalCount += 1
@@ -381,8 +379,7 @@ def vacOneCycle():
        runningCount += 1
 
    # finished with all VMs, so output counts for Nagios etc
-   vac.shared.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount))
-   os.chmod('/var/lib/vac/counts', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+   vac.vacutils.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
 def sendStatusResponse(sock, query, addr):
 
@@ -497,7 +494,7 @@ def sendStatusResponse(sock, query, addr):
                     if vmState == vac.shared.VacState.running:
                       vmHS06 = hs06
                                                         
-      vac.shared.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
+      vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
 
       try:
              sock.sendto(json.dumps({
@@ -597,7 +594,7 @@ def sendTotalsResponse(sock, query, addr):
                   except:
                     pass
                                                         
-#      vac.shared.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
+#      vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
 
       try:
              sock.sendto(json.dumps({
@@ -627,14 +624,14 @@ def vacResponder():
    se = file('/var/log/vacd-responder', 'a+', 0)     
    os.dup2(se.fileno(), sys.stderr.fileno())
  
-   vac.shared.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n')
+   vac.vacutils.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    vac.shared.setSockBufferSize(sock)
    sock.settimeout(60.0)
    sock.bind(('', 995))
    
-   vac.shared.logLine('vac responder starts')
+   vac.vacutils.logLine('vac responder starts')
    
    vac.shared.setProcessName('vacd-responder')
 
@@ -659,7 +656,7 @@ def vacResponder():
      readConfError = vac.shared.readConf()
 
      if readConfError:
-       vac.shared.logLine('Reading configuration fails with: ' + readConfError)
+       vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
        time.sleep(60.0)
        continue
           
@@ -669,11 +666,11 @@ def vacResponder():
        pr.close()
        
        if pid != os.getpid():
-         vac.shared.logLine('os.getpid ' + os.getpid() + ' does not match responder.pid ' + pid + ' - exiting')
+         vac.vacutils.logLine('os.getpid ' + os.getpid() + ' does not match responder.pid ' + pid + ' - exiting')
          break
                 
      except:
-       vac.shared.logLine('no responder.pid - exiting')
+       vac.vacutils.logLine('no responder.pid - exiting')
        break
 
      # so log file is updated before we start waiting        
@@ -681,8 +678,7 @@ def vacResponder():
      sys.stderr.flush()
 
      # Update responder heartbeat file
-     vac.shared.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n')
-     os.chmod('/var/lib/vac/responder-heartbeat', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+     vac.vacutils.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
      try:
         data, addr = sock.recvfrom(1024)
@@ -699,7 +695,7 @@ def vacResponder():
          'method' in query and 
          query['space']  == vac.shared.spaceName):
           
-         vac.shared.logLine("Received " + data + " from " + str(addr))
+         vac.vacutils.logLine("Received " + data + " from " + str(addr))
 
          if query['method'] == 'status':
            sendStatusResponse(sock, query, addr)
@@ -741,7 +737,7 @@ if __name__ == '__main__':
           except:
              pass
 
-          vac.shared.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n')
+          vac.vacutils.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
           
           vac.shared.setProcessName('vacd-factory')
 
@@ -779,11 +775,11 @@ if __name__ == '__main__':
                print 'no factory.pid - exiting'
                break
 
-            vac.shared.logLine('=============== Start cycle ===============')
+            vac.vacutils.logLine('=============== Start cycle ===============')
 
             vacOneCycle()
 
-            vac.shared.logLine('================ End cycle ================')
+            vac.vacutils.logLine('================ End cycle ================')
 
             sys.stdout.flush()
             sys.stderr.flush()

@@ -54,6 +54,8 @@ import pycurl
 import libvirt
 import ConfigParser
 
+import vac.vacutils
+
 natNetwork     = '169.254.0.0'
 natNetmask     = '255.255.0.0'
 natPrefix      = '169.254.169.'
@@ -257,11 +259,7 @@ def readConf():
           factories = (parser.get('settings', 'factories')).lower().split()
       except:
           if parser.has_option('factories', 'names'):
-            print 'The [factories] section is deprecated and will be withdrawn before version 1.0. Please use the factories option within [settings]'
-            try:
-                factories = (parser.get('factories', 'names')).lower().split()
-            except:
-                pass
+            return 'Please use the factories option within [settings] rather than a separate [factories] section! See the Admin Guide for details.'
 
       # all other sections are VM types (other types of section are ignored)
       for sectionName in parser.sections():
@@ -279,9 +277,7 @@ def readConf():
              if parser.has_option(sectionName, 'target_share'):
                  vmtype['share'] = float(parser.get(sectionName, 'target_share'))
              elif parser.has_option('targetshares', sectionNameSplit[1]):
-                 # look in an old [targetshares] section
-                 vmtype['share'] = float(parser.get('targetshares', sectionNameSplit[1]))
-                 print "The separate [targetshares] section is deprecated and will be withdrawn before version 1.0. Please use a target_shares option within the [vmtype " + sectionNameSplit[1] + "] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
+                 return "Please use a target_shares option within [vmtype " + sectionNameSplit[1] + "] rather than a separate [targetshares] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
              else:
                  vmtype['share'] = 0.0
                                             
@@ -306,14 +302,6 @@ def readConf():
              if parser.has_option(sectionName, 'user_data'):
                  vmtype['user_data'] = parser.get(sectionName, 'user_data')
 
-             if parser.has_option(sectionName, 'prolog'):
-                 vmtype['prolog'] = parser.get(sectionName, 'prolog')
-                 print 'prolog is deprecated and will be withdrawn before the 1.0 release'
-
-             if parser.has_option(sectionName, 'epilog'):
-                 vmtype['epilog'] = parser.get(sectionName, 'epilog')
-                 print 'epilog is deprecated and will be withdrawn before the 1.0 release'
-
              if parser.has_option(sectionName, 'log_machineoutputs') and \
                 parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
                  vmtype['log_machineoutputs'] = True
@@ -330,10 +318,6 @@ def readConf():
              else:
                  vmtype['max_wallclock_seconds'] = 86400
              
-             if parser.has_option(sectionName, 'shutdown_command'):
-                 vmtype['shutdown_command'] = parser.get(sectionName, 'shutdown_command')
-                 print 'shutdown_command is deprecated and will be withdrawn before the 1.0 release'
-
              if parser.has_option(sectionName, 'backoff_seconds'):
                  vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
              else:
@@ -437,7 +421,7 @@ def setProcessName(processName):
      libc.prctl(15, ctypes.byref(s), 0, 0, 0) 
 
    except:
-     logLine('Failed setting process name to ' + processName + ' using prctl')
+     vac.vacutils.logLine('Failed setting process name to ' + processName + ' using prctl')
      return
               
    try:
@@ -473,7 +457,7 @@ def setProcessName(processName):
      ctypes.memmove(argc.contents, processName, len(processName))
 
    except:
-     logLine('Failed setting process name in argv[] to ' + processName)
+     vac.vacutils.logLine('Failed setting process name in argv[] to ' + processName)
      return
 
 def setSockBufferSize(sock):
@@ -487,7 +471,7 @@ def setSockBufferSize(sock):
    try:
      sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, udpBufferSize)
    except:
-     logLine('Failed setting RCVBUF to %d' % udpBufferSize)
+     vac.vacutils.logLine('Failed setting RCVBUF to %d' % udpBufferSize)
    
 def canonicalFQDN(hostName):
    if '.' in hostName:
@@ -519,7 +503,7 @@ class VacVM:
 
       conn = libvirt.open(None)
       if conn == None:
-          logLine('Failed to open connection to the hypervisor')
+          vac.vacutils.logLine('Failed to open connection to the hypervisor')
           raise
 
       try:
@@ -547,7 +531,7 @@ class VacVM:
             self.state = VacState.running
           else:
             self.state = VacState.paused
-            logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
+            vac.vacutils.logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
 
       except:
           self.state = VacState.shutdown
@@ -643,8 +627,8 @@ class VacVM:
         heartbeatLine = str(self.cpuSeconds)
 
       try:
-        createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
-                            self.uuidStr + '/heartbeat', heartbeatLine + '\n')
+        vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
+                                self.uuidStr + '/heartbeat', heartbeatLine + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
         pass
                                   
@@ -653,7 +637,7 @@ class VacVM:
         f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished', 'w')
         f.close()
       except:
-        logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
+        vac.vacutils.logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
 
    def writeApel(self):
       # Write accounting information about a VM that has finished
@@ -709,15 +693,15 @@ class VacVM:
       fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
                           
       try:
-        createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        vac.vacutils.createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
-        logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
+        vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
         return
 
       try:
-        createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        vac.vacutils.createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
-        logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
+        vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
         return
       
    def logMachineoutputs(self):
@@ -726,14 +710,14 @@ class VacVM:
         # Get the list of files that the VM has left in its /etc/machineoutputs
         outputs = os.listdir('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
       except:
-        logLine('Failed reading /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+        vac.vacutils.logLine('Failed reading /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
         return
         
       try:
         os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr, 
                     stat.S_IWUSR + stat.S_IXUSR + stat.S_IRUSR + stat.S_IXGRP + stat.S_IRGRP + stat.S_IXOTH + stat.S_IROTH)
       except:
-        logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr)
+        vac.vacutils.logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr)
         return
       
       if outputs:
@@ -754,7 +738,7 @@ class VacVM:
                               '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
                         self.name + '/' + self.uuidStr + '/' + oneOutput)
             except:
-              logLine('Failed copying /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+              vac.vacutils.logLine('Failed copying /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput + 
                         ' to /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr + '/')
    
@@ -815,91 +799,22 @@ class VacVM:
       f.write('JOBFEATURES="/etc/jobfeatures"\n')
       f.close()
 
-      # we include any specified prolog or epilog in the CD-ROM image without modification
-      if 'prolog' in vmtypes[self.vmtypeName]:
-
-          if vmtypes[self.vmtypeName]['prolog'][0] == '/':
-              prolog_file = vmtypes[self.vmtypeName]['prolog']
-          else:
-              prolog_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['prolog']
-
-          shutil.copy2(prolog_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/prolog.sh')
-  
-      if 'epilog' in vmtypes[self.vmtypeName]:
-
-          if vmtypes[self.vmtypeName]['epilog'][0] == '/':
-              epilog_file = vmtypes[self.vmtypeName]['epilog']
-          else:
-              epilog_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['epilog']
-
-          shutil.copy2(epilog_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/epilog.sh')
-  
       os.system('genisoimage -quiet -o /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                 + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d')
 
    def setupUserDataContents(self):
-   
-      # Get raw user_data template file, either from network ...
-      if (vmtypes[self.vmtypeName]['user_data'][0:7] == 'http://') or (vmtypes[self.vmtypeName]['user_data'][0:8] == 'https://'):
-        buffer = StringIO.StringIO()
-        c = pycurl.Curl()
-        c.setopt(c.URL, vmtypes[self.vmtypeName]['user_data'])
-        c.setopt(c.WRITEFUNCTION, buffer.write)
-        c.setopt(c.TIMEOUT, 30)
-        c.setopt(c.FOLLOWLOCATION, True)
-        c.setopt(c.SSL_VERIFYPEER, 1)
-        c.setopt(c.SSL_VERIFYHOST, 2)
-        
-        if os.path.isdir('/etc/grid-security/certificates'):
-          c.setopt(c.CAPATH, '/etc/grid-security/certificates')
-        else:
-          logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
-
-        try:
-          c.perform()
-        except Exception as e:
-          raise NameError('Failed to read ' + vmtypes[self.vmtypeName]['user_data'] + ' (' + str(e) + ')')
-
-        c.close()
-        self.userDataContents = buffer.getvalue()
-
-      # ... or from filesystem
-      else:
-        if vmtypes[self.vmtypeName]['user_data'][0] == '/':
-          user_data_file = vmtypes[self.vmtypeName]['user_data']
-        else:
-          user_data_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['user_data']
-
-        try:
-          u = open(user_data_file, 'r')
-          self.userDataContents = u.read()
-          u.close()
-        except:
-          raise NameError('Failed to read ' + user_data_file)
-            
-      # Default substitutions
-      self.userDataContents = self.userDataContents.replace('##user_data_uuid##',          self.uuidStr)
-      self.userDataContents = self.userDataContents.replace('##user_data_space##',         spaceName)
-      self.userDataContents = self.userDataContents.replace('##user_data_vmtype##',        self.vmtypeName)
-      self.userDataContents = self.userDataContents.replace('##user_data_vm_hostname##',   self.name)
-      self.userDataContents = self.userDataContents.replace('##user_data_vmlm_version##',  'Vac ' + vacVersion)
-      self.userDataContents = self.userDataContents.replace('##user_data_vmlm_hostname##', os.uname()[1])
-
-      # Site configurable substitutions for this vmtype
-      for oneOption, oneValue in (vmtypes[self.vmtypeName]).iteritems():
-        if oneOption[0:17] == 'user_data_option_':
-          self.userDataContents = self.userDataContents.replace('##' + oneOption + '##', oneValue)
-        if oneOption[0:15] == 'user_data_file_':
-          try:
-            if oneValue[0] == '/':
-              f = open(oneValue, 'r')
-            else:
-              f = open('/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + oneValue, 'r')
-                           
-            self.userDataContents = self.userDataContents.replace('##' + oneOption + '##', f.read())
-            f.close()
-          except:
-            raise NameError('Failed to read ' + oneValue + ' for ' + oneOption)          
+      try:
+        self.userDataContents = vac.vacutils.createUserData(
+                                               vmtypesPath	= '/var/lib/vac/vmtypes', 
+                                               options		= vmtypes[self.vmtypeName], 
+                                               versionString	= 'Vac ' + vacVersion, 
+                                               spaceName	= spaceName, 
+                                               vmtypeName	= self.vmtypeName, 
+                                               userDataPath	= vmtypes[self.vmtypeName]['user_data'], 
+                                               hostName		= self.name, 
+                                               uuidStr		= self.uuidStr)
+      except Exception as e:
+        raise NameError('Failed to read ' + vmtypes[self.vmtypeName]['user_data'] + ' (' + str(e) + ')')
 
       try:
         o = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/user_data', 'w')
@@ -915,98 +830,90 @@ class VacVM:
 
       # Vac specific extensions
              
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
-                 os.uname()[1] + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
+                 os.uname()[1] + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_vmtype',
-                 self.vmtypeName + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_vmtype',
+                 self.vmtypeName + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
-                 spaceName + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
+                 spaceName + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
-                 self.uuidStr + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
+                 self.uuidStr + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
     
       # Standard machinefeatures
 
       # HEPSPEC06 per virtual machine
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
-                 str(hs06PerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
+                 str(hs06PerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't know the physical vs logical cores distinction here so we just use cpu
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
-                 str(cpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
+                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # again just use cpu
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
-                 str(cpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
+                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # tell them they have the whole VM to themselves; they are in the only jobslot here
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
-                '1\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
+                '1\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       
-      if 'shutdown_command' in vmtypes[self.vmtypeName]:
-        createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdown_command',
-                   vmtypes[self.vmtypeName]['shutdown_command'] + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
       # calculate the absolute shutdown time for the VM, as a machine
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n', 
-                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Standard  jobfeatures
       
       # calculate the absolute shutdown time for the VM, as a job
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
                  str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n', 
-                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't do this, so just say 1.0 for cpu factor
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
-                 '1.0\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
+                 '1.0\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine + '\n', 
-                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine + '\n', 
-                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
-                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
                  str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
-                 mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
       if 'scratch_volume_gb' in virtualmachines[self.name]:
-         createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
-                 str(virtualmachines[self.name]['scratch_volume_gb']) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+         vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
+                 str(virtualmachines[self.name]['scratch_volume_gb']) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
-                 str(int(time.time())) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
+                 str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
-                 str((mbPerMachine * 1048576) / 1000000) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
-                 str(mbPerMachine * 1048576) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
+                 str((mbPerMachine * 1048576) / 1000000) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
+                 str(mbPerMachine * 1048576) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
                         
       # cpuPerMachine again
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
-                 str(cpuPerMachine) + '\n', mode=stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
+                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # do the NFS exports
 
       exportAddress = natPrefix + str(virtualmachines[self.name]['ordinal'])
-
-      if os.path.exists('/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared'):
-         logLine('Exporting the /var/lib/vac/vmtypes/.../shared directories is deprecated and will be withdrawn before version 1.0')
-         os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/vmtypes/' + self.vmtypeName + '/shared')
 
       os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
       os.system('exportfs -o no_root_squash,rw ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
@@ -1015,7 +922,7 @@ class VacVM:
 
       # kvm and Xen are the same for uCernVM 3
       if self.model == 'cernvm3':
-         logLine('make 20 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+         vac.vacutils.logLine('make 20 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
          try:
           f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk', 'ab')
           f.truncate(20 * 1014 * 1024 * 1024)
@@ -1028,16 +935,16 @@ class VacVM:
          # this virtualhostname, backed by the full image given in conf
          if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
              ' -f qcow2 /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk >/dev/null') != 0:
-          logLine('creation of COW disk image fails!')
+          vac.vacutils.logLine('creation of COW disk image fails!')
           raise NameError('Creation of COW disk image fails!')
       elif domainType == 'xen':
          # Because Xen COW is broken, we copy the root.disk, overwriting 
          # any copy already in the top level directory of this virtualhostname.
          # To avoid long startups, the source should be a sparse file too.
-         logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+         vac.vacutils.logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
          if os.system('/bin/cp --force --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
                        ' /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk') != 0:
-          logLine('copy of disk image fails!')
+          vac.vacutils.logLine('copy of disk image fails!')
           raise NameError('copy of disk image fails!')
 
    def measureScratchDisk(self):
@@ -1049,7 +956,7 @@ class VacVM:
        f.close()
        virtualmachines[self.name]['scratch_volume_gb'] = sizeGB
       except:
-       logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
+       vac.vacutils.logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
        pass      
 
    def getRemoteRootImage(self):
@@ -1086,9 +993,9 @@ class VacVM:
       if os.path.isdir('/etc/grid-security/certificates'):
         c.setopt(c.CAPATH, '/etc/grid-security/certificates')
       else:
-        logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
+        vac.vacutils.logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
 
-      logLine('Checking if an updated ' + vmtypes[self.vmtypeName]['root_image'] + ' needs to be fetched')
+      vac.vacutils.logLine('Checking if an updated ' + vmtypes[self.vmtypeName]['root_image'] + ' needs to be fetched')
 
       try:
         c.perform()
@@ -1123,7 +1030,7 @@ class VacVM:
            
           raise NameError('Failed renaming new image /var/lib/vac/imagecache/' + urlEncoded)
 
-        logLine('New ' + vmtypes[self.vmtypeName]['root_image'] + ' put in /var/lib/vac/imagecache')
+        vac.vacutils.logLine('New ' + vmtypes[self.vmtypeName]['root_image'] + ' put in /var/lib/vac/imagecache')
 
       c.close()
       return '/var/lib/vac/imagecache/' + urlEncoded
@@ -1131,7 +1038,7 @@ class VacVM:
    def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
-          logLine('Failed to open connection to the hypervisor')
+          vac.vacutils.logLine('Failed to open connection to the hypervisor')
           raise NameError('failed to open connection to the hypervisor')
 
       try:
@@ -1153,8 +1060,8 @@ class VacVM:
 
       os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/created', 
-                  str(int(time.time())) + '\n')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/created', 
+                  str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
       try:
         self.makeISO()
@@ -1169,7 +1076,7 @@ class VacVM:
       if 'scratch_volume' in virtualmachines[self.name]:
 
           if not os.path.exists(virtualmachines[self.name]['scratch_volume']):
-            logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
+            vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
             os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup + ' 2>&1')
 
           if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
@@ -1222,7 +1129,7 @@ class VacVM:
         
       mac = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
                    
-      logLine('Using MAC ' + mac + ' when creating ' + self.name)
+      vac.vacutils.logLine('Using MAC ' + mac + ' when creating ' + self.name)
 
       # this goes after the rest of the setup since it populates machinefeatures and jobfeatures
       self.exportFileSystems()
@@ -1343,21 +1250,21 @@ class VacVM:
           conn.close()
           return 'domain_type not recognised!'
       
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/started', 
-                  str(int(time.time())) + '\n')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/started', 
+                  str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       
-      createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 
-                 '0.0 0.0\n')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 
+                 '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       
       try:
            dom = conn.createXML(xmldesc, 0)           
       except Exception as e:
-           logLine('Exception ("' + str(e) + '") when trying to create VM domain for ' + self.name)
+           vac.vacutils.logLine('Exception ("' + str(e) + '") when trying to create VM domain for ' + self.name)
            conn.close()
            return 'exception when trying to create VM domain'
            
       if not dom:
-           logLine('Failed when trying to create VM domain for ' + self.name)
+           vac.vacutils.logLine('Failed when trying to create VM domain for ' + self.name)
            conn.close()
            return 'failed when trying to create VM domain'
            
@@ -1378,7 +1285,7 @@ def checkNetwork():
            vacNetwork = conn.networkLookupByName('vac_' + natNetwork)
       except:
            # Doesn't exist so we define and start it
-           logLine('No libvirt network vac_' + natNetwork + ' defined for NAT') 
+           vac.vacutils.logLine('No libvirt network vac_' + natNetwork + ' defined for NAT') 
            
            nameParts = os.uname()[1].split('.',1)
 
@@ -1410,10 +1317,10 @@ def checkNetwork():
            try:
              vacNetwork = conn.networkDefineXML(netXML)
            except Exception as e:  
-             logLine('Failed to define network vac_' + natNetwork + ' due to "' + str(e) + '"')
+             vac.vacutils.logLine('Failed to define network vac_' + natNetwork + ' due to "' + str(e) + '"')
              return False
            else:
-             logLine('Defined network vac_' + natNetwork)
+             vac.vacutils.logLine('Defined network vac_' + natNetwork)
 
       # Check the network is actually running, not just defined    
       if not vacNetwork.isActive():    
@@ -1421,15 +1328,15 @@ def checkNetwork():
              # Try starting it if not running
              vacNetwork.create()
            except Exception as e:  
-             logLine('Starting defined network vac_' + natNetwork + ' fails with "' + str(e) + '"')
-             logLine('Do you need to install dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
+             vac.vacutils.logLine('Starting defined network vac_' + natNetwork + ' fails with "' + str(e) + '"')
+             vac.vacutils.logLine('Do you need to install dnsmasq RPM >= 2.48-13? Old "dnsmasq --listen-address 169.254.169.254" process still running? Did you disable Zeroconf? Does virbr1 already exist?)')
 
              if fixNetworking:
                fixNetworkingCommands()
 
              return False
            else:  
-             logLine('Started previously defined network vac_' + natNetwork)
+             vac.vacutils.logLine('Started previously defined network vac_' + natNetwork)
 
       # Check the network is set to auto-start
       if not vacNetwork.autostart():
@@ -1437,10 +1344,10 @@ def checkNetwork():
              # Try setting autostart
              vacNetwork.setAutostart(True)
            except Exception as e:
-             logLine('Failed to set autostart for network vac_' + natNetwork + ' due to "' + str(e) + '"')
+             vac.vacutils.logLine('Failed to set autostart for network vac_' + natNetwork + ' due to "' + str(e) + '"')
              return False
            else:
-             logLine('Set auto-start for network vac_' + natNetwork)
+             vac.vacutils.logLine('Set auto-start for network vac_' + natNetwork)
         
       return True
      
@@ -1459,7 +1366,7 @@ def checkIpTables(bridgeName):
         iptablesSave = f.read()
         f.close()
       except:
-        logLine('Failed to run /sbin/iptables-save')
+        vac.vacutils.logLine('Failed to run /sbin/iptables-save')
         return
       
       iptablesPatterns = [ 
@@ -1475,12 +1382,12 @@ def checkIpTables(bridgeName):
       for pattern in iptablesPatterns:
         if re.search(pattern, iptablesSave) is None:
           anyMissing = True
-          logLine('Failed to match "%s" in output of iptables-save. Have the NAT rules been removed?' % pattern)
+          vac.vacutils.logLine('Failed to match "%s" in output of iptables-save. Have the NAT rules been removed?' % pattern)
 
       if anyMissing:
-        logLine('iptables NAT check failed for ' + bridgeName)
+        vac.vacutils.logLine('iptables NAT check failed for ' + bridgeName)
       else:
-        logLine('iptables NAT check passed for ' + bridgeName)
+        vac.vacutils.logLine('iptables NAT check passed for ' + bridgeName)
 
 def fixNetworkingCommands():
       # Called if network doesn't exist and creation fails. Almost always this is
@@ -1489,56 +1396,29 @@ def fixNetworkingCommands():
       # This feature can be disabled with fix_networking = false in vac.conf
 
       # We assume the libvirt defaults so the desired bridge is virbr1
-      logLine('Trying to fix networking so can create virbr1 bridge in next cycle')
+      vac.vacutils.logLine('Trying to fix networking so can create virbr1 bridge in next cycle')
       
       try:
         cmd = '/sbin/ifconfig virbr1 down'
-        logLine('Trying  ' + cmd)
+        vac.vacutils.logLine('Trying  ' + cmd)
         os.system(cmd)
       except:
         pass
 
       try:
         cmd = '/usr/sbin/brctl delbr virbr1'
-        logLine('Trying  ' + cmd)
+        vac.vacutils.logLine('Trying  ' + cmd)
         os.system(cmd)
       except:
         pass
        
       try:
         cmd = '/bin/kill -9 `/bin/ps -C dnsmasq -o pid,args | /bin/grep -- "--listen-address ' + factoryAddress + '" | /bin/cut -f1 -d" "`'
-        logLine('Trying  ' + cmd)
+        vac.vacutils.logLine('Trying  ' + cmd)
         os.system(cmd)
       except:
         pass
 
-def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP):
-      # Create a text file containing contents in the vac tmp directory
-      # then move it into place. Rename is an atomic operation in POSIX,
-      # including situations where targetname already exists.
-   
-      try:
-       ftup = tempfile.mkstemp(prefix='/var/lib/vac/tmp/temp',text=True)
-       os.write(ftup[0], contents)
-       
-       if mode: 
-         os.fchmod(ftup[0], mode)
-
-       os.close(ftup[0])
-       os.rename(ftup[1], targetname)
-       return True
-      except:
-       return False
-
-def logLine(text):
-      print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
-      sys.stdout.flush()
-
-def secondsToHHMMSS(seconds):
-      hh, ss = divmod(seconds, 3600)
-      mm, ss = divmod(ss, 60)
-      return '%02d:%02d:%02d' % (hh, mm, ss)
-      
 def cleanupByNameUUID(name, vmtypeName, uuidStr):
    conn = libvirt.open(None)
    if conn == None:
@@ -1635,7 +1515,7 @@ def cleanupLoggedMachineoutputs():
             if (os.stat('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid).st_ctime < 
                 int(time.time() - machineoutputs_days * 86400)):
                 
-             logLine('Deleting expired /var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
+             vac.vacutils.logLine('Deleting expired /var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
              shutil.rmtree('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
             
 def cleanupVirtualmachineFiles():
@@ -1689,7 +1569,7 @@ def cleanupVirtualmachineFiles():
              # we delete currentdir and keep onedir as the new currentdir 
              try:
                shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
-               logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+               vac.vacutils.logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
                currentdir      = onedir
                currentdirCtime = onedirCtime
              except:
@@ -1699,7 +1579,7 @@ def cleanupVirtualmachineFiles():
              # we delete the onedir we're looking at and keep currentdir
              try:
                shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-               logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+               vac.vacutils.logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
              except:
                pass
 
@@ -1710,7 +1590,7 @@ def cleanupVirtualmachineFiles():
          if (not vm.uuidStr) or (vm.uuidStr != currentdir) or (vm.state == VacState.shutdown):
            try:
              os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
-             logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
+             vac.vacutils.logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
            except:
              pass
 
