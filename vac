@@ -42,7 +42,7 @@ import shutil
 import hashlib,base64
 import optparse
 
-import vac.shared
+import vac
    
 def vmtypeResults(vmtypeName):
    

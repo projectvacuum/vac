@@ -49,8 +49,7 @@ import stat
 
 import libvirt
 
-import vac.shared
-import vac.vacutils
+import vac
 
 def vacLibvirtErrorHandler(ctxt, err):
     global errno    

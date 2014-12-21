@@ -54,7 +54,7 @@ import pycurl
 import libvirt
 import ConfigParser
 
-import vac.vacutils
+import vac
 
 natNetwork     = '169.254.0.0'
 natNetmask     = '255.255.0.0'
@@ -959,82 +959,6 @@ class VacVM:
        vac.vacutils.logLine('failed to read size of ' + virtualmachines[self.name]['scratch_volume'] + ' using lvs command')
        pass      
 
-   def getRemoteRootImage(self):
-
-      try:
-        f, tempName = tempfile.mkstemp(prefix='tmp', dir='/var/lib/vac/tmp')
-      except Exception as e:
-        NameError('Failed to create temporary image file in /var/lib/vac/tmp')
-        
-      ff = os.fdopen(f, 'wb')
-   
-      c = pycurl.Curl()
-      c.setopt(c.URL, vmtypes[self.vmtypeName]['root_image'])
-      c.setopt(c.WRITEDATA, ff)
-
-      urlEncoded = urllib.quote(vmtypes[self.vmtypeName]['root_image'],'')
-      
-      try:
-        # For existing files, we get the mtime and only fetch the image itself if newer.
-        # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
-        c.setopt(c.TIMEVALUE, int(os.stat('/var/lib/vac/imagecache/' + urlEncoded).st_mtime))
-        c.setopt(c.TIMECONDITION, c.TIMECONDITION_IFMODSINCE)
-      except:
-        pass
-
-#      c.setopt(c.TIMEOUT, 30)
-
-      # You will thank me for following redirects one day :)
-      c.setopt(c.FOLLOWLOCATION, 1)
-      c.setopt(c.OPT_FILETIME,   1)
-      c.setopt(c.SSL_VERIFYPEER, 1)
-      c.setopt(c.SSL_VERIFYHOST, 2)
-        
-      if os.path.isdir('/etc/grid-security/certificates'):
-        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
-      else:
-        vac.vacutils.logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
-
-      vac.vacutils.logLine('Checking if an updated ' + vmtypes[self.vmtypeName]['root_image'] + ' needs to be fetched')
-
-      try:
-        c.perform()
-        ff.close()
-      except Exception as e:
-        os.remove(tempName)
-        raise NameError('Failed to fetch ' + vmtypes[self.vmtypeName]['root_image'] + ' (' + str(e) + ')')
-
-      if c.getinfo(c.RESPONSE_CODE) == 200:
-
-        try:
-          lastModified = float(c.getinfo(c.INFO_FILETIME))
-        except:
-          # We fail rather than use a server that doesn't give Last-Modified:
-          raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
-
-        if lastModified < 0.0:
-          # We fail rather than use a server that doesn't give Last-Modified:
-          raise NameError('Failed to get last modified time for ' + vmtypes[self.vmtypeName]['root_image'])
-        else:
-          # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
-          # continually downloading the image based on our faulty filesystem timestamps
-          os.utime(tempName, (time.time(), lastModified))
-
-        try:
-          os.rename(tempName, '/var/lib/vac/imagecache/' + urlEncoded)
-        except:
-          try:
-           os.remove(tempName)
-          except:
-           pass
-           
-          raise NameError('Failed renaming new image /var/lib/vac/imagecache/' + urlEncoded)
-
-        vac.vacutils.logLine('New ' + vmtypes[self.vmtypeName]['root_image'] + ' put in /var/lib/vac/imagecache')
-
-      c.close()
-      return '/var/lib/vac/imagecache/' + urlEncoded
-
    def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
@@ -1103,7 +1027,7 @@ class VacVM:
       else:
           if vmtypes[self.vmtypeName]['root_image'][0:7] == 'http://' or vmtypes[self.vmtypeName]['root_image'][0:8] == 'https://':
             try:
-              cernvmCdrom = self.getRemoteRootImage()
+              cernvmCdrom = vac.vacutils.getRemoteRootImage(vmtypes[self.vmtypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
             except Exception as e:
               return str(e)
           elif vmtypes[self.vmtypeName]['root_image'][0] == '/':

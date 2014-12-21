@@ -40,6 +40,8 @@ import os
 import sys
 import stat
 import time
+import string
+import urllib
 import StringIO
 import tempfile
 
@@ -58,7 +60,7 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
      tmpDir = os.path.dirname(targetname)
    
    try:
-     ftup = tempfile.mkstemp(prefix = tmpDir + '/temp', text = True)
+     ftup = tempfile.mkstemp(prefix = 'temp', dir = tmpDir, text = True)
      os.write(ftup[0], contents)
        
      if mode:
@@ -140,3 +142,81 @@ def createUserData(vmtypesPath, options, versionString, spaceName, vmtypeName, u
            raise NameError('Failed to read ' + oneValue + ' for ' + oneOption)          
 
    return userDataContents
+
+def getRemoteRootImage(url, imageCache, tmpDir):
+
+   try:
+     f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
+   except Exception as e:
+     NameError('Failed to create temporary image file in ' + tmpDir)
+        
+   ff = os.fdopen(f, 'wb')
+   
+   c = pycurl.Curl()
+   c.setopt(c.URL, url)
+   c.setopt(c.WRITEDATA, ff)
+
+   urlEncoded = urllib.quote(url,'')
+       
+   try:
+     # For existing files, we get the mtime and only fetch the image itself if newer.
+     # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
+     c.setopt(c.TIMEVALUE, int(os.stat(imageCache + '/' + urlEncoded).st_mtime))
+     c.setopt(c.TIMECONDITION, c.TIMECONDITION_IFMODSINCE)
+   except:
+     pass
+
+   c.setopt(c.TIMEOUT, 120)
+
+   # You will thank me for following redirects one day :)
+   c.setopt(c.FOLLOWLOCATION, 1)
+   c.setopt(c.OPT_FILETIME,   1)
+   c.setopt(c.SSL_VERIFYPEER, 1)
+   c.setopt(c.SSL_VERIFYHOST, 2)
+        
+   if os.path.isdir('/etc/grid-security/certificates'):
+     c.setopt(c.CAPATH, '/etc/grid-security/certificates')
+   else:
+     logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
+
+   logLine('Checking if an updated ' + url + ' needs to be fetched')
+
+   try:
+     c.perform()
+     ff.close()
+   except Exception as e:
+     os.remove(tempName)
+     raise NameError('Failed to fetch ' + url + ' (' + str(e) + ')')
+
+   if c.getinfo(c.RESPONSE_CODE) == 200:
+     try:
+       lastModified = float(c.getinfo(c.INFO_FILETIME))
+     except:
+       # We fail rather than use a server that doesn't give Last-Modified:
+       raise NameError('Failed to get last modified time for ' + url)
+
+     if lastModified < 0.0:
+       # We fail rather than use a server that doesn't give Last-Modified:
+       raise NameError('Failed to get last modified time for ' + url)
+     else:
+       # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
+       # continually downloading the image based on our faulty filesystem timestamps
+       os.utime(tempName, (time.time(), lastModified))
+
+     try:
+       os.rename(tempName, imageCache + '/' + urlEncoded)
+     except:
+       try:
+         os.remove(tempName)
+       except:
+         pass
+           
+       raise NameError('Failed renaming new image ' + imageCache + '/' + urlEncoded)
+
+     logLine('New ' + url + ' put in ' + imageCache)
+
+   else:
+     logLine('No new version of ' + url + ' found and existing copy not replaced')
+     
+   c.close()
+   return imageCache + '/' + urlEncoded
