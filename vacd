@@ -177,16 +177,12 @@ def pollFactories():
            vac.vacutils.logLine('For ' + vmtypeName + ', ' +
                                 str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time. ' +
                                 'LastAbort was ' + time.strftime('%b %d %H:%M:%S', time.localtime(factoryVmtypeLastAborts[vmtypeName])) +
-                                '. VM creation restarts from ' +
+                                '. VM creation restart at ' +
                                 time.strftime('%b %d %H:%M:%S',
                                               time.localtime(factoryVmtypeLastAborts[vmtypeName] +
                                                              vmtype['backoff_seconds'] +
                                                              vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0))) + 
                                 '.')
-
-#           vac.vacutils.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
-#                          str(int(time.time()) - vmtype['backoff_seconds'] - vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
-#                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time')
 
       if ((vmtype['share'] > 0.0) and 
           (factoryVmtypeLastAborts[vmtypeName] 
@@ -260,7 +256,10 @@ def vacOneCycle():
    
      vm = vac.shared.VacVM(vmname)
 
-     if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage:
+     if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
+      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
+                           ') Fizzle seconds > ' + str(vm.heartbeat - vm.started))
+     elif hasattr(vm, 'shutdownMessage') and vm.shutdownMessage:
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
      else:
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "" ' + str(vm.uuidStr) + ')')
