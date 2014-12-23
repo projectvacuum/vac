@@ -176,11 +176,12 @@ def pollFactories():
       if vmtype['share'] > 0.0:
            vac.vacutils.logLine('For ' + vmtypeName + ', ' +
                                 str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time. ' +
-                                'LastAbort was ' + time.ctime(factoryVmtypeLastAborts[vmtypeName]) +
-                                '. VM creation can start from ' +
-                                time.ctime(factoryVmtypeLastAborts[vmtypeName] +
-                                           vmtype['backoff_seconds'] +
-                                           vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) + 
+                                'LastAbort was ' + time.strftime('%b %d %H:%M:%S', time.localtime(factoryVmtypeLastAborts[vmtypeName])) +
+                                '. VM creation restarts from ' +
+                                time.strftime('%b %d %H:%M:%S',
+                                              time.localtime(factoryVmtypeLastAborts[vmtypeName] +
+                                                             vmtype['backoff_seconds'] +
+                                                             vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0))) + 
                                 '.')
 
 #           vac.vacutils.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
