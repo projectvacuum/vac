@@ -1,8 +1,8 @@
 #
 #  vacutils.py - reusable functions and classes for Vac and Vcycle
 #
-## THE DEFINITIVE SOURCE OF THIS FILE IS THE vac GIT REPOSITORY ##
-##   NEW VERSIONS ARE COPIED INTO THE Vcycle REPO AS NECESSARY  ##
+## THE DEFINITIVE SOURCE OF THIS FILE IS THE Vac GIT REPOSITORY ##
+## UNMODIFIED VERSIONS ARE COPIED TO THE Vcycle REPO AS NEEDED  ##
 #
 #  Andrew McNab, University of Manchester.
 #  Copyright (c) 2013-4. All rights reserved.
