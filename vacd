@@ -174,12 +174,18 @@ def pollFactories():
       
    for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
       if vmtype['share'] > 0.0:
-           vac.vacutils.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
-                          str(int(time.time()) - vmtype['backoff_seconds'] - vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
-                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time')
-#           vac.vacutils.logLine(vmtypeName + ' at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
+           vac.vacutils.logLine('For ' + vmtypeName + ', ' +
+                                str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time. ' +
+                                'LastAbort was ' + time.ctime(factoryVmtypeLastAborts[vmtypeName]) +
+                                '. VM creation can start from ' +
+                                time.ctime(factoryVmtypeLastAborts[vmtypeName] +
+                                           vmtype['backoff_seconds'] +
+                                           vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) + 
+                                '.')
+
+#           vac.vacutils.logLine('For ' + vmtypeName + ', at ' + str(int(time.time())) + ' LastAbort was ' + str(factoryVmtypeLastAborts[vmtypeName]) + ' needs to be < ' + 
 #                          str(int(time.time()) - vmtype['backoff_seconds'] - vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)) +
-#                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' BeforeFizzles')
+#                          ', ' + str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time')
 
       if ((vmtype['share'] > 0.0) and 
           (factoryVmtypeLastAborts[vmtypeName] 
