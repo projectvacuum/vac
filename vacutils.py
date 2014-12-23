@@ -257,7 +257,7 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False):
    # or RFC 3820 format. Checks that the existing cert/proxy expires after
    # the given expirationTime, but no other checks are done.
 
-   # Get the existing priviate key
+   # First get the existing priviate key
 
    try:
      oldKey = M2Crypto.RSA.load_key(keyPath, emptyCallback1)
