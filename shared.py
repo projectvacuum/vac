@@ -348,8 +348,24 @@ def readConf():
                    else:              
                      vmtype[oneOption] = parser.get(sectionName, oneOption)                
              
-             vmtypes[sectionNameSplit[1]] = vmtype
+             if parser.has_option(sectionName, 'user_data_proxy_cert') and \
+                not parser.has_option(sectionName, 'user_data_proxy_key') :
+                 return 'user_data_proxy_cert given but user_data_proxy_key missing (they can point to the same file if necessary)'
+             elif not parser.has_option(sectionName, 'user_data_proxy_cert') and \
+                  parser.has_option(sectionName, 'user_data_proxy_key') :
+                 return 'user_data_proxy_key given but user_data_proxy_cert missing (they can point to the same file if necessary)'
+             elif parser.has_option(sectionName, 'user_data_proxy_cert') and \
+                  parser.has_option(sectionName, 'user_data_proxy_key') :
+                 vmtype['user_data_proxy_cert'] = parser.get(sectionName, 'user_data_proxy_cert')
+                 vmtype['user_data_proxy_key']  = parser.get(sectionName, 'user_data_proxy_key')
              
+             if parser.has_option(sectionName, 'legacy_proxy') and \
+                parser.get(sectionName,'legacy_proxy').strip().lower() == 'true':
+                 vmtype['legacy_proxy'] = True
+             else:
+                 vmtype['legacy_proxy'] = False
+             
+             vmtypes[sectionNameSplit[1]] = vmtype
                           
       # Define VMs
       ordinal = 0
@@ -805,7 +821,9 @@ class VacVM:
    def setupUserDataContents(self):
       try:
         self.userDataContents = vac.vacutils.createUserData(
-                                               vmtypesPath	= '/var/lib/vac/vmtypes', 
+                                               shutdownTime     = int(time.time() + 
+                                                                      vmtypes[self.vmtypeName]['max_wallclock_seconds']),
+                                               vmtypesPath	= '/var/lib/vac/vmtypes',
                                                options		= vmtypes[self.vmtypeName], 
                                                versionString	= 'Vac ' + vacVersion, 
                                                spaceName	= spaceName, 

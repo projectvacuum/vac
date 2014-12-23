@@ -1,4 +1,4 @@
-.TH vac.conf 5 "Nov 2014" "vac.conf" "Vac Manual"
+.TH vac.conf 5 "Dec 2014" "vac.conf" "Vac Manual"
 .SH NAME
 .B vac.conf
 \- Vac configuration file
@@ -248,6 +248,11 @@ Alternatively, the images may be files in the local filesystem.
 With cernvm3 vm_model, the files are ISO CDROM-style boot images; 
 with the cernvm2 vm_model, they are the root hard disk image itself.
 
+.B rootpublickey
+is the file name of a public key supplied to the contextualization which
+will be allowed root ssh access. Setting this option to 
+/root/.ssh/id_rsa.pub will give access from the factory machine.
+
 .B user_data
 is the path of a contextualization file provided by the VO and perhaps 
 modified by the site. If the path is a remote HTTP or HTTPS URL, Vac
@@ -260,14 +265,21 @@ for a list of the default substitutions.
 and
 .B user_data_file_XXX
 are locally defined substitutions which will be applied to the user_data
-file before the VM is started. Option takes the string to be substituted.
-File takes the relative or absolute path to a file whose contents will 
-be substituted for the pattern in the user_data file.
+file before the VM is started. user_data_option_XXX takes the string to 
+be substituted. user_data_file_XXX takes the relative or absolute path to
+a file whose contents will be substituted for the pattern in the 
+user_data file.
 
-.B rootpublickey
-is the file name of a public key supplied to the contextualization which
-will be allowed root ssh access. Setting this option to 
-/root/.ssh/id_rsa.pub will give access from the factory machine.
+.B user_data_proxy_cert
+and
+.B user_data_proxy_key
+are the locations of files containing X.509 certificate(s) and an RSA 
+private key, all in PEM format, which will be used to make a limited 
+X.509 proxy. The same file can be given for both options if desired.
+
+.B legacy_proxy
+can be set to True to generate Globus legacy proxies rather than RFC 3820
+proxies. Default False.
 
 .SH USER_DATA SUBSTITUTIONS
 
@@ -278,6 +290,9 @@ replace patterns of the form ##user_data_option_XXX##. The contents of
 the files given to user_data_file_XXX options replace patterns of the
 form ##user_data_file_XXX##. In both cases XXX are arbitrary strings 
 consisting of letters, numbers, and underscores.
+
+The pattern ##user_data_proxy## is replaced by the proxy created if the 
+user_data_proxy_cert and user_data_proxy_key options are given.
 
 In addition, the following substitutions are performed automatically by
 Vac using data it holds internally:

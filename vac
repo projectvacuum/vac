@@ -352,6 +352,22 @@ if __name__ == '__main__':
                       dest="includeVersions", 
                       help="include version information")
 
+    parser.add_option("-l", 
+                      "--legacy-proxy",
+                      action="store_true",
+                      dest="isLegacyProxy", 
+                      help="create a legacy Globus proxy")
+
+    parser.add_option("-c",
+                      "--cert",
+                      dest="certPath", 
+                      help="X509 certificate file")
+
+    parser.add_option("-k",
+                      "--key",
+                      dest="keyPath", 
+                      help="X509 certificate's private key file")
+
     (options, args) = parser.parse_args()
 
     if len(args) > 0 and args[0]:
@@ -393,7 +409,21 @@ if __name__ == '__main__':
             else:
               vmtypeResults(args[1])
               sys.exit(0)
- 
+
+        if args[0] == 'proxy-init':
+            if not options.certPath:
+              print 'proxy-init command requires the --cert/-c option!'
+              sys.exit(1)
+            elif not options.keyPath:
+              print 'proxy-init command requires the --key/-k option!'
+              sys.exit(1)
+            else:
+              print vac.vacutils.makeX509Proxy(certPath = options.certPath, 
+                                               keyPath = options.keyPath, 
+                                               expirationTime = int(time.time()) + 43200, 
+                                               isLegacyProxy = options.isLegacyProxy)
+              sys.exit(0)
+
     print 'Must give command argument to vac!'
-    sys.exit(1)        
+    sys.exit(1)
                                                                       

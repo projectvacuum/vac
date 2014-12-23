@@ -44,8 +44,10 @@ import string
 import urllib
 import StringIO
 import tempfile
+import calendar
 
 import pycurl
+import M2Crypto
 
 def logLine(text):
    print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
@@ -77,7 +79,7 @@ def secondsToHHMMSS(seconds):
    mm, ss = divmod(ss, 60)
    return '%02d:%02d:%02d' % (hh, mm, ss)
 
-def createUserData(vmtypesPath, options, versionString, spaceName, vmtypeName, userDataPath, hostName, uuidStr):
+def createUserData(shutdownTime, vmtypesPath, options, versionString, spaceName, vmtypeName, userDataPath, hostName, uuidStr):
    
    # Get raw user_data template file, either from network ...
    if (userDataPath[0:7] == 'http://') or (userDataPath[0:8] == 'https://'):
@@ -124,6 +126,29 @@ def createUserData(vmtypesPath, options, versionString, spaceName, vmtypeName, u
    userDataContents = userDataContents.replace('##user_data_vm_hostname##',   hostName)
    userDataContents = userDataContents.replace('##user_data_vmlm_version##',  versionString)
    userDataContents = userDataContents.replace('##user_data_vmlm_hostname##', os.uname()[1])
+
+   # Insert a proxy created from user_data_proxy_cert / user_data_proxy_key
+   if 'user_data_proxy_cert' in options and 'user_data_proxy_key' in options:
+
+     if options['user_data_proxy_cert'][0] == '/':
+       certPath = options['user_data_proxy_cert']
+     else:
+       certPath = vmtypesPath + '/' + vmtypeName + '/' + options['user_data_proxy_cert']
+
+     if options['user_data_proxy_key'][0] == '/':
+       keyPath = options['user_data_proxy_key']
+     else:
+       keyPath = vmtypesPath + '/' + vmtypeName + '/' + options['user_data_proxy_key']
+
+     try:
+       if ('legacy_proxy' in options) and options['legacy_proxy']:
+         userDataContents = userDataContents.replace('##user_data_proxy##',
+                              makeX509Proxy(certPath, keyPath, shutdownTime, isLegacyProxy=True))
+       else:
+         userDataContents = userDataContents.replace('##user_data_proxy##',
+                              makeX509Proxy(certPath, keyPath, shutdownTime, isLegacyProxy=False))
+     except Exception as e:
+       raise NameError('Faled to make proxy (' + str(e) + ')')
 
    # Site configurable substitutions for this vmtype
    for oneOption, oneValue in options.iteritems():
@@ -220,3 +245,110 @@ def getRemoteRootImage(url, imageCache, tmpDir):
      
    c.close()
    return imageCache + '/' + urlEncoded
+   
+def emptyCallback1(p1):
+   return
+
+def emptyCallback2(p1, p2):
+   return
+
+def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False):
+   # Return a PEM-encoded limited proxy as a string in either Globus Legacy 
+   # or RFC 3820 format. Checks that the existing cert/proxy expires after
+   # the given expirationTime, but no other checks are done.
+
+   # Get the existing priviate key
+
+   try:
+     oldKey = M2Crypto.RSA.load_key(keyPath, emptyCallback1)
+   except Exception as e:
+     raise NameError('Failed to get private key from ' + keyPath + ' (' + str(e) + ')')
+
+   # Get the chain of certificates (just one if a usercert or hostcert file)
+
+   try:
+     certBIO = M2Crypto.BIO.File(open(certPath))
+   except Exception as e:
+     raise NameError('Failed to open certificate file ' + certPath + ' (' + str(e) + ')')
+
+   oldCerts = []
+
+   while True:
+     try:
+       oldCerts.append(M2Crypto.X509.load_cert_bio(certBIO))
+     except:
+       certBIO.close()
+       break
+   
+   if len(oldCerts) == 0:
+     raise NameError('Failed get certificate from ' + certPath)
+
+   # Check the expirationTime
+   
+   if int(calendar.timegm(time.strptime(str(oldCerts[0].get_not_after()), "%b %d %H:%M:%S %Y %Z"))) < expirationTime:
+     raise NameError('Cert/proxy ' + certPath + ' expires before given expiration time ' + str(expirationTime))
+
+   # Create the public/private keypair for the new proxy
+   
+   newKey = M2Crypto.EVP.PKey()
+   newKey.assign_rsa(M2Crypto.RSA.gen_key(512, 65537, emptyCallback2))
+
+   # Start filling in the new certificate object
+
+   newCert = M2Crypto.X509.X509()
+   newCert.set_pubkey(newKey)
+   newCert.set_serial_number(int(time.time() * 100))
+   newCert.set_issuer_name(oldCerts[0].get_subject())
+   newCert.set_version(2) # "2" is X.509 for "v3" ...
+
+   # Construct the legacy or RFC style subject
+
+   newSubject = oldCerts[0].get_subject()
+
+   if isLegacyProxy:
+     newSubject.add_entry_by_txt(field = "CN",
+                                 type  = 0x1001,
+                                 entry = 'limited proxy',
+                                 len   = -1, 
+                                 loc   = -1, 
+                                 set   = 0)
+   else:
+     newSubject.add_entry_by_txt(field = "CN",
+                                 type  = 0x1001,
+                                 entry = str(int(time.time() * 100)),
+                                 len   = -1, 
+                                 loc   = -1, 
+                                 set   = 0)
+
+   newCert.set_subject_name(newSubject)
+   
+   # Set start and finish times
+   
+   newNotBefore = M2Crypto.ASN1.ASN1_UTCTIME()
+   newNotBefore.set_time(int(time.time())) 
+   newCert.set_not_before(newNotBefore)
+
+   newNotAfter = M2Crypto.ASN1.ASN1_UTCTIME()
+   newNotAfter.set_time(expirationTime)
+   newCert.set_not_after(newNotAfter)
+
+   # Add extensions, possibly including RFC-style proxyCertInfo
+   
+   newCert.add_ext(M2Crypto.X509.new_extension("keyUsage", "Digital Signature, Key Encipherment, Key Agreement", 1))
+
+   if not isLegacyProxy:
+     newCert.add_ext(M2Crypto.X509.new_extension("proxyCertInfo", "critical, language:1.3.6.1.4.1.3536.1.1.1.9", 1, 0))
+
+   # Sign the certificate with the old private key
+   oldKeyEVP = M2Crypto.EVP.PKey()
+   oldKeyEVP.assign_rsa(oldKey) 
+   newCert.sign(oldKeyEVP, 'sha256')
+
+   # Return proxy as a string of PEM blocks
+   
+   proxyString = newCert.as_pem() + newKey.as_pem(cipher = None)
+
+   for oneOldCert in oldCerts:
+     proxyString += oneOldCert.as_pem()
+
+   return proxyString 
