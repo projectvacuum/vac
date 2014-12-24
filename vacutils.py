@@ -120,12 +120,14 @@ def createUserData(shutdownTime, vmtypesPath, options, versionString, spaceName,
        raise NameError('Failed to read ' + userDataFile)
 
    # Default substitutions
-   userDataContents = userDataContents.replace('##user_data_uuid##',          uuidStr)
    userDataContents = userDataContents.replace('##user_data_space##',         spaceName)
    userDataContents = userDataContents.replace('##user_data_vmtype##',        vmtypeName)
    userDataContents = userDataContents.replace('##user_data_vm_hostname##',   hostName)
    userDataContents = userDataContents.replace('##user_data_vmlm_version##',  versionString)
    userDataContents = userDataContents.replace('##user_data_vmlm_hostname##', os.uname()[1])
+
+   if uuidStr:
+     userDataContents = userDataContents.replace('##user_data_uuid##', uuidStr)
 
    # Insert a proxy created from user_data_proxy_cert / user_data_proxy_key
    if 'user_data_proxy_cert' in options and 'user_data_proxy_key' in options:
@@ -168,84 +170,6 @@ def createUserData(shutdownTime, vmtypesPath, options, versionString, spaceName,
 
    return userDataContents
 
-def getRemoteRootImage(url, imageCache, tmpDir):
-
-   try:
-     f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
-   except Exception as e:
-     NameError('Failed to create temporary image file in ' + tmpDir)
-        
-   ff = os.fdopen(f, 'wb')
-   
-   c = pycurl.Curl()
-   c.setopt(c.URL, url)
-   c.setopt(c.WRITEDATA, ff)
-
-   urlEncoded = urllib.quote(url,'')
-       
-   try:
-     # For existing files, we get the mtime and only fetch the image itself if newer.
-     # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
-     c.setopt(c.TIMEVALUE, int(os.stat(imageCache + '/' + urlEncoded).st_mtime))
-     c.setopt(c.TIMECONDITION, c.TIMECONDITION_IFMODSINCE)
-   except:
-     pass
-
-   c.setopt(c.TIMEOUT, 120)
-
-   # You will thank me for following redirects one day :)
-   c.setopt(c.FOLLOWLOCATION, 1)
-   c.setopt(c.OPT_FILETIME,   1)
-   c.setopt(c.SSL_VERIFYPEER, 1)
-   c.setopt(c.SSL_VERIFYHOST, 2)
-        
-   if os.path.isdir('/etc/grid-security/certificates'):
-     c.setopt(c.CAPATH, '/etc/grid-security/certificates')
-   else:
-     logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
-
-   logLine('Checking if an updated ' + url + ' needs to be fetched')
-
-   try:
-     c.perform()
-     ff.close()
-   except Exception as e:
-     os.remove(tempName)
-     raise NameError('Failed to fetch ' + url + ' (' + str(e) + ')')
-
-   if c.getinfo(c.RESPONSE_CODE) == 200:
-     try:
-       lastModified = float(c.getinfo(c.INFO_FILETIME))
-     except:
-       # We fail rather than use a server that doesn't give Last-Modified:
-       raise NameError('Failed to get last modified time for ' + url)
-
-     if lastModified < 0.0:
-       # We fail rather than use a server that doesn't give Last-Modified:
-       raise NameError('Failed to get last modified time for ' + url)
-     else:
-       # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
-       # continually downloading the image based on our faulty filesystem timestamps
-       os.utime(tempName, (time.time(), lastModified))
-
-     try:
-       os.rename(tempName, imageCache + '/' + urlEncoded)
-     except:
-       try:
-         os.remove(tempName)
-       except:
-         pass
-           
-       raise NameError('Failed renaming new image ' + imageCache + '/' + urlEncoded)
-
-     logLine('New ' + url + ' put in ' + imageCache)
-
-   else:
-     logLine('No new version of ' + url + ' found and existing copy not replaced')
-     
-   c.close()
-   return imageCache + '/' + urlEncoded
-   
 def emptyCallback1(p1):
    return
 
@@ -352,3 +276,82 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False):
      proxyString += oneOldCert.as_pem()
 
    return proxyString 
+
+def getRemoteRootImage(url, imageCache, tmpDir):
+
+   try:
+     f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
+   except Exception as e:
+     NameError('Failed to create temporary image file in ' + tmpDir)
+        
+   ff = os.fdopen(f, 'wb')
+   
+   c = pycurl.Curl()
+   c.setopt(c.URL, url)
+   c.setopt(c.WRITEDATA, ff)
+
+   urlEncoded = urllib.quote(url,'')
+       
+   try:
+     # For existing files, we get the mtime and only fetch the image itself if newer.
+     # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
+     c.setopt(c.TIMEVALUE, int(os.stat(imageCache + '/' + urlEncoded).st_mtime))
+     c.setopt(c.TIMECONDITION, c.TIMECONDITION_IFMODSINCE)
+   except:
+     pass
+
+   c.setopt(c.TIMEOUT, 120)
+
+   # You will thank me for following redirects one day :)
+   c.setopt(c.FOLLOWLOCATION, 1)
+   c.setopt(c.OPT_FILETIME,   1)
+   c.setopt(c.SSL_VERIFYPEER, 1)
+   c.setopt(c.SSL_VERIFYHOST, 2)
+        
+   if os.path.isdir('/etc/grid-security/certificates'):
+     c.setopt(c.CAPATH, '/etc/grid-security/certificates')
+   else:
+     logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
+
+   logLine('Checking if an updated ' + url + ' needs to be fetched')
+
+   try:
+     c.perform()
+     ff.close()
+   except Exception as e:
+     os.remove(tempName)
+     raise NameError('Failed to fetch ' + url + ' (' + str(e) + ')')
+
+   if c.getinfo(c.RESPONSE_CODE) == 200:
+     try:
+       lastModified = float(c.getinfo(c.INFO_FILETIME))
+     except:
+       # We fail rather than use a server that doesn't give Last-Modified:
+       raise NameError('Failed to get last modified time for ' + url)
+
+     if lastModified < 0.0:
+       # We fail rather than use a server that doesn't give Last-Modified:
+       raise NameError('Failed to get last modified time for ' + url)
+     else:
+       # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
+       # continually downloading the image based on our faulty filesystem timestamps
+       os.utime(tempName, (time.time(), lastModified))
+
+     try:
+       os.rename(tempName, imageCache + '/' + urlEncoded)
+     except:
+       try:
+         os.remove(tempName)
+       except:
+         pass
+           
+       raise NameError('Failed renaming new image ' + imageCache + '/' + urlEncoded)
+
+     logLine('New ' + url + ' put in ' + imageCache)
+
+   else:
+     logLine('No new version of ' + url + ' found and existing copy not replaced')
+     
+   c.close()
+   return imageCache + '/' + urlEncoded
+   

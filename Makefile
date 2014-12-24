@@ -66,6 +66,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d \
+	         $(RPM_BUILD_ROOT)/etc/vac.d \
 	         $(RPM_BUILD_ROOT)/etc/apel
 	cp vac vacd check-vacd \
 	   $(RPM_BUILD_ROOT)/usr/sbin

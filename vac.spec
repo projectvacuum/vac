@@ -37,9 +37,7 @@ if [ $? = 0 ] ; then
 fi
 
 %files
-/usr/sbin/vac
-/usr/sbin/vacd
-/usr/sbin/check-vacd
+/usr/sbin
 /usr/share/man/man1
 /usr/share/man/man5
 /usr/share/man/man8
@@ -48,4 +46,5 @@ fi
 /var/lib/vac
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd
+/etc/vac.d
 /etc/apel/vac-ssmsend-prod.cfg
