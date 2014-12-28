@@ -304,6 +304,8 @@ def readConf():
 
              if parser.has_option(sectionName, 'user_data'):
                  vmtype['user_data'] = parser.get(sectionName, 'user_data')
+             else:
+                 return 'user_data is now required in each vmtype section!'
 
              if parser.has_option(sectionName, 'log_machineoutputs') and \
                 parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
