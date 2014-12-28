@@ -258,7 +258,7 @@ def vacOneCycle():
 
      if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
-                           ') Fizzle seconds > ' + str(vm.heartbeat - vm.started))
+                           ') Minimum ' + str(vm.vmtypeName) + ' fizzle_seconds=' + str(vm.heartbeat - vm.started) + ' ?')
      elif hasattr(vm, 'shutdownMessage') and vm.shutdownMessage:
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.vmtypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
      else:
