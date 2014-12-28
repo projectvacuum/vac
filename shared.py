@@ -297,7 +297,10 @@ def readConf():
                  vmtype['scratch_device'] = 'vdb'
 
              if parser.has_option(sectionName, 'rootpublickey'):
-                 vmtype['rootpublickey'] = parser.get(sectionName, 'rootpublickey')
+                 print 'The rootpublickey option is deprecated; please use root_public_key!'
+                 vmtype['root_public_key'] = parser.get(sectionName, 'rootpublickey')
+             elif parser.has_option(sectionName, 'root_public_key'):
+                 vmtype['root_public_key'] = parser.get(sectionName, 'root_public_key')
 
              if parser.has_option(sectionName, 'user_data'):
                  vmtype['user_data'] = parser.get(sectionName, 'user_data')
@@ -789,17 +792,17 @@ class VacVM:
 
       f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/context.sh', 'w')
 
-      if 'rootpublickey' in vmtypes[self.vmtypeName]:
+      if 'root_public_key' in vmtypes[self.vmtypeName]:
 
-          if vmtypes[self.vmtypeName]['rootpublickey'][0] == '/':
-              rootpublickey_file = vmtypes[self.vmtypeName]['rootpublickey']
+          if vmtypes[self.vmtypeName]['root_public_key'][0] == '/':
+              root_public_key_file = vmtypes[self.vmtypeName]['root_public_key']
           else:
-              rootpublickey_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['rootpublickey']
+              root_public_key_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['root_public_key']
 
           try:
-           shutil.copy2(rootpublickey_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/root.pub')
+           shutil.copy2(root_public_key_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/root.pub')
           except:
-           raise NameError('Failed to copy ' + rootpublickey_file)
+           raise NameError('Failed to copy ' + root_public_key_file)
                       
           f.write('ROOT_PUBKEY=root.pub\n')
   

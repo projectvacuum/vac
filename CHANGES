@@ -7,6 +7,7 @@
 - Options deprecated in 0.17.0 are now removed
 - Add user_data_proxy_cert/user_data_proxy_key/legacy_proxy options in
   vmtypes to put a proxy in user_data rather than a hostcert/hostkey
+- rootpublickey becomes root_public_key
 ==================== Changes in Vac version 0.17.0 =====================
 - Use uname() rather than socket to get hostname in Vac responder
 - Force VNC to listen on 127.0.0.1 only (this was the default already)
