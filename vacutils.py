@@ -87,11 +87,12 @@ def createUserData(shutdownTime, vmtypesPath, options, versionString, spaceName,
      c = pycurl.Curl()
      c.setopt(c.URL, userDataPath)
      c.setopt(c.WRITEFUNCTION, buffer.write)
+     c.setopt(c.USERAGENT, versionString)
      c.setopt(c.TIMEOUT, 30)
      c.setopt(c.FOLLOWLOCATION, True)
      c.setopt(c.SSL_VERIFYPEER, 1)
      c.setopt(c.SSL_VERIFYHOST, 2)
-        
+               
      if os.path.isdir('/etc/grid-security/certificates'):
        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
      else:
