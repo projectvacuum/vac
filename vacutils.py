@@ -37,6 +37,7 @@
 #
 
 import os
+import re
 import sys
 import stat
 import time
@@ -355,4 +356,17 @@ def getRemoteRootImage(url, imageCache, tmpDir):
      
    c.close()
    return imageCache + '/' + urlEncoded
+
+def splitCommaHeaders(inputList):
+
+   outputList = []
+
+   for x in inputList:
    
+     if ',' in x:
+       for y in re.split(r', *', x):
+         outputList.append(y.strip())
+     else:
+       outputList.append(x.strip())
+       
+   return outputList
