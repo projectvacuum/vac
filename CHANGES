@@ -9,6 +9,7 @@
   vmtypes to put a proxy in user_data rather than a hostcert/hostkey
 - rootpublickey becomes root_public_key
 - user_data is now required in each vmtype
+- gocdb_sitename defaults to Vac space name if not given
 ==================== Changes in Vac version 0.17.0 =====================
 - Use uname() rather than socket to get hostname in Vac responder
 - Force VNC to listen on 127.0.0.1 only (this was the default already)

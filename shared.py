@@ -158,16 +158,13 @@ def readConf():
         
       spaceName = parser.get('settings','vac_space').strip()
 
-      # Must give something as the GOCDB sitename used in
-      # accounting records. We force them to give a name to
-      # avoid (a) not recording usage at all or (b) using
-      # some default value, such as spaceName, which will
-      # end up in the central APEL database.      
-      if not parser.has_option('settings', 'gocdb_sitename'):
-        return 'Must give gocdb_sitename in [settings]!'
-
-      gocdbSitename = parser.get('settings','gocdb_sitename').strip()
-
+      if parser.has_option('settings', 'gocdb_sitename'):
+        gocdbSitename = parser.get('settings','gocdb_sitename').strip()
+      else:
+        # Use spaceName as a placeholder, which they can replace in the
+        # saved message record files if they decide to use APEL later
+        gocdbSitename = spaceName
+        
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
           domainType = parser.get('settings','domain_type').strip()
