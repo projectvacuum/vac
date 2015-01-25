@@ -63,7 +63,6 @@ factoryAddress = '169.254.169.254'
 udpBufferSize  = 16777216
 fixNetworking  = None
 
-cycleSeconds = None
 deleteOldFiles = None
 domainType = None
 overloadPerCpu = None
@@ -89,14 +88,13 @@ volumeGroup = None
 gbScratch = None
 
 def readConf():
-      global cycleSeconds, deleteOldFiles, domainType, gocdbSitename, \
+      global deleteOldFiles, domainType, gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking
 
       # reset to defaults
-      cycleSeconds = 60
       deleteOldFiles = True      
       domainType = 'kvm'
       overloadPerCpu = 2.0
