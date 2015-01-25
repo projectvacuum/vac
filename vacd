@@ -3,7 +3,7 @@
 #  vacd - Vac daemon which runs on factory nodes
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-4. All rights reserved.
+#  Copyright (c) 2013-5. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -46,6 +46,7 @@ import hashlib
 import base64
 import multiprocessing
 import stat
+import random
 
 import libvirt
 
@@ -518,13 +519,13 @@ def sendStatusResponse(sock, query, addr):
       except socket.error as msg:
              pass
 
-def sendTotalsResponse(sock, query, addr):
+def sendVmtypesResponse(sock, query, addr):
 # THIS NEEDS CHECKING STILL
    for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
    
-      hs06Total         = 0.0
-      messageLatest     = None
-      messagetimeLatest = None
+      hs06Total        = 0.0
+      lastAbortMessage = ''
+      lastAbortTime    = 0
 
       # Go through the VMs, counting up things for this vmtype
       for vmName in sorted(vac.shared.virtualmachines):
@@ -548,7 +549,7 @@ def sendTotalsResponse(sock, query, addr):
                        newestCtime        = ctime
                        newestUUIDByVmtype = onedir
 
-         # This VM is the newest one for this vmtype
+         # This VM instance was the most recent for this vmtype for this vmName
          if newestUUIDByVmtype:
                 
             try:
@@ -591,15 +592,14 @@ def sendTotalsResponse(sock, query, addr):
                     f.close()
                     timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + 
                                                       '/shared/machineoutputs/shutdown_message').st_ctime)
-                                                      
-                    if timeShutdownMessage > messagetimeLastest:
-                      messagetimeLatest = timeShutdownMessage
-                      messageLatest     = shutdownMessage
-                   
+
+                    shutdownMessageCode = int(shutdownMessage[0:4])
+
+                    if (shutdownMessageCode >= 300) and (shutdownMessageCode <= 699) and (latestAbortMessage > latestAbortMessageTime):
+                      lastAbortTime    = timeShutdownMessage
+                      lastAbortMessage = shutdownMessage
                   except:
                     pass
-                                                        
-#      vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
 
       try:
              sock.sendto(json.dumps({
@@ -609,9 +609,9 @@ def sendTotalsResponse(sock, query, addr):
                 'vmtypestotal'	: len(vac.shared.vmtypes),
                 'vmtype'	: vmVmtypeName,
                 'cookie'	: query['cookie'],
-                'method'	: 'totals',
-                'message'	: messageLatest,
-                'messagetime'	: messagetimeLatest,
+                'method'	: 'vmtypes',
+                'abortmessage'	: lastAbortMessage,
+                'aborttime'	: lastAbortTime,
                 'factoryname'	: os.uname()[1]
                               }), addr)
 
@@ -631,11 +631,8 @@ def vacResponder():
  
    vac.vacutils.createFile('/var/lib/vac/responder.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   vac.shared.setSockBufferSize(sock)
-   sock.settimeout(60.0)
-   sock.bind(('', 995))
-   
+   sock = None
+
    vac.vacutils.logLine('vac responder starts')
    
    vac.shared.setProcessName('vacd-responder')
@@ -658,6 +655,19 @@ def vacResponder():
      se = file('/var/log/vacd-responder', 'a+', 0)     
      os.dup2(se.fileno(), sys.stderr.fileno())
 
+     if sock is None:
+       sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+       vac.shared.setSockBufferSize(sock)
+       sock.settimeout(60.0)
+
+       try:
+         sock.bind(('', 995))
+       except Exception as e:
+         sock = None
+         vac.vacutils.logLine('Failed to bind to vac-responder port 995: ' + str(e))
+         time.sleep(60.0)
+         continue
+   
      readConfError = vac.shared.readConf()
 
      if readConfError:
@@ -686,14 +696,14 @@ def vacResponder():
      vac.vacutils.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
      try:
-        data, addr = sock.recvfrom(1024)
+       data, addr = sock.recvfrom(1024)
      except socket.error as msg:
-        continue;
+       continue
 
      try:
-        query = json.loads(data)
+       query = json.loads(data)
      except:
-        continue
+       continue
      
      if ('space'  in query and 
          'cookie' in query and 
@@ -705,9 +715,8 @@ def vacResponder():
          if query['method'] == 'status':
            sendStatusResponse(sock, query, addr)
  
-# Skip for now, until tested thoroughly   
-#         elif query['method'] == 'totals':
-#           sendTotalsResponse(sock, query, addr)
+#         elif query['method'] == 'vmtypes':
+#           sendVmtypesResponse(sock, query, addr)
 
    sys.exit(0) # if we break out of while loop then we exit
 
@@ -780,15 +789,22 @@ if __name__ == '__main__':
                print 'no factory.pid - exiting'
                break
 
-            vac.vacutils.logLine('=============== Start cycle ===============')
+            # Fork a subprocess to run each cycle          
+            cyclePid = os.fork()
+        
+            # Otherwise each subprocess starts from the same point in the sequence!
+            random.seed()
 
-            vacOneCycle()
+            if cyclePid == 0:
+              vac.vacutils.logLine('=============== Start cycle ===============')
+              vacOneCycle()
+              vac.vacutils.logLine('================ End cycle ================')
+              sys.exit(0)
 
-            vac.vacutils.logLine('================ End cycle ================')
+            # wait for cyclePid subprocess to finish
+            os.waitpid(cyclePid, 0)
 
-            sys.stdout.flush()
-            sys.stderr.flush()
-            time.sleep(vac.shared.cycleSeconds)
+            time.sleep(float(vac.shared.cycleSeconds))
  
           sys.exit(0) # if we break out of the while loop, then we exit
           

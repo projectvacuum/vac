@@ -160,10 +160,6 @@ def readConf():
 
       if parser.has_option('settings', 'gocdb_sitename'):
         gocdbSitename = parser.get('settings','gocdb_sitename').strip()
-      else:
-        # Use spaceName as a placeholder, which they can replace in the
-        # saved message record files if they decide to use APEL later
-        gocdbSitename = spaceName
         
       if parser.has_option('settings', 'domain_type'):
           # defaults to 'kvm' but can specify 'xen' instead
@@ -687,8 +683,13 @@ class VacVM:
       else:
         userFQANField = ''
 
+      if gocdbSitename:
+        tmpGocdbSitename = gocdbSitename
+      else:
+        tmpGocdbSitename = spaceName
+
       mesg = ('APEL-individual-job-message: v0.3\n' + 
-              'Site: ' + gocdbSitename + '\n' +
+              'Site: ' + tmpGocdbSitename + '\n' +
               'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
               'LocalJobId: ' + self.uuidStr + '\n' +
               'LocalUserId: ' + os.uname()[1] + '\n' +
@@ -716,11 +717,13 @@ class VacVM:
         vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
         return
 
-      try:
-        vac.vacutils.createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-      except:
-        vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
-        return
+      if gocdbSitename:
+        # We only write the outgoing copy if gocdb_sitename is explicitly given
+        try:
+          vac.vacutils.createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+        except:
+          vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
+          return
       
    def logMachineoutputs(self):
    

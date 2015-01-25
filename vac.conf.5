@@ -90,9 +90,9 @@ gives the GOCDB site name to use when writing APEL
 accounting record files to /var/lib/vac/apel-outgoing and 
 /var/lib/vac/apel-archive. Please use your official site name to avoid
 the risk of misnamed records getting into the central APEL database.
-The Vac space name is used as a placeholder if gocdb_sitename is
-not given, but accounting record files containing this placeholder must
-not be sent to APEL.
+If gocdb_sitename is not given, then records are only written to 
+apel-archive and the Vac space name is used as a placeholder in the 
+files.
 
 .B version_logger
 can be used to disable the logging of the version in use. Normally

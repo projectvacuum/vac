@@ -43,6 +43,9 @@ import hashlib,base64
 import optparse
 
 import vac
+
+def vmtypesResults():
+   print 'vmtypesResults()'
    
 def vmtypeResults(vmtypeName):
    
@@ -293,7 +296,7 @@ def rawFactory(factoryName):
 
    try:
      sock.sendto(json.dumps({'space':vac.shared.spaceName,'cookie':hashlib.sha256(salt + vac.shared.canonicalFQDN(factoryName)).hexdigest(), 
-                          'method':'status'}),(vac.shared.canonicalFQDN(factoryName), 995))
+                             'method':'status'}),(vac.shared.canonicalFQDN(factoryName), 995))
    except:
      print 'Failed sending UDP query to ' + vac.shared.canonicalFQDN(factoryName)
 
@@ -409,6 +412,10 @@ if __name__ == '__main__':
             else:
               vmtypeResults(args[1])
               sys.exit(0)
+
+        if args[0] == 'vmtypes':
+            vmtypesResults()
+            sys.exit(0)
 
         if args[0] == 'proxy-init':
             if not options.certPath:
