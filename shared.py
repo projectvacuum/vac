@@ -199,9 +199,7 @@ def readConf():
           gbScratch = int(parser.get('settings','scratch_gb').strip())
              
       if parser.has_option('settings', 'cycle_seconds'):
-          # How long to wait before re-evaluating state of VMs in the
-          # main loop again. Defaults to 60 seconds.
-          cycleSeconds = int(parser.get('settings','cycle_seconds').strip())
+          print 'cycle_seconds is no longer used'
 
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          

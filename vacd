@@ -804,7 +804,7 @@ if __name__ == '__main__':
             # wait for cyclePid subprocess to finish
             os.waitpid(cyclePid, 0)
 
-            time.sleep(float(vac.shared.cycleSeconds))
+            time.sleep(60)
  
           sys.exit(0) # if we break out of the while loop, then we exit
           
