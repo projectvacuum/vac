@@ -23,5 +23,8 @@ The new options user_data_proxy_cert / user_data_proxy_key allow Vac to
 generate legacy Globus or new-style RFC proxies and pass these to VMs
 rather than full host certificates and keys.
 
+shutdown_time can now be given in [settings] to enforce a deadline for all
+VMs to stop.
+
 The man pages and Admin Guide have been updated to reflect these changes.
 
