@@ -571,7 +571,41 @@ A simple Puppet module for Vac exists as the file init.pp which is installed
 in the /usr/share/doc/vac-VERSION directory. There are extensive comments at the 
 start of the file which outline how to use it.
 
-<!-- Backoff tuning using  Minimum VVV fizzle_seconds=NNN ?  log lines -->
+<h2 style="border-bottom: 1px solid">Setting fizzle_seconds and
+backoff_seconds</h2>
+
+<p>
+For each vmtype you can set values of fizzle_seconds and backoff_seconds
+to make the most efficient use of your resources when deciding to start
+VMs.
+
+<p>
+When Vac detects that a VM has started successfully but found that
+the experiment doesn't have any jobs available, it makes an estimate 
+of the fizzle_seconds value this outcome would correspond to. These 
+estimates are
+recorded in /var/log/vacd-factory in messages similar to &quot;Minimum
+VMTYPE fizzle_seconds=NNN ?&quot;. By looking at a sample of such lines
+for the vmtype you can arrive at a value of fizzle_seconds to use which
+is reliably slightly above the estimates you are seeing. The value will
+depend on what the VM does, the performance of the factory machine and
+its networking. However, for most VM architectures and factories a value of
+600 seconds will work perfectly well and you do not need to spend a lot
+of effort arriving at an ideal number.
+
+<p>
+The value of backoff_seconds is a matter for your site policy about how
+quickly to recover from periods when each experiment has no work available.
+If you know a particular experiment usually has plenty of work, then you
+could set a lot value of 600 seconds, so that Vac will try creating one
+VM every 10 minutes or so to see if work is available again after a short
+idle period. Alternatively, 
+if you know that an experiment usually has no work for you, then you could
+set much larger values of many hours between creating VMs. In either
+case, once Vac identifies that VMs for the experiment are indeed passing
+fizzle_seconds and finding work to do, then the backoff_seconds option is
+ignored and VMs are created as VM slots become free in line with the 
+vmtype's target_share.
 
 </body>
 </html>
