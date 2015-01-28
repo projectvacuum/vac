@@ -61,7 +61,6 @@ natNetmask     = '255.255.0.0'
 natPrefix      = '169.254.169.'
 factoryAddress = '169.254.169.254'
 udpBufferSize  = 16777216
-fixNetworking  = None
 
 deleteOldFiles = None
 domainType = None
@@ -71,6 +70,8 @@ gocdbSitename = None
 factories = None
 hs06PerMachine = None
 mbPerMachine = None
+fixNetworking  = None
+shutdownTime = None
 
 numVirtualmachines = None
 numCpus = None
@@ -89,7 +90,7 @@ gbScratch = None
 
 def readConf():
       global deleteOldFiles, domainType, gocdbSitename, \
-             factories, hs06PerMachine, mbPerMachine, fixNetworking, \
+             factories, hs06PerMachine, mbPerMachine, fixNetworking, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking
@@ -104,6 +105,7 @@ def readConf():
       hs06PerMachine = None
       mbPerMachine = 2048
       fixNetworking = True
+      shutdownTime = None
 
       numVirtualmachines = None
       numCpus = None
@@ -232,6 +234,12 @@ def readConf():
       if parser.has_option('settings', 'mb_per_machine'):
           # If this isn't set, then we use default (2048 MiB)
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
+
+      if parser.has_option('settings', 'shutdown_time'):
+        try:
+          shutdownTime = int(parser.get('settings','shutdown_time'))
+        except:
+          return 'Failed to parse shutdown_time (must be a Unix time seconds date/time)'
 
       if parser.has_option('settings', 'hs06_per_machine'):
           # Warn that this is deprecated
@@ -593,6 +601,19 @@ class VacVM:
                                          + '/shared/machinefeatures/shutdowntime', 'r').read().strip())
       except:
            pass
+
+      if self.shutdownTime and shutdownTime and (shutdownTime < self.shutdownTime):
+        # need to reduce shutdowntime in the VM
+        try:
+          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+                 str(shutdownTime) + '\n', 
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+                 str(shutdownTime) + '\n', 
+                 stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+        except:
+          pass
       
       try: 
            self.cpus = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
@@ -820,10 +841,15 @@ class VacVM:
                 + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d')
 
    def setupUserDataContents(self):
+ 
+      tmpShutdownTime = int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
+      
+      if shutdownTime and (shutdownTime < tmpShutdownTime):
+        tmpShutdownTime = shutdownTime
+        
       try:
         self.userDataContents = vac.vacutils.createUserData(
-                                               shutdownTime     = int(time.time() + 
-                                                                      vmtypes[self.vmtypeName]['max_wallclock_seconds']),
+                                               shutdownTime     = tmpShutdownTime,
                                                vmtypesPath	= '/var/lib/vac/vmtypes',
                                                options		= vmtypes[self.vmtypeName], 
                                                versionString	= 'Vac ' + vacVersion, 
@@ -878,17 +904,23 @@ class VacVM:
       # tell them they have the whole VM to themselves; they are in the only jobslot here
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
                 '1\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # Use earlier shutdown time if given in config
+      tmpShutdownTime = int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
+      
+      if shutdownTime and (shutdownTime < tmpShutdownTime):
+        tmpShutdownTime = shutdownTime
       
       # calculate the absolute shutdown time for the VM, as a machine
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
-                 str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n', 
+                 str(tmpShutdownTime) + '\n',
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Standard  jobfeatures
       
       # calculate the absolute shutdown time for the VM, as a job
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
-                 str(int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds']))  + '\n', 
+                 str(tmpShutdownTime) + '\n',
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't do this, so just say 1.0 for cpu factor
