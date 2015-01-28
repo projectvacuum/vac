@@ -86,8 +86,8 @@ can be set to apply a limit on the shutdown time for all VMs. This value is
 used if it is earlier than the shutdown time calculated from the vmtype's 
 max_wallclock_seconds. In this case /etc/machinefeatures/shutdowntime 
 is updated for the VM and Vac will kill the VM if that shutdown time is
-reached. shutdown_time is given in Unix seconds since 00:00:00 on 1st of
-January 1970.
+reached. shutdown_time is given in Unix seconds since 00:00:00 UTC on 
+1st of January 1970.
 
 .B gocdb_sitename
 gives the GOCDB site name to use when writing APEL 
