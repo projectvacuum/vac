@@ -472,15 +472,15 @@ shutdown_time option in [settings] which enforces a deadline for
 all VMs. This is one way to drain a factory of VMs in a planned
 way, by setting shutdown_time to the desired point in the future
 beyond which no VMs must be running. This has the advantage that
-the machinefeatures shutdowntime of existing VMs will be updated
+/etc/machinefeatures/shutdowntime in existing VMs will be updated
 if necessary and new VMs created before the deadline will be
-started with a machinefeatures shutdowntime based on shutdown_time.
+started with /etc/machinefeatures/shutdowntime based on shutdown_time.
 This maximises the chance of doing useful work right up until the
 deadline. 
 
 <p>
 However, if the VMs you are running do not frequently check
-for new values of machinefeaturs shutdowntime, then you will need
+for new values of /etc/machinefeatures/shutdowntime, then you will need
 to set a shutdown_time that gives a suitable grace period, typically
 allowing at least max_wallclock_seconds to elapse before the
 time of your deadline.
