@@ -463,6 +463,28 @@ Furthermore, since Vac factory machines are autonomous, it is
 straightforward to upgrade one factory in a production Vac space
 to check the consequences.
 
+<h2 style="border-bottom: 1px solid">Manually stopping VMs</h2>
+
+<p>
+It is possible to use the virsh command to list and kill individual
+VMs, however this can be done more gracefully by adding the 
+shutdown_time option in [settings] which enforces a deadline for 
+all VMs. This is one way to drain a factory of VMs in a planned
+way, by setting shutdown_time to the desired point in the future
+beyond which no VMs must be running. This has the advantage that
+the machinefeatures shutdowntime of existing VMs will be updated
+if necessary and new VMs created before the deadline will be
+started with a machinefeatures shutdowntime based on shutdown_time.
+This maximises the chance of doing useful work right up until the
+deadline. 
+
+<p>
+However, if the VMs you are running do not frequently check
+for new values of machinefeaturs shutdowntime, then you will need
+to set a shutdown_time that gives a suitable grace period, typically
+allowing at least max_wallclock_seconds to elapse before the
+time of your deadline.
+
 <h2 style="border-bottom: 1px solid">Using the vac command</h2>
 
 <p>

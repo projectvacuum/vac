@@ -350,6 +350,8 @@ def vacOneCycle():
            vac.vacutils.logLine('VM not recreated as load average is > overload_per_cpu(' + str(vac.shared.overloadPerCpu) + ') * cpu count(' + str(vac.shared.cpuCount) + ')')
          elif (totalCpusForCount + vac.shared.cpuPerMachine) > vac.shared.numCpus:
            vac.vacutils.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
+         elif shutdownTime and (shutdownTime < int(time.time())):
+           vac.vacutils.logLine('VM not recreated as shutdown_time = ' + str(shutdownTime) + ' has already passed')
          else:
            vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
            preferredVmtypeName = pollFactories()
