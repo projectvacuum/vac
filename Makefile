@@ -37,7 +37,7 @@ INSTALL_FILES=vacd vac \
           __init__.py shared.py vacutils.py \
           vacd.init check-vacd VERSION vacd.logrotate \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
-          example.vac.conf example.user_data \
+          RELEASE example.vac.conf example.user_data \
           admin-guide.html vac-ssmsend-prod.cfg \
           testkvm.xml init.pp
           
@@ -76,7 +76,7 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
-	   testkvm.xml \
+	   testkvm.xml RELEASE \
 	   $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)
 	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
 	 > $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)/admin-guide.html
