@@ -463,11 +463,11 @@ Furthermore, since Vac factory machines are autonomous, it is
 straightforward to upgrade one factory in a production Vac space
 to check the consequences.
 
-<h2 style="border-bottom: 1px solid">Manually stopping VMs</h2>
+<h2 style="border-bottom: 1px solid">Stopping VMs</h2>
 
 <p>
-It is possible to use the virsh command to list and kill individual
-VMs, however this can be done more gracefully by adding the 
+It is possible to use libvirt's virsh command to list and kill 
+individual VMs, however this can be done more gracefully by adding the 
 shutdown_time option in [settings] which enforces a deadline for 
 all VMs. This is one way to drain a factory of VMs in a planned
 way, by setting shutdown_time to the desired point in the future
@@ -584,7 +584,7 @@ When Vac detects that a VM has started successfully but found that
 the experiment doesn't have any jobs available, it makes an estimate 
 of the fizzle_seconds value this outcome would correspond to. These 
 estimates are
-recorded in /var/log/vacd-factory in messages similar to &quot;Minimum
+recorded in /var/log/vacd-factory by messages similar to &quot;Minimum
 VMTYPE fizzle_seconds=NNN ?&quot;. By looking at a sample of such lines
 for the vmtype you can arrive at a value of fizzle_seconds to use which
 is reliably slightly above the estimates you are seeing. The value will
@@ -597,7 +597,7 @@ of effort arriving at an ideal number.
 The value of backoff_seconds is a matter for your site policy about how
 quickly to recover from periods when each experiment has no work available.
 If you know a particular experiment usually has plenty of work, then you
-could set a lot value of 600 seconds, so that Vac will try creating one
+could set a low value of 600 seconds, so that Vac will try creating one
 VM every 10 minutes or so to see if work is available again after a short
 idle period. Alternatively, 
 if you know that an experiment usually has no work for you, then you could
