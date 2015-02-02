@@ -600,21 +600,21 @@ class VacVM:
            self.shutdownTime = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                          + '/shared/machinefeatures/shutdowntime', 'r').read().strip())
       except:
-           pass
-
-      if self.shutdownTime and shutdownTime and (shutdownTime < self.shutdownTime):
-        # need to reduce shutdowntime in the VM
-        try:
-          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+           self.shutdownTime = None
+      else:
+           if shutdownTime and (shutdownTime < self.shutdownTime):
+             # need to reduce shutdowntime in the VM
+             try:
+               vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(shutdownTime) + '\n', 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+               vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
                  str(shutdownTime) + '\n', 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-        except:
-          pass
-      
+             except:
+               pass
+
       try: 
            self.cpus = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                                 + '/shared/jobfeatures/allocated_CPU', 'r').read().strip())

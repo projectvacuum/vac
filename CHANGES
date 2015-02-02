@@ -1,4 +1,5 @@
-==================== Changes in Vac version 0.19.0 =====================
+==================== Changes in Vac version 0.19.0 ===================== 
+- Fix shutdownTime bug identified by Ewan MacMahon
 ==================== Changes in Vac version 0.18.0 =====================
 - APEL messages are now created world readable on disk 
   (chmod o-x /var/lib/vac/apel-* can be used to negate this)
