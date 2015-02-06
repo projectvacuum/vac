@@ -1,5 +1,6 @@
 ==================== Changes in Vac version 0.19.0 ===================== 
 - Fix shutdownTime bug identified by Ewan MacMahon
+- qemu-kvm can be in /usr/libexec (SL6) or /usr/bin (Fedora)
 ==================== Changes in Vac version 0.18.0 =====================
 - APEL messages are now created world readable on disk 
   (chmod o-x /var/lib/vac/apel-* can be used to negate this)

@@ -1118,6 +1118,14 @@ class VacVM:
           return 'failed to open connection to the hypervisor'
                 
       if domainType == 'kvm':
+      
+          if os.path.isfile("/usr/libexec/qemu-kvm"):
+            qemuKvmFile = "/usr/libexec/qemu-kvm"
+          elif os.path.isfile("/usr/bin/qemu-kvm"):
+            qemuKvmFile = "/usr/bin/qemu-kvm"
+          else:
+            return "qemu-kvm not in /usr/libexec or /usr/bin!"
+      
           xmldesc=( """<domain type='kvm'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
@@ -1143,7 +1151,7 @@ class VacVM:
   <on_reboot>destroy</on_reboot>
   <on_crash>destroy</on_crash>
   <devices>
-    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <emulator>""" + qemuKvmFile + """</emulator>
     <disk type='file' device='disk'>""" + 
     ("<driver name='qemu' type='qcow2' cache='none' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='none' type='raw' error_policy='report' />") + 
     """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
