@@ -87,13 +87,14 @@ vmtypes = None
 
 volumeGroup = None
 gbScratch = None
+machinefeaturesOptions = None
 
 def readConf():
       global deleteOldFiles, domainType, gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
-             volumeGroup, gbScratch, overloadPerCpu, fixNetworking
+             volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
       deleteOldFiles = True      
@@ -121,6 +122,7 @@ def readConf():
 
       volumeGroup = 'vac_volume_group'
       gbScratch   = 40
+      machinefeaturesOptions = []
 
       try:
         f = open('/var/lib/vac/VERSION', 'r')
@@ -257,6 +259,14 @@ def readConf():
       except:
           if parser.has_option('factories', 'names'):
             return 'Please use the factories option within [settings] rather than a separate [factories] section! See the Admin Guide for details.'
+
+      # additional machinefeatures key/value pairs
+      for (oneOption,oneValue) in parser.items('settings'):
+         if oneOption[0:23] == 'machinefeatures_option_':
+           if string.translate(oneOption, None, '0123456789abcdefghijklmnopqrstuvwxyz_') != '':
+             return 'Name of machinefeatures_option_xxx (' + oneOption + ') must only contain a-z 0-9 and _'
+           else:
+             machinefeaturesOptions[oneOption[23:]] = parser.get('settings', oneOption)
 
       # all other sections are VM types (other types of section are ignored)
       for sectionName in parser.sections():
@@ -876,34 +886,34 @@ class VacVM:
       # Vac specific extensions
              
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
-                 os.uname()[1] + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 os.uname()[1], stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_vmtype',
-                 self.vmtypeName + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 self.vmtypeName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
-                 spaceName + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 spaceName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
-                 self.uuidStr + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
     
       # Standard machinefeatures
 
       # HEPSPEC06 per virtual machine
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
-                 str(hs06PerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't know the physical vs logical cores distinction here so we just use cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
-                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # again just use cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
-                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # tell them they have the whole VM to themselves; they are in the only jobslot here
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
-                '1\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Use earlier shutdown time if given in config
       tmpShutdownTime = int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
@@ -913,50 +923,57 @@ class VacVM:
       
       # calculate the absolute shutdown time for the VM, as a machine
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
-                 str(tmpShutdownTime) + '\n',
+                 str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # additional machinefeatures options defined in configuration
+      if machinefeaturesOptions:
+        for oneOption,oneValue in machinefeaturesOptions.iteritems():
+          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/' + oneOption,
+                                  oneValue,
+                                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Standard  jobfeatures
       
       # calculate the absolute shutdown time for the VM, as a job
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
-                 str(tmpShutdownTime) + '\n',
+                 str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't do this, so just say 1.0 for cpu factor
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
-                 '1.0\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 '1.0', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine,
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine,
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']), 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) + '\n', 
+                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']), 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
       if 'scratch_volume_gb' in virtualmachines[self.name]:
          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
-                 str(virtualmachines[self.name]['scratch_volume_gb']) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(virtualmachines[self.name]['scratch_volume_gb']), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
-                 str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(int(time.time())), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
-                 str((mbPerMachine * 1048576) / 1000000) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str((mbPerMachine * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
-                 str(mbPerMachine * 1048576) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(mbPerMachine * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
                         
       # cpuPerMachine again
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
