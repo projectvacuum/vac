@@ -2,7 +2,7 @@
 #  shared.py - common functions, classes, and variables for Vac
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-4. All rights reserved.
+#  Copyright (c) 2013-5. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -71,6 +71,7 @@ factories = None
 hs06PerMachine = None
 mbPerMachine = None
 fixNetworking  = None
+forwardDev = None
 shutdownTime = None
 
 numVirtualmachines = None
@@ -91,7 +92,7 @@ machinefeaturesOptions = None
 
 def readConf():
       global deleteOldFiles, domainType, gocdbSitename, \
-             factories, hs06PerMachine, mbPerMachine, fixNetworking, shutdownTime, \
+             factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
@@ -106,6 +107,7 @@ def readConf():
       hs06PerMachine = None
       mbPerMachine = 2048
       fixNetworking = True
+      forwardDev = None
       shutdownTime = None
 
       numVirtualmachines = None
@@ -122,7 +124,7 @@ def readConf():
 
       volumeGroup = 'vac_volume_group'
       gbScratch   = 40
-      machinefeaturesOptions = []
+      machinefeaturesOptions = {}
 
       try:
         f = open('/var/lib/vac/VERSION', 'r')
@@ -212,6 +214,9 @@ def readConf():
            fixNetworking = False
       else:
            fixNetworking = True
+
+      if parser.has_option('settings', 'forward_dev'):
+           forwardDev = parser.get('settings','forward_dev').strip()
 
       if (parser.has_option('settings', 'version_logger') and
           parser.get('settings','version_logger').strip().lower() == 'false'):
@@ -1310,8 +1315,12 @@ def checkNetwork():
                   with open('/etc/hosts', 'a') as g:
                     g.write(hostsLine + '\n')
 
-           netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'/>\n"
-           netXML += " <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
+           netXML = "<network>\n <name>vac_" + natNetwork + "</name>\n <forward mode='nat'"
+           
+           if forwardDev:
+             netXML += " dev='" + forwardDev + "'"
+           
+           netXML += "/>\n <ip address='" + factoryAddress + "' netmask='" + natNetmask + "'>\n"
            netXML += "  <dhcp>\n" + dhcpXML + "</dhcp>\n </ip>\n</network>\n"
       
            try:
