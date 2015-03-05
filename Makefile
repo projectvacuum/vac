@@ -53,6 +53,7 @@ vac.tgz: $(TGZ_FILES)
 install: $(INSTALL_FILES)
 	mkdir -p $(RPM_BUILD_ROOT)/usr/sbin \
 		 $(RPM_BUILD_ROOT)/usr/lib64/python2.6/site-packages/vac \
+		 $(RPM_BUILD_ROOT)/usr/lib64/python2.7/site-packages/vac \
 	         $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION) \
 		 $(RPM_BUILD_ROOT)/usr/share/man/man1 \
 		 $(RPM_BUILD_ROOT)/usr/share/man/man5 \
@@ -72,6 +73,8 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/usr/sbin
 	cp __init__.py shared.py vacutils.py \
 	   $(RPM_BUILD_ROOT)/usr/lib64/python2.6/site-packages/vac
+	cp __init__.py shared.py vacutils.py \
+	   $(RPM_BUILD_ROOT)/usr/lib64/python2.7/site-packages/vac
 	cp VERSION \
 	   $(RPM_BUILD_ROOT)/var/lib/vac
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \

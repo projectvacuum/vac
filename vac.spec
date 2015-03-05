@@ -43,6 +43,7 @@ fi
 /usr/share/man/man8
 /usr/share/doc/vac-%{version}
 /usr/lib64/python2.6/site-packages/vac
+/usr/lib64/python2.7/site-packages/vac
 /var/lib/vac
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd
