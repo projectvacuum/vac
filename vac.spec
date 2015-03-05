@@ -21,7 +21,7 @@ Vac implements the Vacuum model for running virtual machines.
 %build
 
 %install
-make install
+make install PYTHON_SITEARCH=%{python_sitearch} 
 
 %preun
 if [ "$1" = "0" ] ; then
@@ -42,7 +42,7 @@ fi
 /usr/share/man/man5
 /usr/share/man/man8
 /usr/share/doc/vac-%{version}
-/usr/lib64/python2.6/site-packages/vac
+%{python_sitearch}/vac
 /var/lib/vac
 /etc/rc.d/init.d/vacd
 /etc/logrotate.d/vacd
