@@ -37,10 +37,10 @@ if [ $? = 0 ] ; then
 fi
 
 %files
-/usr/sbin
-/usr/share/man/man1
-/usr/share/man/man5
-/usr/share/man/man8
+/usr/sbin/*
+/usr/share/man/man1/*
+/usr/share/man/man5/*
+/usr/share/man/man8/*
 /usr/share/doc/vac-%{version}
 %{python_sitearch}/vac
 /var/lib/vac
