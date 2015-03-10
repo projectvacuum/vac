@@ -1156,7 +1156,7 @@ class VacVM:
   <vcpu>""" + str(cpuPerMachine) + """</vcpu>
   <os>
     <type arch='x86_64' machine='pc'>hvm</type>
-    <boot dev='network'/>
+    <boot dev='cdrom'/>
     <bios useserial='yes'/>
   </os>
   <pm>

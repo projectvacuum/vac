@@ -389,7 +389,146 @@ def vacOneCycle():
    # finished with all VMs, so output counts for Nagios etc
    vac.vacutils.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-def sendStatusResponse(sock, query, addr):
+def sendStatusResponse(sock, queryMessage, addr):
+
+   machinesToSend = {}
+   vmtypesToSend  = {}
+   
+   for vmName in sorted(vac.shared.virtualmachines):
+         
+      # initialise defaults in case no vmtype directories for this vmName
+#      vmState      = vac.shared.VacState.shutdown
+#      vmCtime      = None
+#      vmVmtypeName = None
+#      vmHS06       = vac.shared.hs06PerMachine
+
+#      vmtypesDict = {}
+      
+     for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
+
+       try:
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
+       except:
+         continue
+
+       newestUUIDByVmtype = None
+       newestCtime        = None
+
+       # Find the most recent instance of this vmtypeName for this vmName
+       for onedir in dirslist:
+         try:
+           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
+         except:
+           pass
+         else:
+           if not newestUUIDByVmtype or (ctime > newestCtime):
+             newestCtime        = ctime
+             newestUUIDByVmtype = onedir
+
+       if newestUUIDByVmtype:
+                
+         try:
+           startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/started')
+           timeStarted = int(startedStat.st_ctime)
+         except:
+           timeStarted = None
+                                    
+                try:
+                  heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat')
+                  timeHeartbeat = int(heartbeatStat.st_ctime)
+                except:
+                  timeHeartbeat = None
+
+                try:                  
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machinefeatures/hs06', 'r')
+                  hs06 = float(f.readline().strip())
+                  f.close()
+                except:
+                  hs06 = vac.shared.hs06PerMachine
+
+                try:                  
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat', 'r')
+                  oneLine = f.readline()
+                  f.close()
+                                    
+                  cpuSeconds = int(oneLine.split(' ')[0])
+                  try:
+                    cpuPercentage = float(oneLine.split(' ')[1])
+                  except:
+                    cpuPercentage = None
+                    
+                except:
+                  cpuSeconds    = None
+                  cpuPercentage = None
+
+                hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
+
+                # some hardcoded timeouts in case old files are left lying around 
+                # this means that old files are ignored when working out the state
+                if (timeStarted and 
+                    timeHeartbeat and 
+                    (timeHeartbeat > int(time.time() - 3600)) and
+                    not hasFinished):
+                          newestVmState = vac.shared.VacState.running
+                elif not timeStarted and (newestCtime > int(time.time() - 3600)):
+                          newestVmState = vac.shared.VacState.starting
+                else:
+                          newestVmState = vac.shared.VacState.shutdown
+
+                try:
+                  f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
+                  shutdownMessage = f.readline().strip()
+                  f.close()
+                  timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + 
+                                                    '/shared/machineoutputs/shutdown_message').st_ctime)
+                except:
+                  shutdownMessage     = None                                    
+                  timeShutdownMessage = None
+                                
+                vmtypesDict[vmtypeName] = {
+                                            'uuid'		: newestUUIDByVmtype,
+                                            'created'		: newestCtime,
+                                            'started'		: timeStarted,
+                                            'heartbeat'		: timeHeartbeat,
+                                            'cpuseconds'	: cpuSeconds,
+                                            'cpupercentage'	: cpuPercentage,
+                                            'message'		: shutdownMessage,
+                                            'messagetime'	: timeShutdownMessage
+                                          }
+                                  
+                # if this is also the newest one for the whole VM, then save for later
+                if not vmCtime or (newestCtime > vmCtime):
+                    vmCtime      = newestCtime
+                    vmState      = newestVmState
+                    vmVmtypeName = vmtypeName
+
+                    # override the factory-wide default in case it changed
+                    if vmState == vac.shared.VacState.running:
+                      vmHS06 = hs06
+                                                        
+      vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmVmtypeName) + ', started ' + str(vmCtime) + ')')
+
+      try:
+             sock.sendto(json.dumps({
+                'version'	: vac.shared.vacVersion,
+                'space'		: vac.shared.spaceName,
+                'hs06'		: vmHS06,
+                'vmname'	: vmName,
+                'state'		: vmState,
+                'vmtype'	: vmVmtypeName,
+                'cookie'	: queryMessage['cookie'],
+                'method'	: 'status',
+                'vmtypes'	: vmtypesDict,
+                'factoryname'	: os.uname()[1]
+                              }), addr)
+
+      except socket.error as msg:
+             pass
+
+def sendQueryResponses(sock, queryMessage, addr):
+   # Send back machine and vmtype messages to the querying factory
+
+   
 
    for vmName in sorted(vac.shared.virtualmachines):
          
@@ -512,108 +651,9 @@ def sendStatusResponse(sock, query, addr):
                 'vmname'	: vmName,
                 'state'		: vmState,
                 'vmtype'	: vmVmtypeName,
-                'cookie'	: query['cookie'],
+                'cookie'	: queryMessage['cookie'],
                 'method'	: 'status',
                 'vmtypes'	: vmtypesDict,
-                'factoryname'	: os.uname()[1]
-                              }), addr)
-
-      except socket.error as msg:
-             pass
-
-def sendVmtypesResponse(sock, query, addr):
-# THIS NEEDS CHECKING STILL
-   for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
-   
-      hs06Total        = 0.0
-      lastAbortMessage = ''
-      lastAbortTime    = 0
-
-      # Go through the VMs, counting up things for this vmtype
-      for vmName in sorted(vac.shared.virtualmachines):
-      
-         try:
-                  dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
-         except:
-                  continue
-
-         newestUUIDByVmtype = None
-         newestCtime        = None
-     
-         for onedir in dirslist:
-
-            try:
-                     ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
-            except:
-                     pass
-            else:
-                     if not newestUUIDByVmtype or (ctime > newestCtime):
-                       newestCtime        = ctime
-                       newestUUIDByVmtype = onedir
-
-         # This VM instance was the most recent for this vmtype for this vmName
-         if newestUUIDByVmtype:
-                
-            try:
-                     startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/started')
-                     timeStarted = int(startedStat.st_ctime)
-            except:
-                     timeStarted = None
-                                    
-            try:
-                     heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/heartbeat')
-                     timeHeartbeat = int(heartbeatStat.st_ctime)
-            except:
-                     timeHeartbeat = None
-
-            try:                  
-                     f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machinefeatures/hs06', 'r')
-                     hs06 = float(f.readline().strip())
-                     f.close()
-            except:
-                     hs06 = vac.shared.hs06PerMachine
-
-            hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/finished')
-
-            # some hardcoded timeouts in case old files are left lying around 
-            # this means that old files are ignored when working out the state
-            if (timeStarted and 
-                timeHeartbeat and 
-                (timeHeartbeat > int(time.time() - 3600)) and
-                not hasFinished):
-                  # Running
-                  hs06Total += hs06
-            elif not timeStarted and (newestCtime > int(time.time() - 3600)):
-                  # Starting
-                  hs06Total += hs06
-            else:
-
-                  try:
-                    f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
-                    shutdownMessage = f.readline().strip()
-                    f.close()
-                    timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + 
-                                                      '/shared/machineoutputs/shutdown_message').st_ctime)
-
-                    shutdownMessageCode = int(shutdownMessage[0:4])
-
-                    if (shutdownMessageCode >= 300) and (shutdownMessageCode <= 699) and (latestAbortMessage > latestAbortMessageTime):
-                      lastAbortTime    = timeShutdownMessage
-                      lastAbortMessage = shutdownMessage
-                  except:
-                    pass
-
-      try:
-             sock.sendto(json.dumps({
-                'version'	: vac.shared.vacVersion,
-                'space'		: vac.shared.spaceName,
-                'hs06total'	: hs06Total,
-                'vmtypestotal'	: len(vac.shared.vmtypes),
-                'vmtype'	: vmVmtypeName,
-                'cookie'	: query['cookie'],
-                'method'	: 'vmtypes',
-                'abortmessage'	: lastAbortMessage,
-                'aborttime'	: lastAbortTime,
                 'factoryname'	: os.uname()[1]
                               }), addr)
 
@@ -703,22 +743,22 @@ def vacResponder():
        continue
 
      try:
-       query = json.loads(data)
+       queryMessage = json.loads(data)
      except:
        continue
      
-     if ('space'  in query and 
-         'cookie' in query and 
-         'method' in query and 
-         query['space']  == vac.shared.spaceName):
+     if ('space'  in queryMessage and 
+         'cookie' in queryMessage and 
+         'method' in queryMessage and 
+         queryMessage['space']  == vac.shared.spaceName):
           
          vac.vacutils.logLine("Received " + data + " from " + str(addr))
 
-         if query['method'] == 'status':
-           sendStatusResponse(sock, query, addr)
+         if queryMessage['method'] == 'status':
+           sendStatusResponse(sock, queryMessage, addr)
  
-#         elif query['method'] == 'vmtypes':
-#           sendVmtypesResponse(sock, query, addr)
+         elif queryMessage['method'] == 'queryMessage':
+           sendQueryResponse(sock, queryMessage, addr)
 
    sys.exit(0) # if we break out of while loop then we exit
 
