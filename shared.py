@@ -1076,8 +1076,11 @@ class VacVM:
             vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
             os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup + ' 2>&1')
 
-          if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
-            return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not a block device'
+          try:
+            if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
+              return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not a block device'
+          except:
+            return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not existing'            
 
           self.measureScratchDisk()
           if domainType == 'kvm':
@@ -1156,7 +1159,7 @@ class VacVM:
   <vcpu>""" + str(cpuPerMachine) + """</vcpu>
   <os>
     <type arch='x86_64' machine='pc'>hvm</type>
-    <boot dev='network'/>
+    <boot dev='cdrom'/>
     <bios useserial='yes'/>
   </os>
   <pm>
