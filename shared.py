@@ -995,10 +995,10 @@ class VacVM:
 
       # kvm and Xen are the same for uCernVM 3
       if self.model == 'cernvm3':
-         vac.vacutils.logLine('make 20 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+         vac.vacutils.logLine('make 70 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
          try:
           f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk', 'ab')
-          f.truncate(20 * 1014 * 1024 * 1024)
+          f.truncate(70 * 1014 * 1024 * 1024)
           f.close()
          except:
           raise NameError('creation of sparse disk image fails!')
