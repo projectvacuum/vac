@@ -52,8 +52,6 @@ import libvirt
 
 import vac
 
-vacQueryVersion = '0.1'
-
 def vacLibvirtErrorHandler(ctxt, err):
     global errno    
     errno = err            
@@ -490,7 +488,7 @@ def sendMachineResponses(sock, cookie, addr):
          sock.sendto(json.dumps({
                 'method'		: 'machine',
                 'vac_version'		: 'Vac ' + vac.shared.vacVersion,
-                'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
+                'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
                 'factory'       	: os.uname()[1],
@@ -612,7 +610,7 @@ def sendVmtypeResponses(sock, cookie, addr):
        sock.sendto(json.dumps({
                 'method'		: 'vmtype',
                 'vac_version'		: 'Vac ' + vac.shared.vacVersion,
-                'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
+                'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
                 'factory'       	: os.uname()[1],

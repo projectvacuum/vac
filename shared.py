@@ -56,6 +56,8 @@ import ConfigParser
 
 import vac
 
+vacQueryVersion = '1.0'
+
 natNetwork     = '169.254.0.0'
 natNetmask     = '255.255.0.0'
 natPrefix      = '169.254.169.'
@@ -1602,4 +1604,191 @@ def cleanupVirtualmachineFiles():
              vac.vacutils.logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
            except:
              pass
+
+
+def sendVmtypesRequests():
+
+   salt = base64.b64encode(os.urandom(32))
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.settimeout(1.0)
+   setSockBufferSize(sock)
+
+   # Initialise dictionary of per-factory, per-vmtype responses
+   responses = {}
+
+   for factoryName in factories:   
+     responses[factoryName] = { 'vmtypes' : {} }
+
+   timeCount = 0
+   
+   # We just use integer second counting for now, despite the config file
+   while timeCount <= int(udpTimeoutSeconds):
+     timeCount += 1
+
+     requestsRequired = 0
+     for factoryName in factories:
+
+       try:
+         numVmtypes = responses[factoryName]['num_vmtypes']
+       except:
+         # We initially expect every factory to tell us about at least 1 vmtype
+         numVmtypes = 1
+     
+       # Send out requests to all factories with insufficient replies so far
+       if len(responses[factoryName]['vmtypes']) < numVmtypes:
+
+         requestsRequired += 1
+         try:          
+           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion,
+                                   'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
+                                   'space'            : spaceName,
+                                   'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
+                                   'method'           : 'vmtypes'}),
+                       (factoryName,995))
+
+         except socket.error:
+           pass
+
+     if requestsRequired == 0:
+       # We can stop early since we have received all the expected responses already
+       break
+
+     # Gather responses from all factories until none for 1.0 second
+     while True:
+   
+         try:
+           data, addr = sock.recvfrom(10240)
+                      
+           try:
+             response = json.loads(data)
+           except:
+             vac.vacutils.logLine('json.loads failed for ' + data)
+             continue
+
+           if 'method'			in response and \
+              response['method'] == 'vmtype' and \
+              'cookie' 			in response and \
+              'space' 			in response and \
+              response['space']  == spaceName and \
+              'factory' 		in response and \
+              response['cookie'] == hashlib.sha256(salt + response['factory']).hexdigest() and \
+              'num_vmtypes'		in response and \
+              'vmtype'			in response and \
+              'total_hs06'		in response and \
+              'num_before_fizzle'	in response and \
+              'shutdown_message'	in response and \
+              'shutdown_time'		in response and \
+              'shutdown_machine'	in response:
+              
+             responses[response['factory']]['num_vmtypes'] = response['num_vmtypes']
+             
+             responses[response['factory']]['vmtypes'][response['vmtype']] = { response['total_hs06'],
+                                                                               response['num_before_fizzle'],
+                                                                               response['shutdown_message'],
+                                                                               response['shutdown_time'],
+                                                                               response['shutdown_machine'] }     
+         except socket.error:
+           # timed-out so stop gathering responses for now
+           break
+
+   return responses
+
+def sendMachinesRequests():
+
+   salt = base64.b64encode(os.urandom(32))
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.settimeout(1.0)
+   setSockBufferSize(sock)
+
+   # Initialise dictionary of per-factory, per-machine responses
+   responses = {}
+
+   for factoryName in factories:   
+     responses[factoryName] = { 'machines' : {} }
+
+   timeCount = 0
+   
+   # We just use integer second counting for now, despite the config file
+   while timeCount <= int(udpTimeoutSeconds):
+     timeCount += 1
+
+     requestsRequired = 0
+     for factoryName in factories:
+
+       try:
+         numMachines = responses[factoryName]['num_machines']
+       except:
+         # We initially expect every factory to tell us about at least 1 machine
+         numMachines = 1
+     
+       # Send out requests to all factories with insufficient replies so far
+       if len(responses[factoryName]['machines']) < numMachines:
+
+         requestsRequired += 1
+         try:          
+           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion,
+                                   'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
+                                   'space'            : spaceName,
+                                   'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
+                                   'method'           : 'machines'}),
+                       (factoryName,995))
+
+         except socket.error:
+           pass
+
+     if requestsRequired == 0:
+       # We can stop early since we have received all the expected responses already
+       break
+
+     # Gather responses from all factories until none for 1.0 second
+     while True:
+   
+         try:
+           data, addr = sock.recvfrom(10240)
+                      
+           try:
+             response = json.loads(data)
+           except:
+             vac.vacutils.logLine('json.loads failed for ' + data)
+             continue
+
+           if 'method'			in response and \
+              response['method'] == 'machine' and \
+              'cookie' 			in response and \
+              'space' 			in response and \
+              response['space']  == spaceName and \
+              'factory' 		in response and \
+              response['cookie'] == hashlib.sha256(salt + response['factory']).hexdigest() and \
+              'num_machines'		in response and \
+              'machine'			in response and \
+              'state'			in response and \
+              'uuid'			in response and \
+              'created_time'		in response and \
+              'started_time'		in response and \
+              'heartbeat_time'		in response and \
+              'cpu_seconds'		in response and \
+              'cpu_percentage'		in response and \
+              'hs06'			in response and \
+              'vmtype'			in response and \
+              'shutdown_message'	in response and \
+              'shutdown_time'		in response:
+              
+             responses[response['factory']]['num_machines'] = response['num_machines']
+             
+             responses[response['factory']]['machines'][response['machine']] = { response['state'],
+                                                                                 response['uuid'],
+                                                                                 response['created_time'],
+                                                                                 response['started_time'],
+                                                                                 response['heartbeat_time'],
+                                                                                 response['cpu_seconds'],
+                                                                                 response['cpu_percentage'],
+                                                                                 response['hs06'],
+                                                                                 response['vmtype'],
+                                                                                 response['shutdown_time'],
+                                                                                 response['shutdown_message'] }     
+         except socket.error:
+           # timed-out so stop gathering responses for now
+           break
+
+   return responses
 
