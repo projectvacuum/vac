@@ -170,6 +170,9 @@ def createUserData(shutdownTime, vmtypesPath, options, versionString, spaceName,
         except:
            raise NameError('Failed to read ' + oneValue + ' for ' + oneOption)          
 
+   # Remove any unused patterns from the template
+   userDataContents = re.sub('##user_data_[a-z,0-9,_]*##', '', userDataContents)       
+   
    return userDataContents
 
 def emptyCallback1(p1):

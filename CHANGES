@@ -7,6 +7,7 @@
 - Use %{python_sitearch} rather than hardcode python2.6
 - Several fixes for CentOS 7 / Fedora 21 from Matt Williams
 - Create 70GB root.disk instead of 20GB in case no logical partition
+- vacutils.py: remove all unused ##user_data_[a-z,0-9,_]*## patterns
 ==================== Changes in Vac version 0.18.0 =====================
 - APEL messages are now created world readable on disk 
   (chmod o-x /var/lib/vac/apel-* can be used to negate this)
