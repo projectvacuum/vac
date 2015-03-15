@@ -73,6 +73,11 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
      os.rename(ftup[1], targetname)
      return True
    except:
+     try:
+       os.remove(ftup[1])
+     except:
+       pass
+
      return False
 
 def secondsToHHMMSS(seconds):
