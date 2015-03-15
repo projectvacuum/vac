@@ -72,7 +72,9 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
      os.close(ftup[0])
      os.rename(ftup[1], targetname)
      return True
-   except:
+   except Exception as e:
+     logLine('createFile(' + targetname + ',...) fails with "' + str(e) + '"')
+     
      try:
        os.remove(ftup[1])
      except:
