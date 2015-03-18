@@ -1682,18 +1682,15 @@ def sendVmtypesRequests():
               
              responses[response['factory']]['num_vmtypes'] = response['num_vmtypes']
              
-             responses[response['factory']]['vmtypes'][response['vmtype']] = { response['total_hs06'],
-                                                                               response['num_before_fizzle'],
-                                                                               response['shutdown_message'],
-                                                                               response['shutdown_time'],
-                                                                               response['shutdown_machine'] }     
+             responses[response['factory']]['vmtypes'][response['vmtype']] = response
+
          except socket.error:
            # timed-out so stop gathering responses for now
            break
 
    return responses
 
-def sendMachinesRequests():
+def sendMachinesRequests(factoryList = None):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1703,7 +1700,10 @@ def sendMachinesRequests():
    # Initialise dictionary of per-factory, per-machine responses
    responses = {}
 
-   for factoryName in factories:   
+   if factoryList is None:
+     factoryList = factories.keys()
+
+   for factoryName in factoryList:   
      responses[factoryName] = { 'machines' : {} }
 
    timeCount = 0
@@ -1713,7 +1713,7 @@ def sendMachinesRequests():
      timeCount += 1
 
      requestsRequired = 0
-     for factoryName in factories:
+     for factoryName in factoryList:
 
        try:
          numMachines = responses[factoryName]['num_machines']
@@ -1775,17 +1775,8 @@ def sendMachinesRequests():
               
              responses[response['factory']]['num_machines'] = response['num_machines']
              
-             responses[response['factory']]['machines'][response['machine']] = { response['state'],
-                                                                                 response['uuid'],
-                                                                                 response['created_time'],
-                                                                                 response['started_time'],
-                                                                                 response['heartbeat_time'],
-                                                                                 response['cpu_seconds'],
-                                                                                 response['cpu_percentage'],
-                                                                                 response['hs06'],
-                                                                                 response['vmtype'],
-                                                                                 response['shutdown_time'],
-                                                                                 response['shutdown_message'] }     
+             responses[response['factory']]['machines'][response['machine']] = response
+
          except socket.error:
            # timed-out so stop gathering responses for now
            break
