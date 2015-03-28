@@ -42,6 +42,8 @@ import shutil
 import hashlib,base64
 import optparse
 
+import pprint
+
 import vac
 
 def vmtypesResults():
@@ -176,80 +178,69 @@ def vmtypeResults(vmtypeName):
                                           str(startingcount) + ' ' + vmtypeName + ' starting.'
 
 def scanMachines(options, factoryList):
+
+  totalCount    = 0
+  runningCount  = 0
+  startingCount = 0
    
-  responses = sendMachinesRequests(factoryList)
-      
-  for response in responses:
+  responses = vac.shared.sendMachinesRequests(factoryList)
+
+  for factoryName in responses.keys():
+    for vmName,response in responses[factoryName]['machines'].iteritems():
    
-                                       
-           if 'space' 			in response and \
-              'vmname' 			in response and \
-              'cookie' 			in response and \
-              'factoryname'		in response and \
-              'method'			in response and \
-              'state'			in response and \
-              response['space']  == vac.shared.spaceName and \
-              response['method'] == 'status' and \
-              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
-                
                 stateStr = ('  ' + response['state'] + 10 * ' ')[0:11]
 
                 if response['state'] == vac.shared.VacState.running:
-                                       runningcount += 1
+                                       runningCount += 1
                 elif response['state'] == vac.shared.VacState.starting:
-                                       startingcount += 1
-                totalcount += 1
+                                       startingCount += 1
+                totalCount += 1
 
-                if not response['vmtype'] or not response['vmtypes']:
+                if not response['vmtype']:
                   hoursStr = 22 * ' '
                   percentStr = '      '
 
                 elif response['state'] == vac.shared.VacState.running:
-                  hoursStr = '%5.2f hrs' % ((time.time() - response['vmtypes'][response['vmtype']]['started']) / 3600.0)
+                  hoursStr = '%5.2f hrs' % ((time.time() - response['started_time']) / 3600.0)
 
-                  if response['vmtypes'][response['vmtype']]['heartbeat'] > response['vmtypes'][response['vmtype']]['started']:
-                    hoursStr += ' %0.1f%%' % (100.0 * response['vmtypes'][response['vmtype']]['cpuseconds'] / float(response['vmtypes'][response['vmtype']]['heartbeat'] - response['vmtypes'][response['vmtype']]['started']))
+                  if response['heartbeat_time'] > response['started_time']:
+                    hoursStr += ' %0.1f%%' % (100.0 * response['cpu_seconds'] / float(response['heartbeat_time'] - response['started_time']))
                     
                   hoursStr +=  22 * ' '
 
-                  if (time.time() - response['vmtypes'][response['vmtype']]['started']) > vac.shared.vmtypes[response['vmtype']]['fizzle_seconds']:
-                    stateStr = '* Running  '
-
-                  if 'cpupercentage' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['cpupercentage'] != None:
-                    percentStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
+                  if response['cpu_percentage'] is not None:
+                    percentStr = '%5.1f%%' % response['cpu_percentage']
                   else:
                     percentStr = '      '
 
                 elif response['state'] == vac.shared.VacState.starting:
-                  hoursStr = ' %0.2f mins' % ((time.time() - response['vmtypes'][response['vmtype']]['created']) / 60.0) + 22 * ' '
+                  hoursStr = ' %0.2f mins' % ((time.time() - response['created_time']) / 60.0) + 22 * ' '
                   percentStr = '      '
 
-                elif response['state'] == vac.shared.VacState.shutdown and response['vmtype'] and 'message' in response['vmtypes'][response['vmtype']] and response['vmtypes'][response['vmtype']]['message']:
-                  hoursStr = '"' + response['vmtypes'][response['vmtype']]['message'][0:19] + '"' + 22 * ' '
+                elif response['state'] == vac.shared.VacState.shutdown and response['shutdown_message']:
+                  hoursStr = '"' + response['shutdown_message'][0:19] + '"' + 22 * ' '
                   percentStr = '      '
                   
                 else:
                   hoursStr = 22 * ' '
                   percentStr = '      '
 
-                if len(response['vmname'].split('.')[0]) < 15:
-                 vmName = (response['vmname'].split('.')[0] + 15*' ')[0:15]
+                if len(response['machine'].split('.')[0]) < 15:
+                 vmName = (response['machine'].split('.')[0] + 15*' ')[0:15]
                 else:
-                 vmName = response['vmname'].split('.')[0]
+                 vmName = response['machine'].split('.')[0]
 
                 print (
                        vmName + ' ' +
-                       ((response['vmtype'] + 14 * ' ') if 'vmtype' in response and response['vmtype'] else 10 * '-' + '    ')[0:14] + ' ' + 
+                       ((response['vmtype'] + 14 * ' ') if response['vmtype'] else 10 * '-' + '    ')[0:14] + ' ' + 
                        stateStr + '  ' + 
                        hoursStr[0:21] + 
-                       percentStr + "  %.2fs" % (time.time() - start) + 
+                       percentStr + 
                        ((' ' + str(response['hs06'])) if options.includeHS06 and 
-                                                         'hs06' in response and 
                                                          response['hs06'] is not None 
                                                       else '') + 
-                       ((' ' + response['version']) if options.includeVersions and 
-                                                       'version' in response and 
-                                                       response['version'] is not None 
+                       ((' ' + response['vac_version']) if options.includeVersions and 
+                                                       response['vac_version'] is not None 
                                                     else '')
                       )
 

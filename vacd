@@ -399,7 +399,7 @@ def sendMachineResponses(sock, cookie, addr):
      newestVmtypeName = None
 
      # Find which vmtype is the most recent for this machine
-     for vmtypeName in vac.shared.vmtypes.iteritems():
+     for vmtypeName in vac.shared.vmtypes.keys():
 
        try:
          dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
@@ -420,6 +420,8 @@ def sendMachineResponses(sock, cookie, addr):
 
      # Found the newest instance in this machine slot
      if newestUUID:
+
+       print vmName,newestUUID
                 
        try:
          startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/started')
@@ -492,7 +494,7 @@ def sendMachineResponses(sock, cookie, addr):
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
                 'factory'       	: os.uname()[1],
-                'num_machines'       	: len(vac.shared.machines),
+                'num_machines'       	: len(vac.shared.virtualmachines),
 
                 'machine' 		: vmName,
                 'state'			: vmState,

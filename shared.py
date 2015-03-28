@@ -38,11 +38,13 @@ import os
 import sys
 import uuid
 import time
+import json
 import errno
 import ctypes
 import base64
 import shutil
 import string
+import hashlib
 import StringIO
 import urllib
 import datetime
@@ -56,6 +58,7 @@ import ConfigParser
 
 import vac
 
+# VacQuery protocol version
 vacQueryVersion = '1.0'
 
 natNetwork     = '169.254.0.0'
@@ -1616,7 +1619,7 @@ def sendVmtypesRequests():
    # Initialise dictionary of per-factory, per-vmtype responses
    responses = {}
 
-   for factoryName in factories:   
+   for factoryName in factories:
      responses[factoryName] = { 'vmtypes' : {} }
 
    timeCount = 0
@@ -1701,7 +1704,7 @@ def sendMachinesRequests(factoryList = None):
    responses = {}
 
    if factoryList is None:
-     factoryList = factories.keys()
+     factoryList = factories
 
    for factoryName in factoryList:   
      responses[factoryName] = { 'machines' : {} }
