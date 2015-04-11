@@ -921,10 +921,16 @@ class VacVM:
                 '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Use earlier shutdown time if given in config
-      tmpShutdownTime = int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
+      now = int(time.time())
+      
+      tmpShutdownTime = int(now + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
       
       if shutdownTime and (shutdownTime < tmpShutdownTime):
         tmpShutdownTime = shutdownTime
+        
+      cpuLimitSecs = shutdownTime - now
+      if (cpuLimitSecs < 0):
+        cpuLimitSecs = 0
       
       # calculate the absolute shutdown time for the VM, as a machine
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
@@ -951,18 +957,18 @@ class VacVM:
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine,
+                 str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine,
+                 str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']), 
+                 str(cpuLimitSecs), 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']), 
+                 str(cpuLimitSecs), 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
