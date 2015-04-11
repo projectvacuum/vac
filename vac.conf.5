@@ -86,8 +86,10 @@ can be set to apply a limit on the shutdown time for all VMs. This value is
 used if it is ever earlier than the shutdown time calculated from the 
 vmtype's max_wallclock_seconds. In this case /etc/machinefeatures/shutdowntime 
 is updated for the VM and Vac will kill the VM if that shutdown time is
-reached. shutdown_time is given in Unix seconds since 00:00:00 UTC on 
-1st of January 1970.
+reached. As shutdown_time is approached, VMs will be created with shorter
+and shorter lifetimes if their min_wallclock_seconds settings permit. 
+shutdown_time is given in Unix seconds since 00:00:00 UTC on 1st of January
+1970.
 
 .B gocdb_sitename
 gives the GOCDB site name to use when writing APEL 
@@ -223,6 +225,11 @@ gives the maximum lifetime of a VM. Vac will create
 /etc/machinefeatures/shutdowntime inside the VM using this value to 
 communicate it to the VM. Vac will destroy the VM if it is still
 running after this amount of time. Default 86400.
+
+.B min_wallclock_seconds
+gives the minimum remaining time required when creating a VM. This
+can be used to stop Vac creating VMs with short lifetimes when
+shutdown_time has been set. Default max_wallclock_seconds.
 
 .B root_device
 is the device name exposed to the VM that is associated with the root

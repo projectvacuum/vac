@@ -163,6 +163,7 @@ def pollFactories():
 
    # Go through the vmtypes, trying to pick the best one to start:
    # - Target share must be > 0.0
+   # - min_wallclock_seconds must allow it if shutdownTime is set
    # - If there has been an abort, it must be at least backoff_second ago
    # - We extend this backoff by fizzle_seconds if any other VMs of this
    #     vmtype are starting or not yet running for fizzle_seconds
@@ -185,7 +186,8 @@ def pollFactories():
                                                              vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0))) + 
                                 '.')
 
-      if ((vmtype['share'] > 0.0) and 
+      if ((vmtype['share'] > 0.0) and
+          ((shutdownTime is None) or (time.time() + vmtype['min_wallclock_seconds'] < shutdownTime)) and
           (factoryVmtypeLastAborts[vmtypeName] 
               < (int(time.time()) 
                  - vmtype['backoff_seconds'] 

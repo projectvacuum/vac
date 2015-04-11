@@ -335,6 +335,11 @@ def readConf():
              else:
                  vmtype['max_wallclock_seconds'] = 86400
              
+             if parser.has_option(sectionName, 'min_wallclock_seconds'):
+                 vmtype['min_wallclock_seconds'] = int(parser.get(sectionName, 'min_wallclock_seconds'))
+             else:
+                 vmtype['min_wallclock_seconds'] = vmtype['max_wallclock_seconds']
+             
              if parser.has_option(sectionName, 'backoff_seconds'):
                  vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
              else:
