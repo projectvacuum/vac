@@ -1096,7 +1096,7 @@ class VacVM:
           self.measureScratchDisk()
           if domainType == 'kvm':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
+                                  " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
                                   " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + 
                                   "' bus='" + ("virtio" if "vd" in vmtypes[self.vmtypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
@@ -1124,7 +1124,7 @@ class VacVM:
       
           if domainType == 'kvm':
             cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                                " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
+                                " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                                 " <source file='" + cernvmCdrom  + "'/>\n" +
                                 " <target dev='hdc' />\n<readonly />\n</disk>")
           elif domainType == 'xen':
@@ -1189,13 +1189,13 @@ class VacVM:
   <devices>
     <emulator>""" + qemuKvmFile + """</emulator>
     <disk type='file' device='disk'>""" + 
-    ("<driver name='qemu' type='qcow2' cache='none' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='none' type='raw' error_policy='report' />") + 
+    ("<driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='unsafe' type='raw' error_policy='report' />") + 
     """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='""" + 
      ("virtio" if "vd" in vmtypes[self.vmtypeName]['root_device'] else "ide") + """'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
-      <driver name='qemu' type='raw' error_policy='report' cache='none'/>
+      <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
