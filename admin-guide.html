@@ -94,14 +94,17 @@ used as a virtual CE name where necessary in other systems.
 <dd>The value of this option is included in the user_data file given to the
     VM. It must be set to the URL of an HTTP cache you have access to. If 
     you are already using cvmfs for grid worker nodes, you can use the same
-    value.
+    value. Make sure that access from your factory machine isn't blocked 
+    in the cache machine's configuration.
 
 </dl>
 
 <p>
 The files needed for the example vmtype are fetched over HTTPS, as 
 indicated by the root_disk and user_data options which should not be
-changed. 
+changed. You should install the lcg-CA RPMs or similar to ensure that
+Vac can access this and other HTTPS servers which use grid host
+certificates in most cases.
 
 <p> 
 Just do <b>service vacd restart</b>

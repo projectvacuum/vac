@@ -1609,7 +1609,7 @@ def cleanupVirtualmachineFiles():
              pass
 
 
-def sendVmtypesRequests():
+def sendVmtypesRequests(factoryList = None):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1619,7 +1619,10 @@ def sendVmtypesRequests():
    # Initialise dictionary of per-factory, per-vmtype responses
    responses = {}
 
-   for factoryName in factories:
+   if factoryList is None:
+     factoryList = factories
+
+   for factoryName in factoryList:
      responses[factoryName] = { 'vmtypes' : {} }
 
    timeCount = 0
@@ -1629,7 +1632,7 @@ def sendVmtypesRequests():
      timeCount += 1
 
      requestsRequired = 0
-     for factoryName in factories:
+     for factoryName in factoryList:
 
        try:
          numVmtypes = responses[factoryName]['num_vmtypes']
@@ -1657,6 +1660,7 @@ def sendVmtypesRequests():
        break
 
      # Gather responses from all factories until none for 1.0 second
+#NEED A LIMIT ON HOW LONG IN TOTAL TOO!?
      while True:
    
          try:
@@ -1744,6 +1748,7 @@ def sendMachinesRequests(factoryList = None):
        break
 
      # Gather responses from all factories until none for 1.0 second
+#NEED A LIMIT ON HOW LONG IN TOTAL TOO!?
      while True:
    
          try:
