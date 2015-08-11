@@ -2,7 +2,7 @@
 #
 # vacd		Start and stop vacd, a VM factory using the vacuum model
 #
-# chkconfig: 345 98 02
+# chkconfig: 345 12 88
 # description: vacd is the Vac daemon. A VM factory using the vacuum model. \
 # Once started, vacd forks the Vac responder subprocess too.
 
