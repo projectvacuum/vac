@@ -1688,7 +1688,7 @@ def sendVmtypesRequests(factoryList = None):
               'shutdown_machine'	in response:
               
              responses[response['factory']]['num_vmtypes'] = response['num_vmtypes']
-             
+
              responses[response['factory']]['vmtypes'][response['vmtype']] = response
 
          except socket.error:

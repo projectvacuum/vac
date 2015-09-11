@@ -661,7 +661,7 @@ def sendVmtypeResponses(sock, cookie, addr):
    # Send back vmtype messages to the querying factory
 
    # Go through the vmtypes
-   for vmtypeName in vac.shared.vmtypes.iteritems():
+   for vmtypeName in vac.shared.vmtypes:
 
      totalHS06               = 0.0
      lastShutdownMessage     = None
