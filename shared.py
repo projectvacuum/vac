@@ -727,7 +727,7 @@ class VacVM:
 
       mesg = ('APEL-individual-job-message: v0.3\n' + 
               'Site: ' + tmpGocdbSitename + '\n' +
-              'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
+              'SubmitHost: ' + spaceName + '/vac-' + os.uname()[1] + '\n' +
               'LocalJobId: ' + self.uuidStr + '\n' +
               'LocalUserId: ' + os.uname()[1] + '\n' +
               'Queue: ' + self.vmtypeName + '\n' +
