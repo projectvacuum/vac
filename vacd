@@ -60,7 +60,6 @@ def pollFactories():
 
    responses = vac.shared.sendVmtypesRequests()
 
-# END OF UPDATES
    # Total HS06 of running/starting VMs per vmtype
    factoryVmtypeTotals             = {}
    
@@ -70,96 +69,42 @@ def pollFactories():
    # Number of VMs starting or not yet running for at least fizzle_seconds, for each vmtype
    factoryVmtypeNumberBeforeFizzle = {}
 
-   # Initialise
-   for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
-      if vmtype['share'] > 0.0:
-        factoryVmtypeTotals[vmtypeName]             = 0.0
-        factoryVmtypeLastAborts[vmtypeName]         = 0
-        factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
+   # Go through the vmtypes and their responses from the factories
+   for vmtypeName in vac.shared.vmtypes:
+     if vac.shared.vmtypes[vmtypeName]['share'] <= 0.0:
+       continue
 
-   salt = base64.b64encode(os.urandom(32))
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(vac.shared.udpTimeoutSeconds)
-   vac.shared.setSockBufferSize(sock)
+     factoryVmtypeTotals[vmtypeName]             = 0.0
+     factoryVmtypeLastAborts[vmtypeName]         = 0
+     factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
 
-   for factoryName in vac.shared.factories:
-      try:
-         sock.sendto(json.dumps({'space':vac.shared.spaceName, 'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
-                                 'method':'status'}),(factoryName,995))
-      except socket.error as msg:
-         pass
+     for factoryName in responses:
+       response = responses[factoryName]['vmtypes'][vmtypeName]
 
-   while True:
-   
-      try:
-           data, addr = sock.recvfrom(10240)
-                      
-           try:
-                response = json.loads(data)
-           except:
-              vac.vacutils.logLine('json.loads failed for ' + data)
-              continue
-
-           if 'space' 			in response and \
-              'cookie' 			in response and \
-              'factoryname'		in response and \
-              'method'			in response and \
-              response['space']  == vac.shared.spaceName and \
-              response['method'] == 'status' and \
-              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest() :
-
-              if 'state'		in response and \
-                 'vmname'		in response and \
-                 'vmtype'		in response and \
-                 'hs06'			in response and \
-                 response['vmtype']	in vac.shared.vmtypes and \
-                 (response['state'] == vac.shared.VacState.starting or response['state'] == vac.shared.VacState.running) and \
-                 vac.shared.vmtypes[response['vmtype']]['share'] > 0.0:
-
-                   # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
-                   factoryVmtypeTotals[response['vmtype']] += response['hs06'] / vac.shared.vmtypes[response['vmtype']]['share']
-                   vac.vacutils.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
-                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
+       # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
+       factoryVmtypeTotals[vmtypeName] += response['total_hs06'] / vac.shared.vmtypes[vmtypeName]['share']
+       vac.vacutils.logLine(factoryName + ' responds, running total for ' + vmtypeName +
+                            ' now ' + str(factoryVmtypeTotals[vmtypeName]))
                                
-                   if response['state'] == vac.shared.VacState.starting:
-                           # starting counts as before fizzle point
-                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-                   elif response['state'] == vac.shared.VacState.running and 'vmtypes' in response and \
-                        int(time.time()) < (response['vmtypes'][response['vmtype']]['started'] + vac.shared.vmtypes[response['vmtype']]['fizzle_seconds']):
-                           # running for less than fizzle_seconds counts too
-                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-                   
-              if 'vmtypes' in response:
-                for vmtypeName, vmtypeOutcome in response['vmtypes'].iteritems():
+       factoryVmtypeNumberBeforeFizzle[vmtypeName] += response[num_before_fizzle]
 
-                  try:
-                    abortTime = None
-
-                    if 'messagetime' in vmtypeOutcome and 'message' in vmtypeOutcome and vmtypeOutcome['message'][0:3].isdigit():
-                      # if message with code provided, then we always use it for decisions
-                      messagecode=int(vmtypeOutcome['message'][0:3])
-                      if (messagecode >= 300) and (messagecode <= 699):
-                        # 300 is no work, 400 is banned, 500 is problem with VM/Site
-                        # 600 is grid-wide problem with job agent or application in VM
-                        # (VMs can return 700 for transient problems within the VM)
-                        abortTime = vmtypeOutcome['messagetime']
-                    else:
-                      # no message, so we have to use times to identify fizzles
-                      if (vmtypeName != response['vmtype'] or response['state'] == vac.shared.VacState.shutdown) and \
-                         started in vmtypeOutcome and heartbeat in vmtypeOutcome and \
-                         vmtypeOutcome['heartbeat'] < (vmtypeOutcome['started'] + vac.shared.vmtypes[vmtypeName]['fizzle_seconds']):
-                        abortTime = vmtypeOutcome['heartbeat']
-
-                    # if this is the most recent abort of this vmtype anywhere in this space
-                    if abortTime and (abortTime > factoryVmtypeLastAborts[vmtypeName]):
-                      factoryVmtypeLastAborts[vmtypeName] = abortTime
+       try:
+         # if message with code provided, then we always use it for decisions
+         messagecode = int(response['shutdown_message'][0:3])
+       except:
+         pass
+       else:
+         if (messagecode >= 300) and (messagecode <= 699):
+           # This is an abort!
+           #
+           # 300 is no work, 400 is banned, 500 is problem with VM/Site
+           # 600 is grid-wide problem with job agent or application in VM
+           # (VMs can return 700 for transient problems within the VM)
+           
+           # If this is the most recent abort of this vmtype anywhere in this space
+           if response['shutdown_time'] > factoryVmtypeLastAborts[vmtypeName]:
+             factoryVmtypeLastAborts[vmtypeName] = response['shutdown_time']
                       
-                  except:
-                    continue     
-     
-      except socket.error as msg:
-           break
-
    vac.vacutils.logLine('Final totals ' + str(factoryVmtypeTotals) + ' HS06')
 
    preferredVmtypeName = None
@@ -738,19 +683,22 @@ def sendVmtypeResponses(sock, cookie, addr):
              f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/shared/machineoutputs/shutdown_message')
              shutdownMessage = f.readline().strip()
              f.close()
+             messageCode = int(shutdownMessage[0:3])
              shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + 
                                                '/shared/machineoutputs/shutdown_message').st_ctime)
            except:
-             pass
-                                
-           else:
-           
-             if lastShutdownMessageTime is None or \
-                shutdownMessageTime > lastShutdownMessageTime:
+             # No explicit shutdown message with a message code, so we make one up if necessary
+             if timeStarted and timeHeartbeat and (timeHeartbeat - timeStarted < vac.shared.vmtypes[vmtypeName]['fizzle_seconds']):
+               shutdownMessageTime = timeHeartbeat
+               shutdownMessage = '300 Abort after ' + str(timeHeartbeat - timeStarted) + ' seconds'
+                          
+           if shutdownMessage and shutdownMessageTime and \
+              (lastShutdownMessageTime is None or \
+               shutdownMessageTime > lastShutdownMessageTime):
                
-               lastShutdownMessage     = shutdownMessage
-               lastShutdownMessageTime = shutdownMessageTime
-               lastMachineName         = vmName
+             lastShutdownMessage     = shutdownMessage
+             lastShutdownMessageTime = shutdownMessageTime
+             lastMachineName         = vmName
                                                         
      try:
        sock.sendto(json.dumps({

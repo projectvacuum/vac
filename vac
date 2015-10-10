@@ -246,13 +246,13 @@ def queryMachines(options, factoryList):
 
 #            print totalcount,'replies in',"%.2f" % (time.time() - start - vac.shared.udpTimeoutSeconds),'seconds;',runningcount,'running;',startingcount,'starting.'
 
-def queryMachineType(options, machineTypeName):
+def queryMachineType(options, machineTypeName, factoryList):
 
   totalCount    = 0
   runningCount  = 0
   startingCount = 0
    
-  responses = vac.shared.sendVmtypesRequests(None)
+  responses = vac.shared.sendVmtypesRequests(factoryList)
 
   for factoryName in responses.keys():
     if 'vmtypes' in responses[factoryName] and machineTypeName in responses[factoryName]['vmtypes']:
@@ -369,6 +369,10 @@ if __name__ == '__main__':
         if options.udpTimeoutSeconds:
              vac.shared.udpTimeoutSeconds = float(options.udpTimeoutSeconds.strip())
 
+        if args[0] == 'scan':
+            print "It's  vac machines  now!"
+            sys.exit(1)
+
         if args[0] == 'machines' and len(args) > 1:
             queryMachines(options, args[1:])
             sys.exit(0)
@@ -376,8 +380,11 @@ if __name__ == '__main__':
             queryMachines(options, None)
             sys.exit(0)
 
-        if args[0] == 'machinetype' and len(args) > 1:
-            queryMachineType(options, args[1])
+        if args[0] == 'machinetype' and len(args) == 2:
+            queryMachineType(options, args[1], None)
+            sys.exit(0)
+        elif args[0] == 'machinetype' and len(args) > 2:
+            queryMachineType(options, args[1], args[2:])
             sys.exit(0)
         elif args[0] == 'machinetype':
             print 'machinetype command requires an argument!'

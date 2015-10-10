@@ -1622,8 +1622,8 @@ def sendVmtypesRequests(factoryList = None):
    if factoryList is None:
      factoryList = factories
 
-   for factoryName in factoryList:
-     responses[factoryName] = { 'vmtypes' : {} }
+   for rawFactoryName in factoryList:
+     responses[canonicalFQDN(rawFactoryName)] = { 'vmtypes' : {} }
 
    timeCount = 0
    
@@ -1632,7 +1632,9 @@ def sendVmtypesRequests(factoryList = None):
      timeCount += 1
 
      requestsRequired = 0
-     for factoryName in factoryList:
+     for rawFactoryName in factoryList:
+     
+       factoryName = canonicalFQDN(rawFactoryName)
 
        try:
          numVmtypes = responses[factoryName]['num_vmtypes']
@@ -1661,6 +1663,7 @@ def sendVmtypesRequests(factoryList = None):
 
      # Gather responses from all factories until none for 1.0 second
 #NEED A LIMIT ON HOW LONG IN TOTAL TOO!?
+#IF WE KEEP GETTING REPLIES THEN WE GO ROUND FOREVER
      while True:
    
          try:
@@ -1710,8 +1713,8 @@ def sendMachinesRequests(factoryList = None):
    if factoryList is None:
      factoryList = factories
 
-   for factoryName in factoryList:   
-     responses[factoryName] = { 'machines' : {} }
+   for rawFactoryName in factoryList:   
+     responses[vac.shared.canonicalFQDN(rawFactoryName)] = { 'machines' : {} }
 
    timeCount = 0
    
@@ -1720,7 +1723,9 @@ def sendMachinesRequests(factoryList = None):
      timeCount += 1
 
      requestsRequired = 0
-     for factoryName in factoryList:
+     for rawFactoryName in factoryList:
+
+       factoryName = canonicalFQDN(rawFactoryName)
 
        try:
          numMachines = responses[factoryName]['num_machines']
