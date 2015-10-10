@@ -243,9 +243,12 @@ def readConf():
           # If this isn't set, then we allocate one cpu per VM
           cpuPerMachine = int(parser.get('settings','cpu_per_machine'))
              
-      if parser.has_option('settings', 'mb_per_machine'):
-          # If this isn't set, then we use default (2048 MiB)
+      if parser.has_option('settings', 'mb_per_machine'):          
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
+          print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
+      elif parser.has_option('settings', 'mb_per_cpu'):
+          # If this isn't set, then we use default (2048 MiB)
+          mbPerMachine = cpuPerMachine * int(parser.get('settings','mb_per_cpu'))
 
       if parser.has_option('settings', 'shutdown_time'):
         try:
@@ -410,7 +413,8 @@ def readConf():
       # Finished successfully, with no error to return
       return None
 
-def loadAvg():
+def loadAvg(which = 0):
+      # By default, use [0], the one minute load average
       avg = 0.0
       
       try:
@@ -419,8 +423,7 @@ def loadAvg():
         print 'Failed to open /proc/loadavg'
         return avg
         
-      # Use [0], the one minute load average
-      avg = float(f.readline().split(' ')[0])
+      avg = float(f.readline().split(' ')[which])
       
       f.close()
       return avg
@@ -1651,7 +1654,7 @@ def sendVmtypesRequests(factoryList = None):
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
-                                   'method'           : 'vmtypes'}),
+                                   'method'           : 'machinetypes'}),
                        (factoryName,995))
 
          except socket.error:
@@ -1675,8 +1678,9 @@ def sendVmtypesRequests(factoryList = None):
              vac.vacutils.logLine('json.loads failed for ' + data)
              continue
 
+# should check types as well as presence!
            if 'method'			in response and \
-              response['method'] == 'vmtype' and \
+              response['method'] == 'machinetype' and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -1765,6 +1769,7 @@ def sendMachinesRequests(factoryList = None):
              vac.vacutils.logLine('json.loads failed for ' + data)
              continue
 
+# should check types as well as presence!
            if 'method'			in response and \
               response['method'] == 'machine' and \
               'cookie' 			in response and \
@@ -1789,6 +1794,78 @@ def sendMachinesRequests(factoryList = None):
              responses[response['factory']]['num_machines'] = response['num_machines']
              
              responses[response['factory']]['machines'][response['machine']] = response
+
+         except socket.error:
+           # timed-out so stop gathering responses for now
+           break
+
+   return responses
+
+def sendFactoriesRequests(factoryList = None):
+
+   salt = base64.b64encode(os.urandom(32))
+   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   sock.settimeout(1.0)
+   setSockBufferSize(sock)
+
+   # Initialise dictionary of per-factory responses
+   responses = {}
+
+   if factoryList is None:
+     factoryList = factories
+
+   timeCount = 0
+   
+   # We just use integer second counting for now, despite the config file
+   while timeCount <= int(udpTimeoutSeconds):
+     timeCount += 1
+
+     requestsRequired = 0
+     for rawFactoryName in factoryList:
+
+       factoryName = canonicalFQDN(rawFactoryName)
+     
+       # Send out requests to all factories with insufficient replies so far
+       if factoryName not in responses:
+
+         requestsRequired += 1
+         try:          
+           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion,
+                                   'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
+                                   'space'            : spaceName,
+                                   'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
+                                   'method'           : 'factories'}),
+                       (factoryName,995))
+
+         except socket.error:
+           pass
+
+     if requestsRequired == 0:
+       # We can stop early since we have received all the expected responses already
+       break
+
+     # Gather responses from all factories until none for 1.0 second
+#NEED A LIMIT ON HOW LONG IN TOTAL TOO!?
+     while True:
+   
+         try:
+           data, addr = sock.recvfrom(10240)
+                      
+           try:
+             response = json.loads(data)
+           except:
+             vac.vacutils.logLine('json.loads failed for ' + data)
+             continue
+
+           if 'method'			in response and \
+              response['method'] == 'factory' and \
+              'cookie' 			in response and \
+              'space' 			in response and \
+              response['space']  == spaceName and \
+              'factory' 		in response and \
+              response['cookie'] == hashlib.sha256(salt + response['factory']).hexdigest() :
+              
+             responses[factoryName] = response
 
          except socket.error:
            # timed-out so stop gathering responses for now

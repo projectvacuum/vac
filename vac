@@ -46,137 +46,6 @@ import pprint
 
 import vac
 
-def vmtypesResults():
-   print 'vmtypesResults()'
-   
-def vmtypeResults(vmtypeName):
-   
-   salt = base64.b64encode(os.urandom(32))
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(vac.shared.udpTimeoutSeconds)
-   vac.shared.setSockBufferSize(sock)
-
-   totalcount    = 0
-   runningcount  = 0
-   startingcount = 0
-
-   for factoryName in vac.shared.factories:
-      try:
-        sock.sendto(json.dumps({'space':vac.shared.spaceName,'cookie':hashlib.sha256(salt + factoryName).hexdigest(),
-                              'method':'status'}),(factoryName,995))
-      except:
-        print 'Failed sending UDP query to ' + vac.shared.canonicalFQDN(factoryName)
-
-   while True:
-   
-      try:
-           data, addr = sock.recvfrom(10240)
-                      
-           try:
-                response = json.loads(data)
-           except:
-              print 'json.loads failed for',data
-              continue
-                                       
-           if 'space' 			in response and \
-              'vmname' 			in response and \
-              'cookie' 			in response and \
-              'factoryname'		in response and \
-              'method'			in response and \
-              'state'			in response and \
-              'vmtype'			in response and \
-              'vmtypes'			in response and \
-              vmtypeName in response['vmtypes'] and \
-              response['space']  == vac.shared.spaceName and \
-              response['method'] == 'status' and \
-              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest():
-                                
-                totalcount += 1
-                                
-                if response['vmtype'] == vmtypeName:
-                  state = response['state']
-                  
-                  if state == vac.shared.VacState.running:
-                    runningcount += 1
-                  elif state == vac.shared.VacState.starting:
-                    startingcount += 1
-
-                  try:
-                    if response['vmtypes'][vmtypeName]['heartbeat'] > response['vmtypes'][vmtypeName]['started']:
-                    
-                      cpuPercentStr = ' %5.1f%%' % ((100.0 * response['vmtypes'][vmtypeName]['cpuseconds']) / 
-                                       (response['vmtypes'][vmtypeName]['heartbeat'] - response['vmtypes'][vmtypeName]['started']))
-                    else:
-                      cpuPercentStr = ' ------'
-
-                    hours = (response['vmtypes'][vmtypeName]['heartbeat'] - response['vmtypes'][vmtypeName]['started']) / 3600.0
-
-                    if state == vac.shared.VacState.running and \
-                       'cpupercentage' in response['vmtypes'][response['vmtype']] and \
-                       response['vmtypes'][response['vmtype']]['cpupercentage']:
-                     cpuPercentageStr = '%5.1f%%' % response['vmtypes'][response['vmtype']]['cpupercentage']
-                    else:
-                     cpuPercentageStr = ''
-
-                    if state == vac.shared.VacState.running and \
-                       (time.time() - response['vmtypes'][response['vmtype']]['started']) > vac.shared.vmtypes[response['vmtype']]['fizzle_seconds']:
-                     stateStr = '* Running  '
-                    else:
-                     stateStr = '  ' + state
-
-                    print (
-                            response['vmname'].split('.')[0] + ' ' + 
-                            (stateStr + 12 * ' ')[:12] +
-                            time.strftime(' %d/%b/%H:%M', time.localtime(response['vmtypes'][vmtypeName]['created'])) +
-                            cpuPercentStr + (' %6.2fhrs  ' % hours) + (14 * ' ') +
-                            cpuPercentageStr
-                          )
-                  except:
-                    print response['vmname'].split('.')[0] + ' ' + state + ' ????'
-
-                else:
-                  state = vac.shared.VacState.shutdown
-                  
-                  try:
-
-                    hours = (response['vmtypes'][vmtypeName]['heartbeat'] - response['vmtypes'][vmtypeName]['started']) / 3600.0
-                  
-                    if 'heartbeat' in response['vmtypes'][vmtypeName] and response['vmtypes'][vmtypeName]['heartbeat'] and \
-                       response['vmtypes'][vmtypeName]['heartbeat'] > response['vmtypes'][vmtypeName]['started']:
-                      cpuPercentStr = '%5.1f%%' % ((100.0 * response['vmtypes'][vmtypeName]['cpuseconds']) / 
-                                       (response['vmtypes'][vmtypeName]['heartbeat'] - response['vmtypes'][vmtypeName]['started']))
-                    else:
-                      cpuPercentStr = '------'
-                      
-                    if 'messagetime' in response['vmtypes'][vmtypeName] and response['vmtypes'][vmtypeName]['messagetime']:
-                      finishTime = time.strftime(' %d/%b/%H:%M  ', time.localtime(response['vmtypes'][vmtypeName]['messagetime']))
-                    else:
-                      finishTime = time.strftime(' %d/%b/%H:%M  ', time.localtime(response['vmtypes'][vmtypeName]['heartbeat']))
-                      
-                    if 'message' in response['vmtypes'][vmtypeName] and response['vmtypes'][vmtypeName]['message']:
-                      message = response['vmtypes'][vmtypeName]['message']
-                    else:
-                      message = ''
-                  
-                    print (
-                            response['vmname'].split('.')[0] + '   ' + state +
-                            time.strftime('  %d/%b/%H:%M ', time.localtime(response['vmtypes'][vmtypeName]['created'])) +
-                            cpuPercentStr + (' %6.2fhrs ' % hours) +
-                            finishTime +
-                            message
-                          )
-                  except:
-                    print response['vmname'].split('.')[0] + ' ' + state + ' ????'
-                                         
-      except KeyboardInterrupt:
-           print
-           break
-      except socket.error as msg:
-           break
-
-   print str(totalcount) + ' replies; ' + str(runningcount) + ' ' + vmtypeName + ' running; ' + \
-                                          str(startingcount) + ' ' + vmtypeName + ' starting.'
-
 def queryMachines(options, factoryList):
 
   totalCount    = 0
@@ -185,7 +54,7 @@ def queryMachines(options, factoryList):
    
   responses = vac.shared.sendMachinesRequests(factoryList)
 
-  for factoryName in responses.keys():
+  for factoryName in responses:
     for vmName,response in responses[factoryName]['machines'].iteritems():
    
                 stateStr = ('  ' + response['state'] + 10 * ' ')[0:11]
@@ -244,20 +113,12 @@ def queryMachines(options, factoryList):
                                                     else '')
                       )
 
-#            print totalcount,'replies in',"%.2f" % (time.time() - start - vac.shared.udpTimeoutSeconds),'seconds;',runningcount,'running;',startingcount,'starting.'
-
 def queryMachineType(options, machineTypeName, factoryList):
 
-  totalCount    = 0
-  runningCount  = 0
-  startingCount = 0
-   
   responses = vac.shared.sendVmtypesRequests(factoryList)
 
-  for factoryName in responses.keys():
+  for factoryName in responses:
     if 'vmtypes' in responses[factoryName] and machineTypeName in responses[factoryName]['vmtypes']:
-      totalCount += 1
-
       print (
               factoryName.split('.')[0] + ' ' + 
               str(responses[factoryName]['vmtypes'][machineTypeName]['total_hs06']) + ' ' +
@@ -266,43 +127,12 @@ def queryMachineType(options, machineTypeName, factoryList):
               str(responses[factoryName]['vmtypes'][machineTypeName]['shutdown_message']) + '"'
             )
 
-def rawFactory(factoryName):
+def queryFactories(options, factoryList):
    
-   salt = base64.b64encode(os.urandom(32))
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(vac.shared.udpTimeoutSeconds)
-   vac.shared.setSockBufferSize(sock)
+  responses = vac.shared.sendFactoriesRequests(factoryList)
 
-   try:
-     sock.sendto(json.dumps({'space':vac.shared.spaceName,'cookie':hashlib.sha256(salt + vac.shared.canonicalFQDN(factoryName)).hexdigest(), 
-                             'method':'status'}),(vac.shared.canonicalFQDN(factoryName), 995))
-   except:
-     print 'Failed sending UDP query to ' + vac.shared.canonicalFQDN(factoryName)
-
-   else:
-     n = 1 
-
-     while True:
-       try:
-           data, addr = sock.recvfrom(10240)
-                      
-           try:
-                response = json.loads(data)
-           except:
-              print 'json.loads failed for',data
-              continue
-              
-           print '===== Begin response ' + str(n) + ' (' + str(len(data)) + ' bytes) ====='
-              
-           for responseKey in sorted(response.keys()):            
-             print (responseKey + 15 * ' ')[:15] + " : " + str(response[responseKey])
-             
-           print
-             
-           n += 1
-
-       except socket.error as msg:
-           break
+  for factoryName in responses:
+    print factoryName.split('.')[0] + ' ' + str(responses[factoryName])
 
 #
 # PROGRAM MAIN !!!
@@ -380,6 +210,13 @@ if __name__ == '__main__':
             queryMachines(options, None)
             sys.exit(0)
 
+        if args[0] == 'factories' and len(args) > 1:
+            queryFactories(options, args[1:])
+            sys.exit(0)
+        elif args[0] == 'factories':
+            queryFactories(options, None)
+            sys.exit(0)
+
         if args[0] == 'machinetype' and len(args) == 2:
             queryMachineType(options, args[1], None)
             sys.exit(0)
@@ -389,20 +226,6 @@ if __name__ == '__main__':
         elif args[0] == 'machinetype':
             print 'machinetype command requires an argument!'
             sys.exit(1)
-
-# NOT UPDATED YET 
-#        if args[0] == 'raw':
-#            if len(args) != 2:
-#              print 'raw command requires an argument!'
-#              sys.exit(1)
-#            else:
-#              rawFactory(args[1])
-#              sys.exit(0)
- 
-# NOT UPDATED YET 
-#        if args[0] == 'vmtypes':
-#            vmtypesResults()
-#            sys.exit(0)
 
         if args[0] == 'proxy-init':
             if not options.certPath:

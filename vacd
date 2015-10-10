@@ -86,7 +86,7 @@ def pollFactories():
        vac.vacutils.logLine(factoryName + ' responds, running total for ' + vmtypeName +
                             ' now ' + str(factoryVmtypeTotals[vmtypeName]))
                                
-       factoryVmtypeNumberBeforeFizzle[vmtypeName] += response[num_before_fizzle]
+       factoryVmtypeNumberBeforeFizzle[vmtypeName] += response['num_before_fizzle']
 
        try:
          # if message with code provided, then we always use it for decisions
@@ -105,147 +105,6 @@ def pollFactories():
            if response['shutdown_time'] > factoryVmtypeLastAborts[vmtypeName]:
              factoryVmtypeLastAborts[vmtypeName] = response['shutdown_time']
                       
-   vac.vacutils.logLine('Final totals ' + str(factoryVmtypeTotals) + ' HS06')
-
-   preferredVmtypeName = None
-
-   # Go through the vmtypes, trying to pick the best one to start:
-   # - Target share must be > 0.0
-   # - If there has been an abort, it must be at least backoff_second ago
-   # - We extend this backoff by fizzle_seconds if any other VMs of this
-   #     vmtype are starting or not yet running for fizzle_seconds
-   #
-   # This procedure aims to give one VM the chance to try a vmtype when the
-   # initial backoff_seconds following an abort expires. Rather than have
-   # many VMs all trying to run as vmtype immediately. In practice, more 
-   # than one may win the race to be the "first" to try, but this should
-   # still be a manageable number for the experiment's Matcher/Task Queue. 
-      
-   for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
-      if vmtype['share'] > 0.0:
-           vac.vacutils.logLine('For ' + vmtypeName + ', ' +
-                                str(factoryVmtypeNumberBeforeFizzle[vmtypeName]) + ' are before fizzle_time. ' +
-                                'LastAbort was ' + time.strftime('%b %d %H:%M:%S', time.localtime(factoryVmtypeLastAborts[vmtypeName])) +
-                                '. VM creation restart at ' +
-                                time.strftime('%b %d %H:%M:%S',
-                                              time.localtime(factoryVmtypeLastAborts[vmtypeName] +
-                                                             vmtype['backoff_seconds'] +
-                                                             vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0))) + 
-                                '.')
-
-      if ((vmtype['share'] > 0.0) and 
-          (factoryVmtypeLastAborts[vmtypeName] 
-              < (int(time.time()) 
-                 - vmtype['backoff_seconds'] 
-                 - vac.shared.vmtypes[vmtypeName]['fizzle_seconds'] * (factoryVmtypeNumberBeforeFizzle[vmtypeName] > 0)))):
-                      if not preferredVmtypeName:
-                        preferredVmtypeName = vmtypeName
-                      elif factoryVmtypeTotals[vmtypeName] < factoryVmtypeTotals[preferredVmtypeName]:
-                        preferredVmtypeName = vmtypeName
-
-   return preferredVmtypeName
-
-def oldPollFactories():
-
-   # Total HS06 of running/starting VMs per vmtype
-   factoryVmtypeTotals             = {}
-   
-   # Time in Unix seconds of the most recent abort, for each vmtype
-   factoryVmtypeLastAborts         = {}
-   
-   # Number of VMs starting or not yet running for at least fizzle_seconds, for each vmtype
-   factoryVmtypeNumberBeforeFizzle = {}
-
-   # Initialise
-   for vmtypeName, vmtype in vac.shared.vmtypes.iteritems():
-      if vmtype['share'] > 0.0:
-        factoryVmtypeTotals[vmtypeName]             = 0.0
-        factoryVmtypeLastAborts[vmtypeName]         = 0
-        factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
-
-   salt = base64.b64encode(os.urandom(32))
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(vac.shared.udpTimeoutSeconds)
-   vac.shared.setSockBufferSize(sock)
-
-   for factoryName in vac.shared.factories:
-      try:
-         sock.sendto(json.dumps({'space':vac.shared.spaceName, 'cookie':hashlib.sha256(salt + factoryName).hexdigest(), 
-                                 'method':'status'}),(factoryName,995))
-      except socket.error as msg:
-         pass
-
-   while True:
-   
-      try:
-           data, addr = sock.recvfrom(10240)
-                      
-           try:
-                response = json.loads(data)
-           except:
-              vac.vacutils.logLine('json.loads failed for ' + data)
-              continue
-
-           if 'space' 			in response and \
-              'cookie' 			in response and \
-              'factoryname'		in response and \
-              'method'			in response and \
-              response['space']  == vac.shared.spaceName and \
-              response['method'] == 'status' and \
-              response['cookie'] == hashlib.sha256(salt + response['factoryname']).hexdigest() :
-
-              if 'state'		in response and \
-                 'vmname'		in response and \
-                 'vmtype'		in response and \
-                 'hs06'			in response and \
-                 response['vmtype']	in vac.shared.vmtypes and \
-                 (response['state'] == vac.shared.VacState.starting or response['state'] == vac.shared.VacState.running) and \
-                 vac.shared.vmtypes[response['vmtype']]['share'] > 0.0:
-
-                   # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
-                   factoryVmtypeTotals[response['vmtype']] += response['hs06'] / vac.shared.vmtypes[response['vmtype']]['share']
-                   vac.vacutils.logLine(response['factoryname'] + ' responds, running total for ' + response['vmtype'] +
-                               ' now ' + str(factoryVmtypeTotals[response['vmtype']]))
-                               
-                   if response['state'] == vac.shared.VacState.starting:
-                           # starting counts as before fizzle point
-                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-                   elif response['state'] == vac.shared.VacState.running and 'vmtypes' in response and \
-                        int(time.time()) < (response['vmtypes'][response['vmtype']]['started'] + vac.shared.vmtypes[response['vmtype']]['fizzle_seconds']):
-                           # running for less than fizzle_seconds counts too
-                           factoryVmtypeNumberBeforeFizzle[response['vmtype']] += 1
-                   
-              if 'vmtypes' in response:
-                for vmtypeName, vmtypeOutcome in response['vmtypes'].iteritems():
-
-                  try:
-                    abortTime = None
-
-                    if 'messagetime' in vmtypeOutcome and 'message' in vmtypeOutcome and vmtypeOutcome['message'][0:3].isdigit():
-                      # if message with code provided, then we always use it for decisions
-                      messagecode=int(vmtypeOutcome['message'][0:3])
-                      if (messagecode >= 300) and (messagecode <= 699):
-                        # 300 is no work, 400 is banned, 500 is problem with VM/Site
-                        # 600 is grid-wide problem with job agent or application in VM
-                        # (VMs can return 700 for transient problems within the VM)
-                        abortTime = vmtypeOutcome['messagetime']
-                    else:
-                      # no message, so we have to use times to identify fizzles
-                      if (vmtypeName != response['vmtype'] or response['state'] == vac.shared.VacState.shutdown) and \
-                         started in vmtypeOutcome and heartbeat in vmtypeOutcome and \
-                         vmtypeOutcome['heartbeat'] < (vmtypeOutcome['started'] + vac.shared.vmtypes[vmtypeName]['fizzle_seconds']):
-                        abortTime = vmtypeOutcome['heartbeat']
-
-                    # if this is the most recent abort of this vmtype anywhere in this space
-                    if abortTime and (abortTime > factoryVmtypeLastAborts[vmtypeName]):
-                      factoryVmtypeLastAborts[vmtypeName] = abortTime
-                      
-                  except:
-                    continue     
-     
-      except socket.error as msg:
-           break
-
    vac.vacutils.logLine('Final totals ' + str(factoryVmtypeTotals) + ' HS06')
 
    preferredVmtypeName = None
@@ -603,7 +462,7 @@ def sendMachineResponses(sock, cookie, addr):
              pass
 
 def sendVmtypeResponses(sock, cookie, addr):
-   # Send back vmtype messages to the querying factory
+   # Send back vmtype messages to the querying factory or client
 
    # Go through the vmtypes
    for vmtypeName in vac.shared.vmtypes:
@@ -702,7 +561,7 @@ def sendVmtypeResponses(sock, cookie, addr):
                                                         
      try:
        sock.sendto(json.dumps({
-                'method'		: 'vmtype',
+                'method'		: 'machinetype',
                 'vac_version'		: 'Vac ' + vac.shared.vacVersion,
                 'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
@@ -719,6 +578,33 @@ def sendVmtypeResponses(sock, cookie, addr):
                               }), addr)
 
      except socket.error as msg:
+       pass
+
+def sendFactoryResponse(sock, cookie, addr):
+   # Send back factory status message to the querying client
+
+   vacDiskStatFS  = os.statvfs('/var/lib/vac')
+   rootDiskStatFS = os.statvfs('/tmp')
+
+   try:
+       sock.sendto(json.dumps({
+                'method'		 : 'factory',
+                'vac_version'		 : 'Vac ' + vac.shared.vacVersion,
+                'vacquery_version'	 : 'VacQuery ' + vac.shared.vacQueryVersion,
+                'cookie'	  	 : cookie,
+                'space'		    	 : vac.shared.spaceName,
+                'factory'       	 : os.uname()[1],
+                'num_cpus'		 : vac.shared.numCpus,
+                'total_hs06'		 : vac.shared.numCpus * vac.shared.hs06PerMachine / vac.shared.cpuPerMachine,
+                'vac_disk_avail_kb'      : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
+                'root_disk_avail_kb'     : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
+                'vac_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
+                'root_disk_avail_inodes' : rootDiskStatFS.f_favail,
+                'load_average'		 : vac.shared.loadAvg(2),
+                'kernel_version'	 : os.uname()[2]
+                              }), addr)
+
+   except socket.error as msg:
        pass
 
 def vacResponder():
@@ -818,8 +704,11 @@ def vacResponder():
          if queryMessage['method'] == 'machines':
            sendMachineResponses(sock, queryMessage['cookie'], addr)
  
-         elif queryMessage['method'] == 'vmtypes':
+         elif queryMessage['method'] == 'machinetypes':
            sendVmtypeResponses(sock, queryMessage['cookie'], addr)
+
+         elif queryMessage['method'] == 'factories':
+           sendFactoryResponse(sock, queryMessage['cookie'], addr)
 
    sys.exit(0) # if we break out of while loop then we exit
 
