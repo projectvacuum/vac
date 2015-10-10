@@ -588,20 +588,23 @@ def sendFactoryResponse(sock, cookie, addr):
 
    try:
        sock.sendto(json.dumps({
-                'method'		 : 'factory',
-                'vac_version'		 : 'Vac ' + vac.shared.vacVersion,
-                'vacquery_version'	 : 'VacQuery ' + vac.shared.vacQueryVersion,
-                'cookie'	  	 : cookie,
-                'space'		    	 : vac.shared.spaceName,
-                'factory'       	 : os.uname()[1],
-                'num_cpus'		 : vac.shared.numCpus,
-                'total_hs06'		 : vac.shared.numCpus * vac.shared.hs06PerMachine / vac.shared.cpuPerMachine,
-                'vac_disk_avail_kb'      : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
-                'root_disk_avail_kb'     : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
-                'vac_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
-                'root_disk_avail_inodes' : rootDiskStatFS.f_favail,
-                'load_average'		 : vac.shared.loadAvg(2),
-                'kernel_version'	 : os.uname()[2]
+                'method'		   : 'factory',
+                'vac_version'		   : 'Vac ' + vac.shared.vacVersion,
+                'vacquery_version'	   : 'VacQuery ' + vac.shared.vacQueryVersion,
+                'cookie'	  	   : cookie,
+                'space'		    	   : vac.shared.spaceName,
+                'factory'       	   : os.uname()[1],
+                'time_sent'		   : int(time.time()),			
+                'num_cpus'		   : vac.shared.numCpus,
+                'total_hs06'		   : vac.shared.numCpus * vac.shared.hs06PerMachine / vac.shared.cpuPerMachine,
+                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
+                'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
+                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
+                'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
+                'load_average'		   : vac.shared.loadAvg(2),
+                'kernel_version'	   : os.uname()[2],
+                'factory_heartbeat_time'   : int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime),
+                'responder_heartbeat_time' : int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime)
                               }), addr)
 
    except socket.error as msg:
