@@ -914,11 +914,11 @@ class VacVM:
       try:
         self.userDataContents = vac.vacutils.createUserData(
                                                shutdownTime     = tmpShutdownTime,
-                                               vmtypesPath	= '/var/lib/vac/vmtypes',
+                                               machinetypesPath	= '/var/lib/vac/vmtypes',
                                                options		= vmtypes[self.vmtypeName], 
                                                versionString	= 'Vac ' + vacVersion, 
                                                spaceName	= spaceName, 
-                                               vmtypeName	= self.vmtypeName, 
+                                               machinetypeName	= self.vmtypeName, 
                                                userDataPath	= vmtypes[self.vmtypeName]['user_data'], 
                                                hostName		= self.name, 
                                                uuidStr		= self.uuidStr)
