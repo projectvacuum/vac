@@ -141,9 +141,10 @@ The configuration file /etc/vac.conf uses the Python ConfigParser syntax,
 which is similar to MS
 Windows INI files. The file is divided into sections, with each section
 name in square brackets. For example: [settings]. Each section contains
-a series of option=value pairs. Sections with the same name are merged
-and if options are duplicated, later values overwrite values given
-earlier. 
+a series of option=value pairs. Values can continue onto the next line
+by starting that line with some white space. Sections with the same name
+are merged and if options are duplicated, later values overwrite values 
+given earlier. 
 Any configuration file ending in .conf in the
 directory /etc/vac.d will also be read. These files are read in 
 alphanumeric order, and then /etc/vac.conf is read if present.

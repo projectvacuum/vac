@@ -134,6 +134,7 @@ def pollFactories():
                                 '.')
 
       if ((vmtype['share'] > 0.0) and 
+          ((vac.shared.shutdownTime is None) or (time.time() + vac.shared.vmtypes[vmtypeName]['min_wallclock_seconds'] < vac.shared.shutdownTime)) and
           (factoryVmtypeLastAborts[vmtypeName] 
               < (int(time.time()) 
                  - vmtype['backoff_seconds'] 

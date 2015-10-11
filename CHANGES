@@ -9,6 +9,12 @@
 - Use VacQuery protocol instead of original UDP protocol, now with 
   machines, machinetypes, and factories methods
 - mb_per_cpu instead of mb_per_machine
+- Create 70GB root.disk instead of 20GB in case no logical partition
+- vacutils.py: remove all unused ##user_data_[a-z,0-9,_]*## patterns
+- min_wallclock_seconds prevents overly short VMs if shutdown_time given
+- Change KVM cache to unsafe since transient VMs and filesystems
+- Change SysV priority to 12 to avoid race with RPC port binding
+- APEL messages now have SubmitHost: SPACENAME/vac-FACTORYNAME
 ==================== Changes in Vac version 0.18.0 =====================
 - APEL messages are now created world readable on disk 
   (chmod o-x /var/lib/vac/apel-* can be used to negate this)

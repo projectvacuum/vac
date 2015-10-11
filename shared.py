@@ -75,7 +75,7 @@ gocdbSitename = None
 factories = None
 hs06PerMachine = None
 mbPerMachine = None
-fixNetworking  = None
+fixNetworking = None
 forwardDev = None
 shutdownTime = None
 
@@ -343,6 +343,11 @@ def readConf():
              else:
                  vmtype['max_wallclock_seconds'] = 86400
              
+             if parser.has_option(sectionName, 'min_wallclock_seconds'):
+                 vmtype['min_wallclock_seconds'] = int(parser.get(sectionName, 'min_wallclock_seconds'))
+             else:
+                 vmtype['min_wallclock_seconds'] = vmtype['max_wallclock_seconds']
+
              if parser.has_option(sectionName, 'backoff_seconds'):
                  vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
              else:
@@ -765,7 +770,7 @@ class VacVM:
 
       mesg = ('APEL-individual-job-message: v0.3\n' + 
               'Site: ' + tmpGocdbSitename + '\n' +
-              'SubmitHost: ' + spaceName + '/vac-' + self.vmtypeName + '\n' +
+              'SubmitHost: ' + spaceName + '/vac-' + os.uname()[1] + '\n' +
               'LocalJobId: ' + self.uuidStr + '\n' +
               'LocalUserId: ' + os.uname()[1] + '\n' +
               'Queue: ' + self.vmtypeName + '\n' +
@@ -782,7 +787,8 @@ class VacVM:
               'MemoryReal: ' + str(self.mb * 1024) + '\n' +
               'MemoryVirtual: ' + str(self.mb * 1024) + '\n' +
               'ServiceLevelType: HEPSPEC\n' +
-              'ServiceLevel: ' + str(self.hs06) + '\n')
+              'ServiceLevel: ' + str(self.hs06) + '\n' +
+              '%%\n')
                           
       fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
                           
@@ -964,11 +970,16 @@ class VacVM:
                 '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Use earlier shutdown time if given in config
-      tmpShutdownTime = int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
+      now = int(time.time())
+      tmpShutdownTime = int(now + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
       
       if shutdownTime and (shutdownTime < tmpShutdownTime):
         tmpShutdownTime = shutdownTime
       
+      cpuLimitSecs = shutdownTime - now
+      if (cpuLimitSecs < 0):
+        cpuLimitSecs = 0
+
       # calculate the absolute shutdown time for the VM, as a machine
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(tmpShutdownTime),
@@ -994,18 +1005,18 @@ class VacVM:
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine,
+                 str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']) * cpuPerMachine,
+                 str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']), 
+                 str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
-                 str(vmtypes[self.vmtypeName]['max_wallclock_seconds']), 
+                 str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
@@ -1015,7 +1026,7 @@ class VacVM:
 
       # we are about to start the VM now
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
-                 str(int(time.time())), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(now), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
       vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
@@ -1038,10 +1049,10 @@ class VacVM:
 
       # kvm and Xen are the same for uCernVM 3
       if self.model == 'cernvm3':
-         vac.vacutils.logLine('make 20 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+         vac.vacutils.logLine('make 70 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
          try:
           f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk', 'ab')
-          f.truncate(20 * 1014 * 1024 * 1024)
+          f.truncate(70 * 1014 * 1024 * 1024)
           f.close()
          except:
           raise NameError('creation of sparse disk image fails!')
@@ -1119,13 +1130,16 @@ class VacVM:
             vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
             os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup + ' 2>&1')
 
-          if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
-            return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not a block device'
+          try:
+            if not stat.S_ISBLK(os.stat(virtualmachines[self.name]['scratch_volume']).st_mode):
+              return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not a block device'
+          except:
+            return 'failing due to ' + virtualmachines[self.name]['scratch_volume'] + ' not existing'
 
           self.measureScratchDisk()
           if domainType == 'kvm':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
+                                  " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
                                   " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + 
                                   "' bus='" + ("virtio" if "vd" in vmtypes[self.vmtypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
@@ -1153,7 +1167,7 @@ class VacVM:
       
           if domainType == 'kvm':
             cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                                " <driver name='qemu' type='raw' error_policy='report' cache='none'/>\n" +
+                                " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                                 " <source file='" + cernvmCdrom  + "'/>\n" +
                                 " <target dev='hdc' />\n<readonly />\n</disk>")
           elif domainType == 'xen':
@@ -1218,13 +1232,13 @@ class VacVM:
   <devices>
     <emulator>""" + qemuKvmFile + """</emulator>
     <disk type='file' device='disk'>""" + 
-    ("<driver name='qemu' type='qcow2' cache='none' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='none' type='raw' error_policy='report' />") + 
+    ("<driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='unsafe' type='raw' error_policy='report' />") + 
     """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='""" + 
      ("virtio" if "vd" in vmtypes[self.vmtypeName]['root_device'] else "ide") + """'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
-      <driver name='qemu' type='raw' error_policy='report' cache='none'/>
+      <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>
       <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
