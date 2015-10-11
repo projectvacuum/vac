@@ -423,10 +423,45 @@ def loadAvg(which = 0):
         print 'Failed to open /proc/loadavg'
         return avg
         
-      avg = float(f.readline().split(' ')[which])
+      avg = float(f.readline().split()[which])
       
       f.close()
       return avg
+
+def memInfo():
+   # Get some interesting quantities out of /proc/meminfo
+   result = {}
+   
+   try:
+     f = open('/proc/meminfo', 'r')
+   except:
+     print 'Failed to open /proc/meminfo'
+     return None
+
+   while True:
+     fields = f.readline().split()
+     
+     if len(fields) == 0:
+       break
+     
+     if fields[0] == 'SwapTotal:':
+       result['SwapTotal'] = int(fields[1])
+     elif fields[0] == 'SwapFree:':
+       result['SwapFree'] = int(fields[1])
+     elif fields[0] == 'MemTotal:':
+       result['MemTotal'] = int(fields[1])
+     elif fields[0] == 'MemFree:':
+       result['MemFree'] = int(fields[1])
+
+   f.close()
+
+   if 'SwapTotal' in result and \
+      'SwapFree'  in result and \
+      'MemTotal'  in result and \
+      'MemFree'   in result:
+     return result
+   else:
+     return None
 
 def countProcProcessors():
       numProcessors = 0

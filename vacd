@@ -585,6 +585,8 @@ def sendFactoryResponse(sock, cookie, addr):
 
    vacDiskStatFS  = os.statvfs('/var/lib/vac')
    rootDiskStatFS = os.statvfs('/tmp')
+   
+   memory = vac.shared.memInfo()
 
    try:
        sock.sendto(json.dumps({
@@ -604,7 +606,11 @@ def sendFactoryResponse(sock, cookie, addr):
                 'load_average'		   : vac.shared.loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
                 'factory_heartbeat_time'   : int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime),
-                'responder_heartbeat_time' : int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime)
+                'responder_heartbeat_time' : int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime),
+                'swap_used_kb'		   : memory['SwapTotal'] - memory['SwapFree'],
+                'swap_free_kb'		   : memory['SwapFree'],
+                'mem_used_kb'		   : memory['MemTotal'] - memory['MemFree'],
+                'mem_total_kb'		   : memory['MemTotal']
                               }), addr)
 
    except socket.error as msg:
