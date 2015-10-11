@@ -976,7 +976,7 @@ class VacVM:
       if shutdownTime and (shutdownTime < tmpShutdownTime):
         tmpShutdownTime = shutdownTime
       
-      cpuLimitSecs = shutdownTime - now
+      cpuLimitSecs = tmpShutdownTime - now
       if (cpuLimitSecs < 0):
         cpuLimitSecs = 0
 
