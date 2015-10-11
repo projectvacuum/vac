@@ -548,9 +548,9 @@ def sendVmtypeResponses(sock, cookie, addr):
                                                '/shared/machineoutputs/shutdown_message').st_ctime)
            except:
              # No explicit shutdown message with a message code, so we make one up if necessary
-             if timeStarted and timeHeartbeat and (timeHeartbeat - timeStarted < vac.shared.vmtypes[vmtypeName]['fizzle_seconds']):
+             if timeStarted and timeHeartbeat and (timeHeartbeat - timeStarted) < vac.shared.vmtypes[vmtypeName]['fizzle_seconds']:
                shutdownMessageTime = timeHeartbeat
-               shutdownMessage = '300 Abort after ' + str(timeHeartbeat - timeStarted) + ' seconds'
+               shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
                           
            if shutdownMessage and shutdownMessageTime and \
               (lastShutdownMessageTime is None or \

@@ -257,9 +257,9 @@ def readConf():
           return 'Failed to parse shutdown_time (must be a Unix time seconds date/time)'
 
       if parser.has_option('settings', 'hs06_per_machine'):
-          # Warn that this is deprecated
           hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
-          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in [settings]'
+# Start warning about this deprecation in the next release
+#          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in [settings]'
       elif parser.has_option('settings', 'hs06_per_cpu'):
           hs06PerMachine = cpuPerMachine * float(parser.get('settings','hs06_per_cpu'))
       else:

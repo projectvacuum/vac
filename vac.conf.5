@@ -323,22 +323,34 @@ Vac using data it holds internally:
 
 .br
 .B ##user_data_uuid##
-is the UUID assigned by Vac to the VM.
+is the UUID assigned to the VM by Vac.
 .br
 .B ##user_data_space##
-is the Vac space given by the vac_space option.
+is the Vac space name.
 .br
+.B ##user_data_machinetype## 
+and 
 .B ##user_data_vmtype## 
-is the name of the vmtype of this VM.
+(deprecated) 
+are the name of the vmtype of this VM.
 .br
+.B ##user_data_machine_hostname## 
+and
 .B ##user_data_vm_hostname## 
-is the hostname given to the VM by Vac.
+(deprecated) 
+are the hostname given to the VM by Vac.
 .br
+.B ##user_data_manager_version## 
+and 
 .B ##user_data_vmlm_version## 
-has the form "Vac v.v.v" where v.v.v is the Vac version.
+(deprecated) 
+have the form "Vac v.v.v" where v.v.v is the Vac version.
 .br
+.B ##user_data_manager_hostname##
+and 
 .B ##user_data_vmlm_hostname##
-is the hostname of the Vac factory machine.
+(deprecated) 
+are the hostname of the Vac factory machine.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
