@@ -79,7 +79,10 @@ def pollFactories():
      factoryVmtypeNumberBeforeFizzle[vmtypeName] = 0
 
      for factoryName in responses:
-       response = responses[factoryName]['vmtypes'][vmtypeName]
+       try:
+         response = responses[factoryName]['vmtypes'][vmtypeName]
+       except:
+         continue
 
        # we only have to add hs06/share for this vmtype to get normalisation at the end automatically
        factoryVmtypeTotals[vmtypeName] += response['total_hs06'] / vac.shared.vmtypes[vmtypeName]['share']
@@ -495,7 +498,10 @@ def sendVmtypeResponses(sock, cookie, addr):
              newestCtime = ctime
              newestUUID  = onedir
 
-       # if we find an instance for this vmtype, get its state
+       # If we find an instance for this vmtype, get its state.
+       # The one we have picked was the one created most recently.
+       # For fizzles, this is the best indicator of what will happen
+       # if we create another VM of this vmtype now.
        if newestUUID:
          
          try:
