@@ -245,7 +245,8 @@ def readConf():
              
       if parser.has_option('settings', 'mb_per_machine'):          
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
-          print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
+# Start warning about this deprecation in the next release
+#          print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
       elif parser.has_option('settings', 'mb_per_cpu'):
           # If this isn't set, then we use default (2048 MiB)
           mbPerMachine = cpuPerMachine * int(parser.get('settings','mb_per_cpu'))
@@ -258,8 +259,7 @@ def readConf():
 
       if parser.has_option('settings', 'hs06_per_machine'):
           hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
-# Start warning about this deprecation in the next release
-#          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in [settings]'
+          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in [settings]'
       elif parser.has_option('settings', 'hs06_per_cpu'):
           hs06PerMachine = cpuPerMachine * float(parser.get('settings','hs06_per_cpu'))
       else:
