@@ -428,15 +428,15 @@ def sendMachineResponses(sock, cookie, addr):
          vmState = vac.shared.VacState.shutdown
 
          try:
-           f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
+           f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
            shutdownMessage = f.readline().strip()
            f.close()
-           shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUIDByVmtype + 
+           shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUIDByVmtype + 
                                                     '/shared/machineoutputs/shutdown_message').st_ctime)
          except:
            pass
                                                                                                                          
-       vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(vmtypeName) + ', started ' + str(newestCtime) + ')')
+       vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(newestVmtypeName) + ', started ' + str(newestCtime) + ')')
 
        try:
          sock.sendto(json.dumps({
@@ -457,7 +457,7 @@ def sendMachineResponses(sock, cookie, addr):
                 'cpu_seconds'		: cpuSeconds,
                 'cpu_percentage'	: cpuPercentage,
                 'hs06' 		       	: hs06,
-                'vmtype'		: vmtypeName,
+                'vmtype'		: newestVmtypeName,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime
                               }), addr)
