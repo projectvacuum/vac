@@ -445,6 +445,7 @@ def sendMachineResponses(sock, cookie, addr):
                 'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
+                'gocdb_site'		: vac.shared.gocdbSitename if vac.shared.gocdbSitename else vac.shared.spaceName,
                 'factory'       	: os.uname()[1],
                 'num_machines'       	: len(vac.shared.virtualmachines),
 
@@ -573,6 +574,7 @@ def sendVmtypeResponses(sock, cookie, addr):
                 'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
+                'gocdb_site'		: vac.shared.gocdbSitename if vac.shared.gocdbSitename else vac.shared.spaceName,
                 'factory'       	: os.uname()[1],
                 'num_vmtypes'       	: len(vac.shared.vmtypes),
 
@@ -602,6 +604,7 @@ def sendFactoryResponse(sock, cookie, addr):
                 'vacquery_version'	   : 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	   : cookie,
                 'space'		    	   : vac.shared.spaceName,
+                'gocdb_site'               : vac.shared.gocdbSitename if vac.shared.gocdbSitename else vac.shared.spaceName,
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),			
                 'num_cpus'		   : vac.shared.numCpus,
