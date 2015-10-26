@@ -341,8 +341,9 @@ def vacOneCycle():
    # finished with all VMs, so output counts for Nagios etc
    vac.vacutils.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-def sendMachineResponses(sock, cookie, addr):
-   
+def makeMachineResponses(cookie):
+   responses = []
+
    # Go through the machine slots, sending one message for each
    for vmName in sorted(vac.shared.virtualmachines):
 
@@ -438,14 +439,12 @@ def sendMachineResponses(sock, cookie, addr):
                                                                                                                          
        vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(newestVmtypeName) + ', started ' + str(newestCtime) + ')')
 
-       try:
-         sock.sendto(json.dumps({
+       responseDict = {
                 'method'		: 'machine',
                 'vac_version'		: 'Vac ' + vac.shared.vacVersion,
                 'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
-                'gocdb_site'		: vac.shared.gocdbSitename if vac.shared.gocdbSitename else vac.shared.spaceName,
                 'factory'       	: os.uname()[1],
                 'num_machines'       	: len(vac.shared.virtualmachines),
 
@@ -461,13 +460,18 @@ def sendMachineResponses(sock, cookie, addr):
                 'vmtype'		: newestVmtypeName,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime
-                              }), addr)
+                      }
 
-       except socket.error as msg:
-             pass
+       if vac.shared.gocdbSitename:
+         responseDict['gocdb_site'] = vac.shared.gocdbSitename
 
-def sendVmtypeResponses(sock, cookie, addr):
+       responses.append(json.dumps(responseDict))                              
+
+   return responses
+   
+def makeVmtypeResponses(cookie):
    # Send back vmtype messages to the querying factory or client
+   responses = []
 
    # Go through the vmtypes
    for vmtypeName in vac.shared.vmtypes:
@@ -567,14 +571,12 @@ def sendVmtypeResponses(sock, cookie, addr):
              lastShutdownMessageTime = shutdownMessageTime
              lastMachineName         = vmName
                                                         
-     try:
-       sock.sendto(json.dumps({
+     responseDict = {
                 'method'		: 'machinetype',
                 'vac_version'		: 'Vac ' + vac.shared.vacVersion,
                 'vacquery_version'	: 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: vac.shared.spaceName,
-                'gocdb_site'		: vac.shared.gocdbSitename if vac.shared.gocdbSitename else vac.shared.spaceName,
                 'factory'       	: os.uname()[1],
                 'num_vmtypes'       	: len(vac.shared.vmtypes),
 
@@ -584,12 +586,21 @@ def sendVmtypeResponses(sock, cookie, addr):
                 'shutdown_message'  	: lastShutdownMessage,
                 'shutdown_time'     	: lastShutdownMessageTime,
                 'shutdown_machine'  	: lastMachineName
-                              }), addr)
+                     }
 
-     except socket.error as msg:
+     if var.shared.gocdbSitename:
+       responseDict['gocdb_site'] = vac.shared.gocdbSitename
+       
+     try:
+       responseDict['fqan'] = vac.shared.vmtypes[vmtypeName]['accounting_fqan']
+     except:
        pass
 
-def sendFactoryResponse(sock, cookie, addr):
+     responses.append(json.dumps(responseDict))
+
+   return responses
+   
+def makeFactoryResponse(cookie):
    # Send back factory status message to the querying client
 
    vacDiskStatFS  = os.statvfs('/var/lib/vac')
@@ -597,14 +608,12 @@ def sendFactoryResponse(sock, cookie, addr):
    
    memory = vac.shared.memInfo()
 
-   try:
-       sock.sendto(json.dumps({
+   responseDict = {
                 'method'		   : 'factory',
                 'vac_version'		   : 'Vac ' + vac.shared.vacVersion,
                 'vacquery_version'	   : 'VacQuery ' + vac.shared.vacQueryVersion,
                 'cookie'	  	   : cookie,
                 'space'		    	   : vac.shared.spaceName,
-                'gocdb_site'               : vac.shared.gocdbSitename if vac.shared.gocdbSitename else vac.shared.spaceName,
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),			
                 'num_cpus'		   : vac.shared.numCpus,
@@ -621,10 +630,12 @@ def sendFactoryResponse(sock, cookie, addr):
                 'swap_free_kb'		   : memory['SwapFree'],
                 'mem_used_kb'		   : memory['MemTotal'] - memory['MemFree'],
                 'mem_total_kb'		   : memory['MemTotal']
-                              }), addr)
+                  }
 
-   except socket.error as msg:
-       pass
+   if var.shared.gocdbSitename:
+     responseDict['gocdb_site'] = vac.shared.gocdbSitename
+
+   return json.dumps(responseDict)
 
 def vacResponder():
 
@@ -721,13 +732,24 @@ def vacResponder():
          vac.vacutils.logLine("Received " + data + " from " + str(addr))
 
          if queryMessage['method'] == 'machines':
-           sendMachineResponses(sock, queryMessage['cookie'], addr)
+           try:
+             for response in makeMachineResponses(queryMessage['cookie']):
+               sock.sendto(response, addr)
+           except:
+             pass
  
          elif queryMessage['method'] == 'machinetypes':
-           sendVmtypeResponses(sock, queryMessage['cookie'], addr)
+           try:
+             for response in makeVmtypeResponses(queryMessage['cookie']):
+               sock.sendto(response, addr)
+           except:
+             pass
 
          elif queryMessage['method'] == 'factories':
-           sendFactoryResponse(sock, queryMessage['cookie'], addr)
+           try:
+             sock.sendto(makeFactoryResponse(queryMessage['cookie']), addr)
+           except:
+             pass
 
    sys.exit(0) # if we break out of while loop then we exit
 
