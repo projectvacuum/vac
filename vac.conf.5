@@ -107,10 +107,10 @@ on port 8884 containing the factory and space names, and the Vac
 version number. This will be used to target patches for security
 and bugs at the versions currently in use. Defaults to True.
 
-.B vacmon_address
-If set, this option gives the HOST:POST to send VacQuery UDP packets 
-to. This can be used to monitor the ongoing status of factories and
-VMs via a central VacMon service.
+.B vacmon_hostport
+If set, this option gives a space-separated list of HOST:POST to send 
+VacQuery UDP packets to. This can be used to monitor the ongoing status
+of factories and VMs via site or central VacMon services.
 
 .B total_machines
 gives the number of VMs to be defined by Vac. The default value is the 

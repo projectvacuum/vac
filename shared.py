@@ -90,6 +90,7 @@ cpuPerMachine = None
 versionLogger = None
 virtualmachines = None
 vmtypes = None
+vacmons = None
 
 volumeGroup = None
 gbScratch = None
@@ -99,7 +100,7 @@ def readConf():
       global deleteOldFiles, domainType, gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, versionLogger, virtualmachines, vmtypes, \
+             cpuPerMachine, versionLogger, virtualmachines, vmtypes, vacmons, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -126,7 +127,8 @@ def readConf():
       versionLogger = True
       virtualmachines = {}
       vmtypes = {}
-
+      vacmons = []
+      
       volumeGroup = 'vac_volume_group'
       gbScratch   = 40
       machinefeaturesOptions = {}
@@ -228,6 +230,16 @@ def readConf():
            versionLogger = False
       else:
            versionLogger = True
+
+      if parser.has_option('settings', 'vacmon_hostport'):
+           try:
+             vacmons = parser.get('settings','vacmon_hostport').lower().split()
+           except:
+             return 'Failed to parse vacmon_hostport'
+             
+           for v in vacmons:
+             if re.search('^[a-z.-]+:[0-9]+$', v) is None:
+               return 'Failed to parse vacmon_hostport: must be host.domain:port'
 
       if (parser.has_option('settings', 'delete_old_files') and
           parser.get('settings','delete_old_files').strip().lower() == 'false'):
