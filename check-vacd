@@ -41,7 +41,8 @@ if __name__ == '__main__':
 
  try:
   f = open('/var/lib/vac/counts','r')
-  vm_status_line = ' (' + f.readline().strip() + ')'
+  counts = f.readline().split()
+  vm_status_line = ' (' +  counts[0] + '/' + counts[1] + ' ' + counts[2] + '/' + counts[3] + ')'
   f.close()
  except:
   vm_status_line = ''

@@ -201,7 +201,7 @@ def vacOneCycle():
    
    # These are updated at the END of each cycle of the for loop
    # --> So we do not use  continue  within this loop! <--
-   totalCount    = 0
+   runningCpus   = 0
    runningCount  = 0
    startedOne    = False
    
@@ -331,15 +331,15 @@ def vacOneCycle():
            else:
              vac.vacutils.logLine('No vmtype suitable for creation in this cycle')
 
-     # finished with this vm, update counts
-     totalCount += 1
+     if vm.state == vac.shared.VacState.running:
+       runningCpus += vm.cpus
 
      # the createVM and destroyVM methods update VacVM.state
      if vm.state == vac.shared.VacState.running:
        runningCount += 1
 
    # finished with all VMs, so output counts for Nagios etc
-   vac.vacutils.createFile('/var/lib/vac/counts', 'total=%d running=%d\n' % (totalCount,runningCount), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d' % (runningCount,var.shared.numVirtualMachines,runningCpus,vac.shared.numCpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    if vac.shared.vacmons:
      # Send VacQuery vmtype and factory messages to listed VacMons
@@ -624,6 +624,16 @@ def makeFactoryResponse(cookie):
    
    memory = vac.shared.memInfo()
 
+   try:
+     f = open('/var/lib/vac/counts','r')
+     counts = f.readline().split()      
+     f.close()
+     runningMachines = int(counts[0])
+     runningCpus     = int(counts[2])
+   except:
+     runningCpus     = 0
+     runningMachines = 0
+
    responseDict = {
                 'method'		   : 'factory',
                 'vac_version'		   : 'Vac ' + vac.shared.vacVersion,
@@ -631,8 +641,11 @@ def makeFactoryResponse(cookie):
                 'cookie'	  	   : cookie,
                 'space'		    	   : vac.shared.spaceName,
                 'factory'       	   : os.uname()[1],
-                'time_sent'		   : int(time.time()),			
-                'num_cpus'		   : vac.shared.numCpus,
+                'time_sent'		   : int(time.time()),
+                'total_cpus'		   : vac.shared.numCpus,
+                'running_cpus'             : runningCpus,
+                'total_machines'           : numVirtualMachines,
+                'running_machines'         : runningMachines,
                 'total_hs06'		   : vac.shared.numCpus * vac.shared.hs06PerMachine / vac.shared.cpuPerMachine,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
