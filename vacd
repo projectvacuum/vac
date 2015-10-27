@@ -339,7 +339,7 @@ def vacOneCycle():
        runningCount += 1
 
    # finished with all VMs, so output counts for Nagios etc
-   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d' % (runningCount,var.shared.numVirtualMachines,runningCpus,vac.shared.numCpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d' % (runningCount,vac.shared.numVirtualmachines,runningCpus,vac.shared.numCpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    if vac.shared.vacmons:
      # Send VacQuery vmtype and factory messages to listed VacMons
@@ -644,7 +644,7 @@ def makeFactoryResponse(cookie):
                 'time_sent'		   : int(time.time()),
                 'total_cpus'		   : vac.shared.numCpus,
                 'running_cpus'             : runningCpus,
-                'total_machines'           : numVirtualMachines,
+                'total_machines'           : vac.shared.numVirtualmachines,
                 'running_machines'         : runningMachines,
                 'total_hs06'		   : vac.shared.numCpus * vac.shared.hs06PerMachine / vac.shared.cpuPerMachine,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,

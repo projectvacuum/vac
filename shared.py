@@ -238,7 +238,7 @@ def readConf():
              return 'Failed to parse vacmon_hostport'
              
            for v in vacmons:
-             if re.search('^[a-z.-]+:[0-9]+$', v) is None:
+             if re.search('^[a-z0-9.-]+:[0-9]+$', v) is None:
                return 'Failed to parse vacmon_hostport: must be host.domain:port'
 
       if (parser.has_option('settings', 'delete_old_files') and
