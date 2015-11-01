@@ -59,7 +59,7 @@ import ConfigParser
 import vac
 
 # VacQuery protocol version
-vacQueryVersion = '1.0'
+vacQueryVersion = '0.1'
 
 natNetwork     = '169.254.0.0'
 natNetmask     = '255.255.0.0'
