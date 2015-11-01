@@ -58,7 +58,8 @@ import ConfigParser
 
 import vac
 
-# VacQuery protocol version
+# All VacQuery requests and responses are in this file
+# so we can define the VacQuery protocol version here
 vacQueryVersion = '0.1'
 
 natNetwork     = '169.254.0.0'
@@ -1926,14 +1927,13 @@ def sendFactoriesRequests(factoryList = None):
               'factory' 		in response and \
               response['cookie'] == hashlib.sha256(salt + response['factory']).hexdigest() :
               
-             responses[factoryName] = response
+             responses[response['factory']] = response
 
          except socket.error:
            # timed-out so stop gathering responses for now
            break
 
    return responses
-
 
 def makeMachineResponses(cookie):
    responses = []
