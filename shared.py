@@ -1934,3 +1934,314 @@ def sendFactoriesRequests(factoryList = None):
 
    return responses
 
+
+def makeMachineResponses(cookie):
+   responses = []
+
+   # Go through the machine slots, sending one message for each
+   for vmName in sorted(virtualmachines):
+
+     newestUUID       = None
+     newestCtime      = None
+     newestVmtypeName = None
+
+     # Find which vmtype is the most recent for this machine
+     for vmtypeName in vmtypes:
+
+       try:
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
+       except:
+         continue
+
+       # Find the most recent instance of this vmtypeName for this vmName
+       for onedir in dirslist:
+         try:
+           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
+         except:
+           pass
+         else:
+           if not newestUUID or (ctime > newestCtime):
+             newestCtime      = ctime
+             newestUUID       = onedir
+             newestVmtypeName = vmtypeName
+
+     # Found the newest instance in this machine slot
+     if newestUUID:
+
+       print vmName,newestUUID
+                
+       try:
+         startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/started')
+         timeStarted = int(startedStat.st_ctime)
+       except:
+         timeStarted = None
+                             
+       try:
+         heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/heartbeat')
+         timeHeartbeat = int(heartbeatStat.st_ctime)
+       except:
+         timeHeartbeat = None
+
+       try:                  
+         f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/shared/machinefeatures/hs06', 'r')
+         hs06 = float(f.readline().strip())
+         f.close()
+       except:
+         hs06 = hs06PerMachine
+
+       try:
+         # this is written by Vac as it monitors the machine through libvirt
+         f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/heartbeat', 'r')
+         oneLine = f.readline()
+         f.close()
+                                    
+         cpuSeconds = int(oneLine.split(' ')[0])
+         try:
+           cpuPercentage = float(oneLine.split(' ')[1])
+         except:
+           cpuPercentage = None
+                    
+       except:
+         cpuSeconds    = None
+         cpuPercentage = None
+
+       hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/finished')
+
+       shutdownMessage     = None
+       shutdownMessageTime = None
+
+       # some hardcoded timeouts in case old files are left lying around 
+       # this means that old files are ignored when working out the state
+       if (timeStarted and 
+           timeHeartbeat and 
+           (timeHeartbeat > int(time.time() - 3600)) and
+           not hasFinished):
+         vmState = VacState.running
+       elif not timeStarted and (newestCtime > int(time.time() - 3600)):
+         vmState = VacState.starting
+       else:
+         vmState = VacState.shutdown
+
+         try:
+           f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
+           shutdownMessage = f.readline().strip()
+           f.close()
+           shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUIDByVmtype + 
+                                                    '/shared/machineoutputs/shutdown_message').st_ctime)
+         except:
+           pass
+                                                                                                                         
+       vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(newestVmtypeName) + ', started ' + str(newestCtime) + ')')
+
+       responseDict = {
+                'method'		: 'machine',
+                'vac_version'		: 'Vac ' + vacVersion,
+                'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
+                'cookie'	  	: cookie,
+                'space'		    	: spaceName,
+                'factory'       	: os.uname()[1],
+                'num_machines'       	: len(virtualmachines),
+
+                'machine' 		: vmName,
+                'state'			: vmState,
+                'uuid'			: newestUUID,
+                'created_time'		: newestCtime,
+                'started_time'		: timeStarted,
+                'heartbeat_time'	: timeHeartbeat,
+                'cpu_seconds'		: cpuSeconds,
+                'cpu_percentage'	: cpuPercentage,
+                'hs06' 		       	: hs06,
+                'vmtype'		: newestVmtypeName,
+                'shutdown_message'  	: shutdownMessage,
+                'shutdown_time'     	: shutdownMessageTime
+                      }
+
+       if gocdbSitename:
+         responseDict['gocdb_site'] = gocdbSitename
+
+       responses.append(json.dumps(responseDict))                              
+
+   return responses
+   
+def makeVmtypeResponses(cookie):
+   # Send back vmtype messages to the querying factory or client
+   responses = []
+
+   # Go through the vmtypes
+   for vmtypeName in vmtypes:
+
+     totalHS06               = 0.0
+     lastShutdownMessage     = None
+     lastShutdownMessageTime = None
+     lastMachineName         = None
+     numBeforeFizzle         = 0
+
+     # Go through the VMs' instances of this vmtype
+     for vmName in sorted(virtualmachines):
+
+       try:
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
+       except:
+         continue
+
+       newestUUID  = None
+       newestCtime = None
+
+       for onedir in dirslist:
+         try:
+           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
+         except:
+           pass
+         else:
+           if not newestUUID or (ctime > newestCtime):
+             newestCtime = ctime
+             newestUUID  = onedir
+
+       # If we find an instance for this vmtype, get its state.
+       # The one we have picked was the one created most recently.
+       # For fizzles, this is the best indicator of what will happen
+       # if we create another VM of this vmtype now.
+       if newestUUID:
+         
+         try:
+           startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/started')
+           timeStarted = int(startedStat.st_ctime)
+         except:
+           timeStarted = None
+
+         try:
+           heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/heartbeat')
+           timeHeartbeat = int(heartbeatStat.st_ctime)
+         except:
+           timeHeartbeat = None
+
+         try:                  
+           f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/shared/machinefeatures/hs06', 'r')
+           hs06 = float(f.readline().strip())
+           f.close()
+         except:
+           hs06 = hs06PerMachine
+
+         hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/finished')
+
+         # some hardcoded timeouts here in case old files are left lying around 
+         # this means that old files are ignored when working out the state
+         if (timeStarted and 
+             timeHeartbeat and 
+             (timeHeartbeat > int(time.time() - 3600)) and
+             not hasFinished):
+           vmState = VacState.running
+           totalHS06 += hs06
+
+           if int(time.time()) < timeStarted + vmtypes[vmtypeName]['fizzle_seconds']:
+             numBeforeFizzle += 1
+
+         elif not timeStarted and (newestCtime > int(time.time() - 3600)):
+           vmState          = VacState.starting
+           totalHS06       += hs06
+           numBeforeFizzle += 1
+
+         else:
+           vmState = VacState.shutdown
+
+           try:
+             f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/shared/machineoutputs/shutdown_message')
+             shutdownMessage = f.readline().strip()
+             f.close()
+             messageCode = int(shutdownMessage[0:3])
+             shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + 
+                                               '/shared/machineoutputs/shutdown_message').st_ctime)
+           except:
+             # No explicit shutdown message with a message code, so we make one up if necessary
+             if timeStarted and timeHeartbeat and (timeHeartbeat - timeStarted) < vmtypes[vmtypeName]['fizzle_seconds']:
+               shutdownMessageTime = timeHeartbeat
+               shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
+                          
+           if shutdownMessage and shutdownMessageTime and \
+              (lastShutdownMessageTime is None or \
+               shutdownMessageTime > lastShutdownMessageTime):
+               
+             lastShutdownMessage     = shutdownMessage
+             lastShutdownMessageTime = shutdownMessageTime
+             lastMachineName         = vmName
+                                                        
+     responseDict = {
+                'method'		: 'machinetype',
+                'vac_version'		: 'Vac ' + vacVersion,
+                'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
+                'cookie'	  	: cookie,
+                'space'		    	: spaceName,
+                'factory'       	: os.uname()[1],
+                'num_vmtypes'       	: len(vmtypes),
+
+                'vmtype'		: vmtypeName,
+                'total_hs06'        	: totalHS06,
+                'num_before_fizzle' 	: numBeforeFizzle,
+                'shutdown_message'  	: lastShutdownMessage,
+                'shutdown_time'     	: lastShutdownMessageTime,
+                'shutdown_machine'  	: lastMachineName
+                     }
+
+     if gocdbSitename:
+       responseDict['gocdb_site'] = gocdbSitename
+       
+     try:
+       responseDict['fqan'] = vmtypes[vmtypeName]['accounting_fqan']
+     except:
+       pass
+
+     responses.append(json.dumps(responseDict))
+
+   return responses
+   
+def makeFactoryResponse(cookie):
+   # Send back factory status message to the querying client
+
+   vacDiskStatFS  = os.statvfs('/var/lib/vac')
+   rootDiskStatFS = os.statvfs('/tmp')
+   
+   memory = memInfo()
+
+   try:
+     f = open('/var/lib/vac/counts','r')
+     counts = f.readline().split()      
+     f.close()
+     runningMachines = int(counts[0])
+     runningCpus     = int(counts[2])
+   except:
+     runningCpus     = 0
+     runningMachines = 0
+
+   responseDict = {
+                'method'		   : 'factory',
+                'vac_version'		   : 'Vac ' + vacVersion,
+                'vacquery_version'	   : 'VacQuery ' + vacQueryVersion,
+                'cookie'	  	   : cookie,
+                'space'		    	   : spaceName,
+                'factory'       	   : os.uname()[1],
+                'time_sent'		   : int(time.time()),
+                'total_cpus'		   : numCpus,
+                'running_cpus'             : runningCpus,
+                'total_machines'           : numVirtualmachines,
+                'running_machines'         : runningMachines,
+                'total_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine,
+                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
+                'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
+                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
+                'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
+                'load_average'		   : loadAvg(2),
+                'kernel_version'	   : os.uname()[2],
+                'factory_heartbeat_time'   : int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime),
+                'responder_heartbeat_time' : int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime),
+                'swap_used_kb'		   : memory['SwapTotal'] - memory['SwapFree'],
+                'swap_free_kb'		   : memory['SwapFree'],
+                'mem_used_kb'		   : memory['MemTotal'] - memory['MemFree'],
+                'mem_total_kb'		   : memory['MemTotal']
+                  }
+
+   if gocdbSitename:
+     responseDict['gocdb_site'] = gocdbSitename
+
+   return json.dumps(responseDict)
+
+          
