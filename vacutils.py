@@ -41,6 +41,7 @@ import re
 import sys
 import stat
 import time
+import ctypes
 import string
 import urllib
 import StringIO
@@ -396,3 +397,57 @@ def splitCommaHeaders(inputList):
        outputList.append(x.strip())
        
    return outputList
+
+def setProcessName(processName):
+
+   try:
+     # Load the libc symbols
+     libc = ctypes.cdll.LoadLibrary('libc.so.6')
+
+     # Set up the C-style string
+     s = ctypes.create_string_buffer(len(processName) + 1)
+     s.value = processName
+
+     # PR_SET_NAME=15 in /usr/include/linux/prctl.h
+     libc.prctl(15, ctypes.byref(s), 0, 0, 0) 
+
+   except:
+     logLine('Failed setting process name to ' + processName + ' using prctl')
+     return
+              
+   try:
+     # Now find argv[] so we can overwrite it too     
+     argc_t = ctypes.POINTER(ctypes.c_char_p)
+
+     Py_GetArgcArgv = ctypes.pythonapi.Py_GetArgcArgv
+     Py_GetArgcArgv.restype = None
+     Py_GetArgcArgv.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.POINTER(argc_t)]
+
+     argv = ctypes.c_int(0)
+     argc = argc_t()
+     Py_GetArgcArgv(argv, ctypes.pointer(argc))
+
+     # Count up the available space
+     currentSize = -1
+
+     for oneArg in argc:
+       try:
+         # start from -1 to cancel the first "+ 1"
+         currentSize += len(oneArg) + 1
+       except:
+         break
+
+     # Cannot write more than already there
+     if len(processName) > currentSize:
+       processName = processName[:currentSize]
+
+     # Zero what is already there
+     ctypes.memset(argc.contents, 0, currentSize + 1)
+
+     # Write in the new process name
+     ctypes.memmove(argc.contents, processName, len(processName))
+
+   except:
+     logLine('Failed setting process name in argv[] to ' + processName)
+     return
+          

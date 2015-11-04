@@ -374,7 +374,7 @@ def vacResponder():
 
    vac.vacutils.logLine('vac responder starts')
    
-   vac.shared.setProcessName('vacd-responder')
+   vac.vacutils.setProcessName('vacd-responder')
 
    while True:
    
@@ -506,7 +506,7 @@ if __name__ == '__main__':
 
           vac.vacutils.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
           
-          vac.shared.setProcessName('vacd-factory')
+          vac.vacutils.setProcessName('vacd-factory')
 
           si = file('/dev/null', 'r')
           os.dup2(si.fileno(), sys.stdin.fileno())

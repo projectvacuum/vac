@@ -3,7 +3,7 @@ We are pleased to announce the release of Vac 0.19.0
 RPMs for SL6 and the 0.19 Admin Guide are available from the 0.19
 subdirectory of
 
-https://www.gridpp.ac.uk/vac/versions/
+https://repo.gridpp.ac.uk/vacproject/vac/
 
 Upgrades from 0.17.x onwards only require the RPM itself upgrading. To 
 upgrade from versions before 0.17.0, please install the 0.19.0 RPM and 
