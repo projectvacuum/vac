@@ -5,12 +5,26 @@ subdirectory of
 
 https://repo.gridpp.ac.uk/vacproject/vac/
 
+This release includes major changes to the internals of Vac but few
+changes to the features visible to site admins. There are no backwards
+incompatible changes in the configuration. 
+
+- Vac now uses the new VacQuery UDP protocol, which has been redesigned
+  for better scalability and tolerance of high UDP packet losses in the
+  future.
+- The vac utility's subcommand "machines" replaces "scan", and 
+  "vmtypes" becomes "machinetypes". Please see the vac(1) man page.
+- Experimental support for VacMon is included, with the option to
+  send regular VacQuery UDP packets with factory status and vmtype
+  activity to one or more VacMon monitoring services.
+- The vac.conf(5) man page documents the new configuration options
+  forward_dev, mb_per_cpu, min_wallclock_seconds, vacmon_hostport
+
 Upgrades from 0.17.x onwards only require the RPM itself upgrading. To 
 upgrade from versions before 0.17.0, please install the 0.19.0 RPM and 
 reboot, as Vac's internal NAT network changed style from transient to 
 persistent in version 0.17.0.
 
-
-
 The man pages and Admin Guide have been updated to reflect these changes.
 
+For more information about Vac please see https://www.gridpp.ac.uk/vac/
