@@ -1,4 +1,4 @@
-.TH VAC  "Mar 2014" "vac" "Vac Manual"
+.TH VAC  "Nov 2015" "vac" "Vac Manual"
 .SH NAME
 .B vac
 \- Vac utility command
@@ -29,62 +29,39 @@ Set timeout in seconds for UDP queries
 .SH COMMANDS
 
 .HP
-.B "scan [factory1] [factory2] [...]"
+.B "machines [factory1] [factory2] [...]"
 .br
-This command uses the Vac UDP Protocol to contact the factory machines in this
+This command uses the VacQuery UDP Protocol to contact the factory machines in this
 Vac space and outputs a summary of their responses. Each line in the output
 corresponds to the reported status of one virtual machine slot. This command
 can be used to get a quick overview of the status of a Vac space, including 
 which vmtypes are running and where, and the outcomes of virtual machines 
 that are currently shut down. By default all factories in the current
 space are contacted, but this can be limited to one or more by giving the
-FQDNs of factory machines on the command line.
+hostnames of factory machines on the command line. Hostnames will be
+canonicalised if the FQDN isn't given.
 
-Each line of output consists of: the virtual machine short hostname; the
-vmtype which most recently ran on that VM; an asterisk if the VM has been
-running for more than fizzle_seconds; the VM state (Running, Starting, Shut
-down); how long the VM has been running or starting, or the most recent
-shutdown_message; the CPU usage percentage over the lifetime of the VM for
-running VMs; the CPU usage percentage during the last cycle (by default 60
-seconds); the round trip time for the UDP query and response in seconds.
-
-At the end of the list, the number of responses and of running and starting
-VMs is displayed.
-
+If no virtual machines have run on a factory, then no responses are
+returned, and at a new site you will get no output from this command
+until some VMs have at least started.
 .RS
 .HP 
 .B "-H, --include-hs06"
 .br
 Include HEPSPEC06 benchmark figures in the output
 
-.HP
-.B "-V, --include-versions"
-.br
-Include the Vac version of factory machines
 .RE
 
 .HP
-.B "vmtype VMTYPE"
+.B "machinetype VMTYPE"
 .br
 Shows the most recent status of the given vmtype on the virtual machine
 slots of all factories that respond. This includes virtual machines which
 ran for this vmtype but have shut down, and will display their shutdown 
 messages if available. 
 
-Each line of output consists of: the virtual machine short hostname; an 
-asterisk if the VM has been running for more than fizzle_seconds; the VM 
-state (Running, Starting, Shut down); the time when the VM was created and
-entered the short starting phase; the CPU usage percentage over the 
-lifetime of the VM; the number of hours the VM has run for or ran for;
-the finish time of the VM for shut down VMs; either the shutdown message
-for shut down VMs, or the CPU percentage during the last cycle for running
-VMs.
-
-At the end of the list, the number of responses and of running and starting
-VMs is displayed for this vmtype.
-
 .HP
-.B "raw factory1 [factory2] [...]"
+.B "factories factory1 [factory2] [...]"
 .br
 Outputs the raw responses from one or more factory machines.
 
