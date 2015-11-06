@@ -9,6 +9,8 @@
 is a command-line utility for querying the status of vacd(8) factory
 machines.
 
+.B Until the 1.0 release, the format of the results of this command may change without notice, and should not be relied on by other scripts etc.
+
 .SH GENERAL OPTIONS
 
 .HP 
@@ -44,13 +46,6 @@ canonicalised if the FQDN isn't given.
 If no virtual machines have run on a factory, then no responses are
 returned, and at a new site you will get no output from this command
 until some VMs have at least started.
-.RS
-.HP 
-.B "-H, --include-hs06"
-.br
-Include HEPSPEC06 benchmark figures in the output
-
-.RE
 
 .HP
 .B "machinetype VMTYPE"

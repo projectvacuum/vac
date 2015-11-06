@@ -104,13 +104,7 @@ def queryMachines(options, factoryList):
                        ((response['vmtype'] + 14 * ' ') if response['vmtype'] else 10 * '-' + '    ')[0:14] + ' ' + 
                        stateStr + '  ' + 
                        hoursStr[0:21] + 
-                       percentStr + 
-                       ((' ' + str(response['hs06'])) if options.includeHS06 and 
-                                                         response['hs06'] is not None 
-                                                      else '') + 
-                       ((' ' + response['vac_version']) if options.includeVersions and 
-                                                       response['vac_version'] is not None 
-                                                    else '')
+                       percentStr
                       )
 
 def queryMachineType(options, machineTypeName, factoryList):
