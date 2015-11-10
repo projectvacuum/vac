@@ -88,7 +88,7 @@ def secondsToHHMMSS(seconds):
    mm, ss = divmod(ss, 60)
    return '%02d:%02d:%02d' % (hh, mm, ss)
 
-def createUserData(shutdownTime, machinetypesPath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr, 
+def createUserData(shutdownTime, machinetypePath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr, 
                    machinefeaturesURL = None, jobfeaturesURL = None, joboutputsURL = None):
    
    # Get raw user_data template file, either from network ...
@@ -121,7 +121,7 @@ def createUserData(shutdownTime, machinetypesPath, options, versionString, space
      if userDataPath[0] == '/':
        userDataFile = userDataPath
      else:
-       userDataFile = machinetypesPath + '/' + machinetypeName + '/' + userDataPath
+       userDataFile = machinetypesPath + '/' + userDataPath
 
      try:
        u = open(userDataFile, 'r')
@@ -161,12 +161,12 @@ def createUserData(shutdownTime, machinetypesPath, options, versionString, space
      if options['user_data_proxy_cert'][0] == '/':
        certPath = options['user_data_proxy_cert']
      else:
-       certPath = machinetypesPath + '/' + machinetypeName + '/' + options['user_data_proxy_cert']
+       certPath = machinetypesPath + '/' + options['user_data_proxy_cert']
 
      if options['user_data_proxy_key'][0] == '/':
        keyPath = options['user_data_proxy_key']
      else:
-       keyPath = machinetypesPath + '/' + machinetypeName + '/' + options['user_data_proxy_key']
+       keyPath = machinetypesPath + '/' + options['user_data_proxy_key']
 
      try:
        if ('legacy_proxy' in options) and options['legacy_proxy']:
@@ -187,7 +187,7 @@ def createUserData(shutdownTime, machinetypesPath, options, versionString, space
            if oneValue[0] == '/':
              f = open(oneValue, 'r')
            else:
-             f = open(machinetypesPath + '/' + machinetypeName + '/' + oneValue, 'r')
+             f = open(machinetypesPath + '/' + oneValue, 'r')
                            
            userDataContents = userDataContents.replace('##' + oneOption + '##', f.read())
            f.close()
