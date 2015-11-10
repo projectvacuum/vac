@@ -121,7 +121,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      if userDataPath[0] == '/':
        userDataFile = userDataPath
      else:
-       userDataFile = machinetypesPath + '/' + userDataPath
+       userDataFile = machinetypePath + '/' + userDataPath
 
      try:
        u = open(userDataFile, 'r')
@@ -161,12 +161,12 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      if options['user_data_proxy_cert'][0] == '/':
        certPath = options['user_data_proxy_cert']
      else:
-       certPath = machinetypesPath + '/' + options['user_data_proxy_cert']
+       certPath = machinetypePath + '/' + options['user_data_proxy_cert']
 
      if options['user_data_proxy_key'][0] == '/':
        keyPath = options['user_data_proxy_key']
      else:
-       keyPath = machinetypesPath + '/' + options['user_data_proxy_key']
+       keyPath = machinetypePath + '/' + options['user_data_proxy_key']
 
      try:
        if ('legacy_proxy' in options) and options['legacy_proxy']:
@@ -187,7 +187,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
            if oneValue[0] == '/':
              f = open(oneValue, 'r')
            else:
-             f = open(machinetypesPath + '/' + oneValue, 'r')
+             f = open(machinetypePath + '/' + oneValue, 'r')
                            
            userDataContents = userDataContents.replace('##' + oneOption + '##', f.read())
            f.close()
