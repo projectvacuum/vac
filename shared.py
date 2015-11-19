@@ -832,6 +832,7 @@ class VacVM:
             pass 
         else: raise
 
+      # context.sh covers legacy amiconfig configuration in CernVM
       f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/context.sh', 'w')
 
       if 'root_public_key' in vmtypes[self.vmtypeName]:
@@ -854,13 +855,18 @@ class VacVM:
 
           if self.userDataContents:
             f.write('EC2_USER_DATA=' +  base64.b64encode(self.userDataContents) + '\n')
+            
+          # user-data and (null) meta-data covers Cloud Init's NoCloud data source
+          open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/user-data','w').write(self.userDataContents)
+          open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/meta-data','w').write('')
   
       f.write('ONE_CONTEXT_PATH="/var/lib/amiconfig"\n')
       f.write('MACHINEFEATURES="/etc/machinefeatures"\n')
       f.write('JOBFEATURES="/etc/jobfeatures"\n')
       f.close()
 
-      os.system('genisoimage -quiet -o /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+      # Cloud Init NoCloud data source requires joliet and rock-ridge extensions, and volume label to be cidata (amiconfig doesn't care)
+      os.system('genisoimage -quiet -joliet -rock -V cidata -o /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
                 + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d')
 
    def setupUserDataContents(self):
