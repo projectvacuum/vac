@@ -63,11 +63,6 @@ seconds.
 gives the type of hypervisor used, and can be either kvm or xen. kvm is the
 default and is the preferred choice for production use.
 
-.B delete_old_files
-can be set to False to disable the normal behaviour where old files associated
-with transient VMs which have finished are deleted. This can be useful for
-debugging but can easily allow disks to fill up.
-
 .B cpu_per_machine
 sets the number of virtual CPUs to assign to each VM. Along with cpu_total,
 this is also used when calculating how many virtual machines can be created.

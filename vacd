@@ -47,6 +47,7 @@ import base64
 import multiprocessing
 import stat
 import random
+import BaseHTTPServer
 
 import libvirt
 
@@ -175,8 +176,6 @@ def vacOneCycle():
    
    vac.shared.cleanupLoggedMachineoutputs()
 
-   vac.shared.cleanupExports()
-
    if not os.path.exists('/var/lib/vac/factory-daily') or \
       time.time() > (os.stat('/var/lib/vac/factory-daily').st_ctime + 86400.0):
          vac.vacutils.createFile('/var/lib/vac/factory-daily', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
@@ -195,7 +194,7 @@ def vacOneCycle():
       # In case of unresolvable problems, we end this cycle
       return
 
-   vac.vacutils.logLine('VMs available to this factory machine: ' + str(vac.shared.virtualmachines))
+   vac.vacutils.logLine(str(numVirtualmachines + ' VMs available to this factory machine')
    vac.vacutils.logLine('VM Types configuration: ' + str(vac.shared.machinetypes))
    vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
@@ -205,9 +204,10 @@ def vacOneCycle():
    runningCount  = 0
    startedOne    = False
    
-   for vmname in sorted(vac.shared.virtualmachines):
+   for ordinal in range(numVirtualmachines):
    
-     vm = vac.shared.VacVM(vmname)
+     vmname = vac.shared.nameFromOrdinal(ordinal)   
+     vm     = vac.shared.VacVM(ordinal)
 
      if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
@@ -235,10 +235,7 @@ def vacOneCycle():
           (vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds'] > 0) and \
           (int(time.time()) > (vm.started + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds'])):
 
-          try:
-            mtime = int(os.stat('/var/lib/vac/machines/' + vmname + '/' + vm.machinetypeName + '/' + \
-                            vm.uuidStr + '/shared/machineoutputs/' + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file']).st_mtime)
-          except:
+          if vm.joboutputsHeartbeat is None:
             #  destroy VM if file does not exist (even if heartbeat_seconds is zero)
             vac.vacutils.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
                         str(vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
@@ -247,9 +244,9 @@ def vacOneCycle():
           else:
             # if heartbeat_seconds is set, we check the file is recent
             if (vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'] > 0) and \
-               (int(time.time()) > (mtime + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'])):
+               (int(time.time()) > (vm.joboutputsHeartbeat + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'])):
 
-              vac.vacutils.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - mtime) + 
+              vac.vacutils.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - vm.joboutputsHeartbeat) + 
                           ' seconds without updating heartbeat file (' + 
                           vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file'] + ') - destroying!')
               vm.destroyVM()
@@ -291,8 +288,9 @@ def vacOneCycle():
          # count up the running VMs' CPUs on the this factory
          totalCpusForCount = 0
   
-         for vmnameForCount in vac.shared.virtualmachines:
-           vmForCount = vac.shared.VacVM(vmnameForCount)
+         for ordinal in range(numVirtualmachines):
+         
+           vmForCount = vac.shared.VacVM(ordinal)
 
            if vmForCount.state == vac.shared.VacState.running:
               totalCpusForCount += vmForCount.cpus
@@ -473,6 +471,75 @@ def vacResponder():
 
    sys.exit(0) # if we break out of while loop then we exit
 
+class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+   def do_GET(self):
+     self.send_response(200)
+     self.send_header('Content-type','text/plain')
+     self.end_headers()
+     self.wfile.write('123')
+
+def vacHttpd():
+
+   si = file('/dev/null', 'r')
+   os.dup2(si.fileno(), sys.stdin.fileno())
+
+   so = file('/var/log/vacd-httpd', 'a+')
+   os.dup2(so.fileno(), sys.stdout.fileno())
+          
+   se = file('/var/log/vacd-httpd', 'a+', 0)     
+   os.dup2(se.fileno(), sys.stderr.fileno())
+ 
+   vac.vacutils.createFile('/var/lib/vac/httpd.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+   vac.vacutils.logLine('vac httpd starts')
+   
+   vac.vacutils.setProcessName('vacd-httpd')
+
+   httpd = BaseHTTPServer.HTTPServer(('169.254.169.254', 80), vacHttpdHandler)
+
+   while True:
+   
+     try:
+       close(so)
+     except:
+       pass
+           
+     so = file('/var/log/vacd-httpd', 'a+')
+     os.dup2(so.fileno(), sys.stdout.fileno())
+          
+     try:
+       close(se)
+     except:
+       pass
+
+     se = file('/var/log/vacd-httpd', 'a+', 0)
+     os.dup2(se.fileno(), sys.stderr.fileno())
+
+     try:
+       pr = open('/var/lib/vac/httpd.pid', 'r')
+       pid = int(pr.read().strip())
+       pr.close()
+       
+       if pid != os.getpid():
+         vac.vacutils.logLine('os.getpid ' + os.getpid() + ' does not match httpd.pid ' + pid + ' - exiting')
+         break
+                
+     except:
+       vac.vacutils.logLine('no httpd.pid - exiting')
+       break
+
+     # so log file is updated before we start waiting        
+     sys.stdout.flush()
+     sys.stderr.flush()
+
+     # Update httpd heartbeat file
+     vac.vacutils.createFile('/var/lib/vac/httpd-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+     httpd.handle_request()
+
+   sys.exit(0) # if we break out of while loop then we exit
+
 #
 # PROGRAM MAIN !!!
 # 
@@ -497,6 +564,10 @@ if __name__ == '__main__':
         if os.fork() == 0:
 
           vacResponder()
+
+        elif os.fork() == 0:
+
+          vacHttpd()
 
         else:
           try:

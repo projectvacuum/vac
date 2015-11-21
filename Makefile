@@ -64,7 +64,7 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machinetypes \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/apel-archive \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/apel-outgoing \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/machineoutputs \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/http \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machines \
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d \

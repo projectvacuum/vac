@@ -28,6 +28,7 @@ stop() {
         echo -n $"Shutting down vacd: "
 	killproc vacd-factory
 	killproc vacd-responder
+	killproc vacd-httpd
 	RETVAL=$?
         echo
 	return $RETVAL
