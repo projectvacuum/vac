@@ -89,7 +89,7 @@ vacVersion = None
 cpuPerMachine = None
 versionLogger = None
 virtualmachines = None
-vmtypes = None
+machinetypes = None
 vacmons = None
 
 volumeGroup = None
@@ -100,7 +100,7 @@ def readConf():
       global deleteOldFiles, domainType, gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, versionLogger, virtualmachines, vmtypes, vacmons, \
+             cpuPerMachine, versionLogger, virtualmachines, machinetypes, vacmons, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -126,7 +126,7 @@ def readConf():
       cpuPerMachine = 1
       versionLogger = True
       virtualmachines = {}
-      vmtypes = {}
+      machinetypes = {}
       vacmons = []
       
       volumeGroup = 'vac_volume_group'
@@ -209,8 +209,8 @@ def readConf():
           # Size in GB (1000^3) of scratch volumes, 0 to disable, default is 40
           gbScratch = int(parser.get('settings','scratch_gb').strip())
              
-      if parser.has_option('settings', 'cycle_seconds'):
-          print 'cycle_seconds is no longer used'
+#      if parser.has_option('settings', 'cycle_seconds'):
+#          print 'cycle_seconds is no longer used'
 
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
@@ -293,93 +293,97 @@ def readConf():
            else:
              machinefeaturesOptions[oneOption[23:]] = parser.get('settings', oneOption)
 
-      # all other sections are VM types (other types of section are ignored)
+      # all other sections are machinetypes (other types of section are ignored)
       for sectionName in parser.sections():
 
          sectionNameSplit = sectionName.lower().split(None,1)
          
-         if sectionNameSplit[0] == 'vmtype':
+         # For now, can still define these machinetype sections with [machinetype ...]
+         if sectionNameSplit[0] == 'machinetype' or sectionNameSplit[0] == 'vmtype':
          
              if string.translate(sectionNameSplit[1], None, '0123456789abcdefghijklmnopqrstuvwxyz-') != '':
-                 return 'Name of vmtype section [vmtype ' + sectionNameSplit[1] + '] can only contain a-z 0-9 or -'
+                 return 'Name of machinetype section [machinetype ' + sectionNameSplit[1] + '] can only contain a-z 0-9 or -'
          
-             vmtype = {}
-             vmtype['root_image'] = parser.get(sectionName, 'root_image')
+             machinetype = {}
+             machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
              if parser.has_option(sectionName, 'target_share'):
-                 vmtype['share'] = float(parser.get(sectionName, 'target_share'))
+                 machinetype['share'] = float(parser.get(sectionName, 'target_share'))
              elif parser.has_option('targetshares', sectionNameSplit[1]):
-                 return "Please use a target_shares option within [vmtype " + sectionNameSplit[1] + "] rather than a separate [targetshares] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
+                 return "Please use a target_shares option within [machinetype " + sectionNameSplit[1] + "] rather than a separate [targetshares] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
              else:
-                 vmtype['share'] = 0.0
+                 machinetype['share'] = 0.0
                                             
-             if parser.has_option(sectionName, 'vm_model'):
-                 vmtype['vm_model'] = parser.get(sectionName, 'vm_model')
+             if parser.has_option(sectionName, 'machine_model'):
+                 machinetype['machine_model'] = parser.get(sectionName, 'machine_model')
+             elif parser.has_option(sectionName, 'vm_model'):
+                 # Deprecation warnings next time!
+                 machinetype['machine_model'] = parser.get(sectionName, 'vm_model')
              else:
-                 vmtype['vm_model'] = 'cernvm3'
+                 machinetype['machine_model'] = 'cernvm3'
              
              if parser.has_option(sectionName, 'root_device'):
-                 vmtype['root_device'] = parser.get(sectionName, 'root_device')
+                 machinetype['root_device'] = parser.get(sectionName, 'root_device')
              else:
-                 vmtype['root_device'] = 'vda'
+                 machinetype['root_device'] = 'vda'
              
              if parser.has_option(sectionName, 'scratch_device'):
-                 vmtype['scratch_device'] = parser.get(sectionName, 'scratch_device')
+                 machinetype['scratch_device'] = parser.get(sectionName, 'scratch_device')
              else:
-                 vmtype['scratch_device'] = 'vdb'
+                 machinetype['scratch_device'] = 'vdb'
 
              if parser.has_option(sectionName, 'rootpublickey'):
                  print 'The rootpublickey option is deprecated; please use root_public_key!'
-                 vmtype['root_public_key'] = parser.get(sectionName, 'rootpublickey')
+                 machinetype['root_public_key'] = parser.get(sectionName, 'rootpublickey')
              elif parser.has_option(sectionName, 'root_public_key'):
-                 vmtype['root_public_key'] = parser.get(sectionName, 'root_public_key')
+                 machinetype['root_public_key'] = parser.get(sectionName, 'root_public_key')
 
              if parser.has_option(sectionName, 'user_data'):
-                 vmtype['user_data'] = parser.get(sectionName, 'user_data')
+                 machinetype['user_data'] = parser.get(sectionName, 'user_data')
              else:
-                 return 'user_data is now required in each vmtype section!'
+                 return 'user_data is now required in each machinetype section!'
 
              if parser.has_option(sectionName, 'log_machineoutputs') and \
                 parser.get(sectionName,'log_machineoutputs').strip().lower() == 'true':
-                 vmtype['log_machineoutputs'] = True
+                 machinetype['log_machineoutputs'] = True
              else:
-                 vmtype['log_machineoutputs'] = False
+                 machinetype['log_machineoutputs'] = False
              
              if parser.has_option(sectionName, 'machineoutputs_days'):
-                 vmtype['machineoutputs_days'] = float(parser.get(sectionName, 'machineoutputs_days'))
+                 machinetype['machineoutputs_days'] = float(parser.get(sectionName, 'machineoutputs_days'))
              else:
-                 vmtype['machineoutputs_days'] = 3.0
+                 machinetype['machineoutputs_days'] = 3.0
              
              if parser.has_option(sectionName, 'max_wallclock_seconds'):
-                 vmtype['max_wallclock_seconds'] = int(parser.get(sectionName, 'max_wallclock_seconds'))
+                 machinetype['max_wallclock_seconds'] = int(parser.get(sectionName, 'max_wallclock_seconds'))
              else:
-                 vmtype['max_wallclock_seconds'] = 86400
+                 machinetype['max_wallclock_seconds'] = 86400
              
              if parser.has_option(sectionName, 'min_wallclock_seconds'):
-                 vmtype['min_wallclock_seconds'] = int(parser.get(sectionName, 'min_wallclock_seconds'))
+                 machinetype['min_wallclock_seconds'] = int(parser.get(sectionName, 'min_wallclock_seconds'))
              else:
-                 vmtype['min_wallclock_seconds'] = vmtype['max_wallclock_seconds']
+                 machinetype['min_wallclock_seconds'] = machinetype['max_wallclock_seconds']
 
              if parser.has_option(sectionName, 'backoff_seconds'):
-                 vmtype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
+                 machinetype['backoff_seconds'] = int(parser.get(sectionName, 'backoff_seconds'))
              else:
-                 vmtype['backoff_seconds'] = 10
+                 machinetype['backoff_seconds'] = 10
              
              if parser.has_option(sectionName, 'fizzle_seconds'):
-                 vmtype['fizzle_seconds'] = int(parser.get(sectionName, 'fizzle_seconds'))
+                 machinetype['fizzle_seconds'] = int(parser.get(sectionName, 'fizzle_seconds'))
              else:
-                 vmtype['fizzle_seconds'] = 600
+                 machinetype['fizzle_seconds'] = 600
             
              if parser.has_option(sectionName, 'heartbeat_file'):
-                 vmtype['heartbeat_file'] = parser.get(sectionName, 'heartbeat_file')
+                 machinetype['heartbeat_file'] = parser.get(sectionName, 'heartbeat_file')
 
              if parser.has_option(sectionName, 'heartbeat_seconds'):
-                 vmtype['heartbeat_seconds'] = int(parser.get(sectionName, 'heartbeat_seconds'))
+                 machinetype['heartbeat_seconds'] = int(parser.get(sectionName, 'heartbeat_seconds'))
              else:
-                 vmtype['heartbeat_seconds'] = 0
+                 machinetype['heartbeat_seconds'] = 0
              
              if parser.has_option(sectionName, 'accounting_fqan'):
-                 vmtype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
+                 machinetype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
              
              for (oneOption,oneValue) in parser.items(sectionName):
 
@@ -388,7 +392,7 @@ def readConf():
                    if string.translate(oneOption, None, '0123456789abcdefghijklmnopqrstuvwxyz_') != '':
                      return 'Name of user_data_option_xxx (' + oneOption + ') must only contain a-z 0-9 and _'
                    else:              
-                     vmtype[oneOption] = parser.get(sectionName, oneOption)                
+                     machinetype[oneOption] = parser.get(sectionName, oneOption)                
              
              if parser.has_option(sectionName, 'user_data_proxy_cert') and \
                 not parser.has_option(sectionName, 'user_data_proxy_key') :
@@ -398,16 +402,16 @@ def readConf():
                  return 'user_data_proxy_key given but user_data_proxy_cert missing (they can point to the same file if necessary)'
              elif parser.has_option(sectionName, 'user_data_proxy_cert') and \
                   parser.has_option(sectionName, 'user_data_proxy_key') :
-                 vmtype['user_data_proxy_cert'] = parser.get(sectionName, 'user_data_proxy_cert')
-                 vmtype['user_data_proxy_key']  = parser.get(sectionName, 'user_data_proxy_key')
+                 machinetype['user_data_proxy_cert'] = parser.get(sectionName, 'user_data_proxy_cert')
+                 machinetype['user_data_proxy_key']  = parser.get(sectionName, 'user_data_proxy_key')
              
              if parser.has_option(sectionName, 'legacy_proxy') and \
                 parser.get(sectionName,'legacy_proxy').strip().lower() == 'true':
-                 vmtype['legacy_proxy'] = True
+                 machinetype['legacy_proxy'] = True
              else:
-                 vmtype['legacy_proxy'] = False
+                 machinetype['legacy_proxy'] = False
              
-             vmtypes[sectionNameSplit[1]] = vmtype
+             machinetypes[sectionNameSplit[1]] = machinetype
                           
       # Define VMs
       ordinal = 0
@@ -533,7 +537,7 @@ class VacVM:
       self.name=hname
       self.state=VacState.unknown
       self.uuidStr=None
-      self.vmtypeName=None
+      self.machinetypeName=None
       self.finishedFile=None
       self.cpuSeconds = 0
       self.cpus = cpuPerMachine
@@ -555,14 +559,14 @@ class VacVM:
           except:
             pass
 
-          for vmtypeName, vmtype in vmtypes.iteritems():
-               if os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + vmtypeName + '/' + self.uuidStr):
-                   self.vmtypeName = vmtypeName
+          for machinetypeName, machinetype in machinetypes.iteritems():
+               if os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + machinetypeName + '/' + self.uuidStr):
+                   self.machinetypeName = machinetypeName
                    break
                   
           domState = dom.info()[0]
           
-          if not self.vmtypeName:
+          if not self.machinetypeName:
             self.state = VacState.zombie
             self.uuidStr = None
           elif (domState == libvirt.VIR_DOMAIN_RUNNING or
@@ -580,24 +584,24 @@ class VacVM:
           self.uuidFromLatestVM()
 
           try:
-            f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 'r')
+            f = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/heartbeat', 'r')
             self.cpuSeconds = int(f.readline().split(' ')[0])
             f.close()
           except:
             pass
 
-          if self.uuidStr and self.vmtypeName \
-             and not os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
+          if self.uuidStr and self.machinetypeName \
+             and not os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + 
                                                                     '/' + self.uuidStr + '/started'):
               self.state = VacState.starting
                         
           try: 
-            f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr
+            f = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr
                                          + '/shared/machineoutputs/shutdown_message', 'r')
             self.shutdownMessage = f.readline().strip()
             f.close()
 
-            self.timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
+            self.timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + 
                                             '/' + self.uuidStr + '/shared/machineoutputs/shutdown_message').st_ctime)
           except:
             self.shutdownMessage = None
@@ -607,19 +611,19 @@ class VacVM:
       conn.close()
       
       try:
-           self.started = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
+           self.started = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + 
                                             '/' + self.uuidStr + '/started').st_ctime)
       except:
            self.started = None
                           
       try:
-           self.heartbeat = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + 
+           self.heartbeat = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + 
                                             '/' + self.uuidStr + '/heartbeat').st_ctime)
       except:
            self.heartbeat = None
 
       try: 
-           self.shutdownTime = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+           self.shutdownTime = int(open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr 
                                          + '/shared/machinefeatures/shutdowntime', 'r').read().strip())
       except:
            self.shutdownTime = None
@@ -627,36 +631,36 @@ class VacVM:
            if shutdownTime and (shutdownTime < self.shutdownTime):
              # need to reduce shutdowntime in the VM
              try:
-               vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+               vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(shutdownTime) + '\n', 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-               vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+               vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
                  str(shutdownTime) + '\n', 
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              except:
                pass
 
       try: 
-           self.cpus = int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+           self.cpus = int(open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr 
                                 + '/shared/jobfeatures/allocated_CPU', 'r').read().strip())
       except:
            pass
       
       try: 
-           self.hs06 = float(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+           self.hs06 = float(open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr 
                                 + '/shared/machinefeatures/hs06', 'r').read().strip())
       except:
            self.hs06 = hs06PerMachine
       
       try: 
            # we use our mem_limit_bytes to avoid usage of 1000^2 for memory in MJF mem_limit_MB spec
-           self.mb = (int(open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+           self.mb = (int(open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr 
                                 + '/shared/jobfeatures/mem_limit_bytes', 'r').read().strip()) / 1048576)
       except:
            self.mb = mbPerMachine
       
-      if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
+      if self.uuidStr and os.path.exists('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr 
                                          + '/finished') :
           self.finishedFile = True
       else:
@@ -666,13 +670,13 @@ class VacVM:
       self.heartbeat = int(time.time())
       
       try:
-        f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
+        f = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' +
                  self.uuidStr + '/heartbeat', 'r')
         lastCpuSeconds = int(f.readline().split(' ')[0])
         f.close()
         
         lastHeartbeat = int(os.stat('/var/lib/vac/machines/' + self.name + '/' + 
-                                    self.vmtypeName + '/' + self.uuidStr + '/heartbeat').st_ctime)
+                                    self.machinetypeName + '/' + self.uuidStr + '/heartbeat').st_ctime)
                                     
         cpuPercentage = 100.0 * float(self.cpuSeconds - lastCpuSeconds) / (self.heartbeat - lastHeartbeat)
         heartbeatLine = str(self.cpuSeconds) + (" %.1f" % cpuPercentage)
@@ -680,17 +684,17 @@ class VacVM:
         heartbeatLine = str(self.cpuSeconds)
 
       try:
-        vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' +
+        vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' +
                                 self.uuidStr + '/heartbeat', heartbeatLine + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
         pass
                                   
    def createFinishedFile(self):
       try:
-        f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished', 'w')
+        f = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/finished', 'w')
         f.close()
       except:
-        vac.vacutils.logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/finished')
+        vac.vacutils.logLine('Failed creating /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/finished')
 
    def writeApel(self):
       # Write accounting information about a VM that has finished
@@ -698,7 +702,7 @@ class VacVM:
         return
 
       # If the VM just ran for fizzle_seconds, then we don't log it
-      if (self.heartbeat - self.started) < vmtypes[self.vmtypeName]['fizzle_seconds']:
+      if (self.heartbeat - self.started) < machinetypes[self.machinetypeName]['fizzle_seconds']:
         return
         
       nowTime = time.localtime()
@@ -717,8 +721,8 @@ class VacVM:
       for component in spaceName.split('.'):
         userDN = '/DC=' + component + userDN
         
-      if 'accounting_fqan' in vmtypes[self.vmtypeName]:
-        userFQANField = 'FQAN: ' + vmtypes[self.vmtypeName]['accounting_fqan'] + '\n'
+      if 'accounting_fqan' in machinetypes[self.machinetypeName]:
+        userFQANField = 'FQAN: ' + machinetypes[self.machinetypeName]['accounting_fqan'] + '\n'
       else:
         userFQANField = ''
 
@@ -732,7 +736,7 @@ class VacVM:
               'SubmitHost: ' + spaceName + '/vac-' + os.uname()[1] + '\n' +
               'LocalJobId: ' + self.uuidStr + '\n' +
               'LocalUserId: ' + os.uname()[1] + '\n' +
-              'Queue: ' + self.vmtypeName + '\n' +
+              'Queue: ' + self.machinetypeName + '\n' +
               'GlobalUserName: ' + userDN + '\n' +
               userFQANField +
               'WallDuration: ' + str(self.heartbeat - self.started) + '\n' +
@@ -769,16 +773,16 @@ class VacVM:
    
       try:
         # Get the list of files that the VM has left in its /etc/machineoutputs
-        outputs = os.listdir('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+        outputs = os.listdir('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machineoutputs')
       except:
-        vac.vacutils.logLine('Failed reading /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+        vac.vacutils.logLine('Failed reading /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machineoutputs')
         return
         
       try:
-        os.makedirs('/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr, 
+        os.makedirs('/var/lib/vac/machineoutputs/' + self.machinetypeName + '/' + self.name + '/' + self.uuidStr, 
                     stat.S_IWUSR + stat.S_IXUSR + stat.S_IRUSR + stat.S_IXGRP + stat.S_IRGRP + stat.S_IXOTH + stat.S_IROTH)
       except:
-        vac.vacutils.logLine('Failed creating /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr)
+        vac.vacutils.logLine('Failed creating /var/lib/vac/machineoutputs/' + self.machinetypeName + '/' + self.name + '/' + self.uuidStr)
         return
       
       if outputs:
@@ -787,69 +791,69 @@ class VacVM:
 
           try:
             # first we try a hard link, which is efficient in time and space used
-            os.link('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+            os.link('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput,
-                    '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
+                    '/var/lib/vac/machineoutputs/' + self.machinetypeName + '/' + 
                         self.name + '/' + self.uuidStr + '/' + oneOutput)
           except:
             try:
               # if linking failed (different filesystems?) then we try a copy
-              shutil.copyfile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+              shutil.copyfile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput,
-                              '/var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + 
+                              '/var/lib/vac/machineoutputs/' + self.machinetypeName + '/' + 
                         self.name + '/' + self.uuidStr + '/' + oneOutput)
             except:
-              vac.vacutils.logLine('Failed copying /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + 
+              vac.vacutils.logLine('Failed copying /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + 
                         self.uuidStr + '/shared/machineoutputs/' + oneOutput + 
-                        ' to /var/lib/vac/machineoutputs/' + self.vmtypeName + '/' + self.name + '/' + self.uuidStr + '/')
+                        ' to /var/lib/vac/machineoutputs/' + self.machinetypeName + '/' + self.name + '/' + self.uuidStr + '/')
    
    def uuidFromLatestVM(self):
 
       self.uuidStr    = None
-      self.vmtypeName = None
+      self.machinetypeName = None
       
-      for vmtypeName, vmtype in vmtypes.iteritems():
+      for machinetypeName, machinetype in machinetypes.iteritems():
         try:
-             dirslist = os.listdir('/var/lib/vac/machines/' + self.name + '/' + vmtypeName)
+             dirslist = os.listdir('/var/lib/vac/machines/' + self.name + '/' + machinetypeName)
         except:
              continue
 
         for onedir in dirslist:
-          if os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + vmtypeName + '/' + onedir):
-             if self.vmtypeName and self.uuidStr:
-                if os.stat('/var/lib/vac/machines/' + self.name + '/' + vmtypeName + '/' + onedir).st_ctime > os.stat('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr).st_ctime:
+          if os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + machinetypeName + '/' + onedir):
+             if self.machinetypeName and self.uuidStr:
+                if os.stat('/var/lib/vac/machines/' + self.name + '/' + machinetypeName + '/' + onedir).st_ctime > os.stat('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr).st_ctime:
                   self.uuidStr = onedir          
-                  self.vmtypeName = vmtypeName
+                  self.machinetypeName = machinetypeName
              else:
-               self.vmtypeName = vmtypeName
+               self.machinetypeName = machinetypeName
                self.uuidStr = onedir
           
    def makeISO(self):
       try:
-        os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+        os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
       except OSError as exc: # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d'):
+        if exc.errno == errno.EEXIST and os.path.isdir('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d'):
             pass 
         else: raise
 
       # context.sh covers legacy amiconfig configuration in CernVM
-      f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/context.sh', 'w')
+      f = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/context.sh', 'w')
 
-      if 'root_public_key' in vmtypes[self.vmtypeName]:
+      if 'root_public_key' in machinetypes[self.machinetypeName]:
 
-          if vmtypes[self.vmtypeName]['root_public_key'][0] == '/':
-              root_public_key_file = vmtypes[self.vmtypeName]['root_public_key']
+          if machinetypes[self.machinetypeName]['root_public_key'][0] == '/':
+              root_public_key_file = machinetypes[self.machinetypeName]['root_public_key']
           else:
-              root_public_key_file = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['root_public_key']
+              root_public_key_file = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_public_key']
 
           try:
-           shutil.copy2(root_public_key_file, '/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/root.pub')
+           shutil.copy2(root_public_key_file, '/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/root.pub')
           except:
            raise NameError('Failed to copy ' + root_public_key_file)
                       
           f.write('ROOT_PUBKEY=root.pub\n')
   
-      if 'user_data' in vmtypes[self.vmtypeName]:
+      if 'user_data' in machinetypes[self.machinetypeName]:
 
           self.setupUserDataContents()
 
@@ -857,8 +861,8 @@ class VacVM:
             f.write('EC2_USER_DATA=' +  base64.b64encode(self.userDataContents) + '\n')
             
           # user-data and (null) meta-data covers Cloud Init's NoCloud data source
-          open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/user-data','w').write(self.userDataContents)
-          open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d/meta-data','w').write('')
+          open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/user-data','w').write(self.userDataContents)
+          open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/meta-data','w').write('')
   
       f.write('ONE_CONTEXT_PATH="/var/lib/amiconfig"\n')
       f.write('MACHINEFEATURES="/etc/machinefeatures"\n')
@@ -866,12 +870,12 @@ class VacVM:
       f.close()
 
       # Cloud Init NoCloud data source requires joliet and rock-ridge extensions, and volume label to be cidata (amiconfig doesn't care)
-      os.system('genisoimage -quiet -joliet -rock -V cidata -o /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr 
-                + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/iso.d')
+      os.system('genisoimage -quiet -joliet -rock -V cidata -o /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr 
+                + '/context.iso /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d')
 
    def setupUserDataContents(self):
  
-      tmpShutdownTime = int(time.time() + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
+      tmpShutdownTime = int(time.time() + machinetypes[self.machinetypeName]['max_wallclock_seconds'])
       
       if shutdownTime and (shutdownTime < tmpShutdownTime):
         tmpShutdownTime = shutdownTime
@@ -879,64 +883,64 @@ class VacVM:
       try:
         self.userDataContents = vac.vacutils.createUserData(
                                                shutdownTime     = tmpShutdownTime,
-                                               machinetypesPath	= '/var/lib/vac/vmtypes',
-                                               options		= vmtypes[self.vmtypeName], 
+                                               machinetypesPath	= '/var/lib/vac/machinetypes',
+                                               options		= machinetypes[self.machinetypeName], 
                                                versionString	= 'Vac ' + vacVersion, 
                                                spaceName	= spaceName, 
-                                               machinetypeName	= self.vmtypeName, 
-                                               userDataPath	= vmtypes[self.vmtypeName]['user_data'], 
+                                               machinetypeName	= self.machinetypeName, 
+                                               userDataPath	= machinetypes[self.machinetypeName]['user_data'], 
                                                hostName		= self.name, 
                                                uuidStr		= self.uuidStr)
       except Exception as e:
-        raise NameError('Failed to read ' + vmtypes[self.vmtypeName]['user_data'] + ' (' + str(e) + ')')
+        raise NameError('Failed to read ' + machinetypes[self.machinetypeName]['user_data'] + ' (' + str(e) + ')')
 
       try:
-        o = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/user_data', 'w')
+        o = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/user_data', 'w')
         o.write(self.userDataContents)
         o.close()
       except:
-        raise NameError('Failed to writing /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/user_data')
+        raise NameError('Failed to writing /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/user_data')
       
    def exportFileSystems(self):
-      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machineoutputs', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
       # Vac specific extensions
              
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
                  os.uname()[1], stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_vmtype',
-                 self.vmtypeName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_machinetype',
+                 self.machinetypeName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
                  spaceName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
     
       # Standard machinefeatures
 
       # HEPSPEC06 per virtual machine
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
                  str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't know the physical vs logical cores distinction here so we just use cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
                  str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # again just use cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
                  str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # tell them they have the whole VM to themselves; they are in the only jobslot here
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
                 '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Use earlier shutdown time if given in config
       now = int(time.time())
-      tmpShutdownTime = int(now + vmtypes[self.vmtypeName]['max_wallclock_seconds'])
+      tmpShutdownTime = int(now + machinetypes[self.machinetypeName]['max_wallclock_seconds'])
       
       if shutdownTime and (shutdownTime < tmpShutdownTime):
         tmpShutdownTime = shutdownTime
@@ -946,77 +950,77 @@ class VacVM:
         cpuLimitSecs = 0
 
       # calculate the absolute shutdown time for the VM, as a machine
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
                  str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # additional machinefeatures options defined in configuration
       if machinefeaturesOptions:
         for oneOption,oneValue in machinefeaturesOptions.iteritems():
-          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machinefeatures/' + oneOption,
+          vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/' + oneOption,
                                   oneValue,
                                   stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Standard  jobfeatures
       
       # calculate the absolute shutdown time for the VM, as a job
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
                  str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't do this, so just say 1.0 for cpu factor
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
                  '1.0', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
                  str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
                  str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
       if 'scratch_volume_gb' in virtualmachines[self.name]:
-         vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
+         vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
                  str(virtualmachines[self.name]['scratch_volume_gb']), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
                  str(now), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
                  str((mbPerMachine * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
                  str(mbPerMachine * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
                         
       # cpuPerMachine again
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
                  str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # do the NFS exports
 
       exportAddress = natPrefix + str(virtualmachines[self.name]['ordinal'])
 
-      os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared')
-      os.system('exportfs -o no_root_squash,rw ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/shared/machineoutputs')
+      os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared')
+      os.system('exportfs -o no_root_squash,rw ' + exportAddress + ':/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def makeRootDisk(self):
 
       # kvm and Xen are the same for uCernVM 3
       if self.model == 'cernvm3':
-         vac.vacutils.logLine('make 70 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
+         vac.vacutils.logLine('make 70 GB sparse file /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/root.disk')
          try:
-          f = open('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk', 'ab')
+          f = open('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/root.disk', 'ab')
           f.truncate(70 * 1014 * 1024 * 1024)
           f.close()
          except:
@@ -1025,17 +1029,17 @@ class VacVM:
       elif domainType == 'kvm':
          # With kvm we can make a small QEMU qcow2 disk for each instance of 
          # this virtualhostname, backed by the full image given in conf
-         if os.system('qemu-img create -b ' + vmtypes[self.vmtypeName]['root_image'] + 
-             ' -f qcow2 /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk >/dev/null') != 0:
+         if os.system('qemu-img create -b ' + machinetypes[self.machinetypeName]['root_image'] + 
+             ' -f qcow2 /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/root.disk >/dev/null') != 0:
           vac.vacutils.logLine('creation of COW disk image fails!')
           raise NameError('Creation of COW disk image fails!')
       elif domainType == 'xen':
          # Because Xen COW is broken, we copy the root.disk, overwriting 
          # any copy already in the top level directory of this virtualhostname.
          # To avoid long startups, the source should be a sparse file too.
-         vac.vacutils.logLine('copy from ' + vmtypes[self.vmtypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk')
-         if os.system('/bin/cp --force --sparse=always ' + vmtypes[self.vmtypeName]['root_image'] +
-                       ' /var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/root.disk') != 0:
+         vac.vacutils.logLine('copy from ' + machinetypes[self.machinetypeName]['root_image'] + ' to /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/root.disk')
+         if os.system('/bin/cp --force --sparse=always ' + machinetypes[self.machinetypeName]['root_image'] +
+                       ' /var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/root.disk') != 0:
           vac.vacutils.logLine('copy of disk image fails!')
           raise NameError('copy of disk image fails!')
 
@@ -1069,14 +1073,14 @@ class VacVM:
 
       conn.close()
 
-   def createVM(self, vmtypeName):
+   def createVM(self, machinetypeName):
       self.uuidStr = str(uuid.uuid4())
-      self.vmtypeName = vmtypeName
-      self.model = vmtypes[vmtypeName]['vm_model']
+      self.machinetypeName = machinetypeName
+      self.model = machinetypes[machinetypeName]['machine_model']
 
-      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/created', 
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/created', 
                   str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
       try:
@@ -1106,13 +1110,13 @@ class VacVM:
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
                                   " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
-                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + 
-                                  "' bus='" + ("virtio" if "vd" in vmtypes[self.vmtypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
+                                  " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
+                                  "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
           elif domainType == 'xen':
             scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
                                   " <driver name='phy'/>\n" +
                  " <source dev='" + virtualmachines[self.name]['scratch_volume']  + "'/>\n" +
-                                  " <target dev='" + vmtypes[self.vmtypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
+                                  " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
       else:
           scratch_volume_xml = ""
 
@@ -1120,15 +1124,15 @@ class VacVM:
           cernvm_cdrom_xml    = ""
           bootloader_args_xml = ""
       else:
-          if vmtypes[self.vmtypeName]['root_image'][0:7] == 'http://' or vmtypes[self.vmtypeName]['root_image'][0:8] == 'https://':
+          if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
             try:
-              cernvmCdrom = vac.vacutils.getRemoteRootImage(vmtypes[self.vmtypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
+              cernvmCdrom = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
             except Exception as e:
               return str(e)
-          elif vmtypes[self.vmtypeName]['root_image'][0] == '/':
-            cernvmCdrom = vmtypes[self.vmtypeName]['root_image']
+          elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
+            cernvmCdrom = machinetypes[self.machinetypeName]['root_image']
           else:
-            cernvmCdrom = '/var/lib/vac/vmtypes/' + self.vmtypeName + '/' + vmtypes[self.vmtypeName]['root_image']
+            cernvmCdrom = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
       
           if domainType == 'kvm':
             cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
@@ -1198,13 +1202,13 @@ class VacVM:
     <emulator>""" + qemuKvmFile + """</emulator>
     <disk type='file' device='disk'>""" + 
     ("<driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='unsafe' type='raw' error_policy='report' />") + 
-    """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' /> 
-     <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='""" + 
-     ("virtio" if "vd" in vmtypes[self.vmtypeName]['root_device'] else "ide") + """'/>
+    """<source file='/var/lib/vac/machines/""" + self.name + '/' + self.machinetypeName + '/' + self.uuidStr +  """/root.disk' /> 
+     <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='""" + 
+     ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>
-      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
+      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.machinetypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
     </disk>
@@ -1218,7 +1222,7 @@ class VacVM:
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
     <serial type="file">
-      <source path="/var/lib/vac/machines/"""  + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + """/console.log"/>
+      <source path="/var/lib/vac/machines/"""  + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + """/console.log"/>
       <target port="1"/>
     </serial>                    
     <graphics type='vnc' port='"""  + str(5900 + virtualmachines[self.name]['ordinal']) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
@@ -1250,12 +1254,12 @@ class VacVM:
   <devices>
     <disk type='file' device='disk'>
       <driver name='file'/>
-      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/root.disk' />
-      <target dev='""" + vmtypes[self.vmtypeName]['root_device'] + """' bus='ide'/>
+      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.machinetypeName + '/' + self.uuidStr +  """/root.disk' />
+      <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='ide'/>
     </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
     <disk type='file' device='cdrom'>
       <driver name='file'/>
-      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.vmtypeName + '/' + self.uuidStr +  """/context.iso'/>
+      <source file='/var/lib/vac/machines/""" + self.name + '/' + self.machinetypeName + '/' + self.uuidStr +  """/context.iso'/>
       <target dev='hdd'/>
       <readonly/>
     </disk>
@@ -1277,10 +1281,10 @@ class VacVM:
           conn.close()
           return 'domain_type not recognised!'
       
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/started', 
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/started', 
                   str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.vmtypeName + '/' + self.uuidStr + '/heartbeat', 
+      vac.vacutils.createFile('/var/lib/vac/machines/' + self.name + '/' + self.machinetypeName + '/' + self.uuidStr + '/heartbeat', 
                  '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       
       try:
@@ -1450,7 +1454,7 @@ def fixNetworkingCommands():
       except:
         pass
 
-def cleanupByNameUUID(name, vmtypeName, uuidStr):
+def cleanupByNameUUID(name, machinetypeName, uuidStr):
    conn = libvirt.open(None)
    if conn == None:
       print 'Failed to open connection to the hypervisor'
@@ -1466,14 +1470,14 @@ def cleanupByNameUUID(name, vmtypeName, uuidStr):
    pathname = f.readline().strip()
 
    while pathname and name:
-      if ('/var/lib/vac/machines/' + name + '/' + vmtypeName + '/' + uuidStr + '/shared' == pathname):
+      if ('/var/lib/vac/machines/' + name + '/' + machinetypeName + '/' + uuidStr + '/shared' == pathname):
          os.system('/usr/sbin/exportfs -u ' + name + ':' + pathname)
 
       pathname = f.readline().strip()
 
    f.close()
 
-   shutil.rmtree('/var/lib/vac/machines/' + name + '/' + vmtypeName + '/' + uuidStr, 1)
+   shutil.rmtree('/var/lib/vac/machines/' + name + '/' + machinetypeName + '/' + uuidStr, 1)
    
 def cleanupExports():
 
@@ -1489,7 +1493,7 @@ def cleanupExports():
    
    while exportPath and exportHost:
 
-      #  /var/lib/vac/machines/f.q.d.n/vmtype/UUID/shared
+      #  /var/lib/vac/machines/f.q.d.n/machinetype/UUID/shared
       # 0  1   2   3      4       5      6     7     8
 
       if (len(pathsplit) > 8) and pathsplit[0] == '' and pathsplit[1] == 'var' and \
@@ -1503,12 +1507,12 @@ def cleanupExports():
               print 'Remove now unused export of', exportPath
               os.system('exportfs -u ' + exportHost + ':' + exportPath)
     
-      #  /var/lib/vac/vmtypes/vmtype/shared
+      #  /var/lib/vac/machinetypes/machinetype/shared
       # 0  1   2   3     4      5      6 
 
       elif (len(pathsplit) > 6) and pathsplit[0] == '' and pathsplit[1] == 'var' and \
-         pathsplit[2] == 'lib' and pathsplit[3] == 'vac' and pathsplit[4] == 'vmtypes' and \
-         pathsplit[6] == 'shared' and (pathsplit[5] not in vmtypes):
+         pathsplit[2] == 'lib' and pathsplit[3] == 'vac' and pathsplit[4] == 'machinetypes' and \
+         pathsplit[6] == 'shared' and (pathsplit[5] not in machinetypes):
          
               print 'Remove now unused export of', exportPath
               os.system('exportfs -u ' + exportHost + ':' + exportPath)              
@@ -1522,32 +1526,32 @@ def cleanupExports():
 
 def cleanupLoggedMachineoutputs():
 
-   vmtypesList = os.listdir('/var/lib/vac/machineoutputs/')
-   for vmtype in vmtypesList:
+   machinetypesList = os.listdir('/var/lib/vac/machineoutputs/')
+   for machinetype in machinetypesList:
 
-      if vmtype not in vmtypes:
-        # use 3 days for vmtypes that have been removed
+      if machinetype not in machinetypes:
+        # use 3 days for machinetypes that have been removed
         machineoutputs_days = 3.0
 
-      elif vmtypes[vmtype]['machineoutputs_days'] == 0.0:
+      elif machinetypes[machinetype]['machineoutputs_days'] == 0.0:
         # if zero then we do not expire these directories at all
         continue
 
       else:
-        # use the per-vmtype value
-        machineoutputs_days = vmtypes[vmtype]['machineoutputs_days']
+        # use the per-machinetype value
+        machineoutputs_days = machinetypes[machinetype]['machineoutputs_days']
 
-      vmNamesList = os.listdir('/var/lib/vac/machineoutputs/' + vmtype)      
+      vmNamesList = os.listdir('/var/lib/vac/machineoutputs/' + machinetype)      
       for vmName in vmNamesList:
 
-         uuidList = os.listdir('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName)
+         uuidList = os.listdir('/var/lib/vac/machineoutputs/' + machinetype + '/' + vmName)
          for uuid in uuidList:
                      
-            if (os.stat('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid).st_ctime < 
+            if (os.stat('/var/lib/vac/machineoutputs/' + machinetype + '/' + vmName + '/' + uuid).st_ctime < 
                 int(time.time() - machineoutputs_days * 86400)):
                 
-             vac.vacutils.logLine('Deleting expired /var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
-             shutil.rmtree('/var/lib/vac/machineoutputs/' + vmtype + '/' + vmName + '/' + uuid)
+             vac.vacutils.logLine('Deleting expired /var/lib/vac/machineoutputs/' + machinetype + '/' + vmName + '/' + uuid)
+             shutil.rmtree('/var/lib/vac/machineoutputs/' + machinetype + '/' + vmName + '/' + uuid)
             
 def cleanupVirtualmachineFiles():
    #
@@ -1556,7 +1560,7 @@ def cleanupVirtualmachineFiles():
    # called. Otherwise active directories may be deleted!
    # 
 
-# should go through the directories present (VM and vmtype)
+# should go through the directories present (VM and machinetype)
 # rather than through the ones we know about. ones we don't
 # know about should be deleted as they will be ones that are 
 # no longer supported in this space (config file changed?)
@@ -1566,13 +1570,13 @@ def cleanupVirtualmachineFiles():
    
      vm = VacVM(vmname)
 
-     # we go through the vmtypes, looking for directory
+     # we go through the machinetypes, looking for directory
      # hierarchies that aren't the current VM instance.
      # 'current' includes the last used hierarchy if the
      # VM state is shutdown
-     for vmtypeName, vmtype in vmtypes.iteritems():
+     for machinetypeName, machinetype in machinetypes.iteritems():
        try:
-         dirslist = os.listdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName)
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmname + '/' + machinetypeName)
        except:
          continue
 
@@ -1580,11 +1584,11 @@ def cleanupVirtualmachineFiles():
        currentdirCtime = None
 
        for onedir in dirslist:
-         if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir):
+         if os.path.isdir('/var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + onedir):
 
            if currentdir is None:
              try:
-              currentdirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime
+              currentdirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + onedir).st_ctime
               currentdir = onedir
              except:
               pass
@@ -1592,15 +1596,15 @@ def cleanupVirtualmachineFiles():
              continue
 
            try:
-             onedirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir).st_ctime
+             onedirCtime = os.stat('/var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + onedir).st_ctime
            except:
              continue
 
            if (onedirCtime > currentdirCtime):
              # we delete currentdir and keep onedir as the new currentdir 
              try:
-               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
-               vac.vacutils.logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir)
+               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + currentdir)
+               vac.vacutils.logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + currentdir)
                currentdir      = onedir
                currentdirCtime = onedirCtime
              except:
@@ -1609,8 +1613,8 @@ def cleanupVirtualmachineFiles():
            else:
              # we delete the onedir we're looking at and keep currentdir
              try:
-               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
-               vac.vacutils.logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + onedir)
+               shutil.rmtree('/var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + onedir)
+               vac.vacutils.logLine('Deleted /var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + onedir)
              except:
                pass
 
@@ -1620,27 +1624,27 @@ def cleanupVirtualmachineFiles():
          # delete the big root.disk image file of the current VM instance we found IF VM IS SHUTDOWN 
          if (not vm.uuidStr) or (vm.uuidStr != currentdir) or (vm.state == VacState.shutdown):
            try:
-             os.remove('/var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
-             vac.vacutils.logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + vmtypeName + '/' + currentdir + '/root.disk')
+             os.remove('/var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + currentdir + '/root.disk')
+             vac.vacutils.logLine('Deleting /var/lib/vac/machines/' + vmname + '/' + machinetypeName + '/' + currentdir + '/root.disk')
            except:
              pass
 
 
-def sendVmtypesRequests(factoryList = None):
+def sendMachinetypesRequests(factoryList = None):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    sock.settimeout(1.0)
    setSockBufferSize(sock)
 
-   # Initialise dictionary of per-factory, per-vmtype responses
+   # Initialise dictionary of per-factory, per-machinetype responses
    responses = {}
 
    if factoryList is None:
      factoryList = factories
 
    for rawFactoryName in factoryList:
-     responses[canonicalFQDN(rawFactoryName)] = { 'vmtypes' : {} }
+     responses[canonicalFQDN(rawFactoryName)] = { 'machinetypes' : {} }
 
    timeCount = 0
    
@@ -1654,13 +1658,13 @@ def sendVmtypesRequests(factoryList = None):
        factoryName = canonicalFQDN(rawFactoryName)
 
        try:
-         numVmtypes = responses[factoryName]['num_vmtypes']
+         numMachinetypes = responses[factoryName]['num_machinetypes']
        except:
-         # We initially expect every factory to tell us about at least 1 vmtype
-         numVmtypes = 1
+         # We initially expect every factory to tell us about at least 1 machinetype
+         numMachinetypes = 1
      
        # Send out requests to all factories with insufficient replies so far
-       if len(responses[factoryName]['vmtypes']) < numVmtypes:
+       if len(responses[factoryName]['machinetypes']) < numMachinetypes:
 
          requestsRequired += 1
          try:          
@@ -1700,17 +1704,17 @@ def sendVmtypesRequests(factoryList = None):
               response['space']  == spaceName and \
               'factory' 		in response and \
               response['cookie'] == hashlib.sha256(salt + response['factory']).hexdigest() and \
-              'num_vmtypes'		in response and \
-              'vmtype'			in response and \
+              'num_machinetypes'		in response and \
+              'machinetype'			in response and \
               'total_hs06'		in response and \
               'num_before_fizzle'	in response and \
               'shutdown_message'	in response and \
               'shutdown_time'		in response and \
               'shutdown_machine'	in response:
               
-             responses[response['factory']]['num_vmtypes'] = response['num_vmtypes']
+             responses[response['factory']]['num_machinetypes'] = response['num_machinetypes']
 
-             responses[response['factory']]['vmtypes'][response['vmtype']] = response
+             responses[response['factory']]['machinetypes'][response['machinetype']] = response
 
          except socket.error:
            # timed-out so stop gathering responses for now
@@ -1801,7 +1805,7 @@ def sendMachinesRequests(factoryList = None):
               'cpu_seconds'		in response and \
               'cpu_percentage'		in response and \
               'hs06'			in response and \
-              'vmtype'			in response and \
+              'machinetype'			in response and \
               'shutdown_message'	in response and \
               'shutdown_time'		in response:
               
@@ -1895,27 +1899,27 @@ def makeMachineResponses(cookie):
 
      newestUUID       = None
      newestCtime      = None
-     newestVmtypeName = None
+     newestMachinetypeName = None
 
-     # Find which vmtype is the most recent for this machine
-     for vmtypeName in vmtypes:
+     # Find which machinetype is the most recent for this machine
+     for machinetypeName in machinetypes:
 
        try:
-         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + machinetypeName)
        except:
          continue
 
-       # Find the most recent instance of this vmtypeName for this vmName
+       # Find the most recent instance of this machinetypeName for this vmName
        for onedir in dirslist:
          try:
-           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
+           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + onedir + '/created').st_ctime)
          except:
            pass
          else:
            if not newestUUID or (ctime > newestCtime):
              newestCtime      = ctime
              newestUUID       = onedir
-             newestVmtypeName = vmtypeName
+             newestMachinetypeName = machinetypeName
 
      # Found the newest instance in this machine slot
      if newestUUID:
@@ -1923,19 +1927,19 @@ def makeMachineResponses(cookie):
        print vmName,newestUUID
                 
        try:
-         startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/started')
+         startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUID + '/started')
          timeStarted = int(startedStat.st_ctime)
        except:
          timeStarted = None
                              
        try:
-         heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/heartbeat')
+         heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUID + '/heartbeat')
          timeHeartbeat = int(heartbeatStat.st_ctime)
        except:
          timeHeartbeat = None
 
        try:                  
-         f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/shared/machinefeatures/hs06', 'r')
+         f = open('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUID + '/shared/machinefeatures/hs06', 'r')
          hs06 = float(f.readline().strip())
          f.close()
        except:
@@ -1943,7 +1947,7 @@ def makeMachineResponses(cookie):
 
        try:
          # this is written by Vac as it monitors the machine through libvirt
-         f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/heartbeat', 'r')
+         f = open('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUID + '/heartbeat', 'r')
          oneLine = f.readline()
          f.close()
                                     
@@ -1957,7 +1961,7 @@ def makeMachineResponses(cookie):
          cpuSeconds    = None
          cpuPercentage = None
 
-       hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUID + '/finished')
+       hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUID + '/finished')
 
        shutdownMessage     = None
        shutdownMessageTime = None
@@ -1975,15 +1979,15 @@ def makeMachineResponses(cookie):
          vmState = VacState.shutdown
 
          try:
-           f = open('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUIDByVmtype + '/shared/machineoutputs/shutdown_message')
+           f = open('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUIDByMachinetype + '/shared/machineoutputs/shutdown_message')
            shutdownMessage = f.readline().strip()
            f.close()
-           shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + newestVmtypeName + '/' + newestUUIDByVmtype + 
+           shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + newestMachinetypeName + '/' + newestUUIDByMachinetype + 
                                                     '/shared/machineoutputs/shutdown_message').st_ctime)
          except:
            pass
                                                                                                                          
-       vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(newestVmtypeName) + ', started ' + str(newestCtime) + ')')
+       vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(newestMachinetypeName) + ', started ' + str(newestCtime) + ')')
 
        responseDict = {
                 'method'		: 'machine',
@@ -2003,7 +2007,7 @@ def makeMachineResponses(cookie):
                 'cpu_seconds'		: cpuSeconds,
                 'cpu_percentage'	: cpuPercentage,
                 'hs06' 		       	: hs06,
-                'vmtype'		: newestVmtypeName,
+                'machinetype'		: newestMachinetypeName,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime
                       }
@@ -2015,12 +2019,12 @@ def makeMachineResponses(cookie):
 
    return responses
    
-def makeVmtypeResponses(cookie):
-   # Send back vmtype messages to the querying factory or client
+def makeMachinetypeResponses(cookie):
+   # Send back machinetype messages to the querying factory or client
    responses = []
 
-   # Go through the vmtypes
-   for vmtypeName in vmtypes:
+   # Go through the machinetypes
+   for machinetypeName in machinetypes:
 
      totalHS06               = 0.0
      lastShutdownMessage     = None
@@ -2028,11 +2032,11 @@ def makeVmtypeResponses(cookie):
      lastMachineName         = None
      numBeforeFizzle         = 0
 
-     # Go through the VMs' instances of this vmtype
+     # Go through the VMs' instances of this machinetype
      for vmName in sorted(virtualmachines):
 
        try:
-         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + vmtypeName)
+         dirslist = os.listdir('/var/lib/vac/machines/' + vmName + '/' + machinetypeName)
        except:
          continue
 
@@ -2041,7 +2045,7 @@ def makeVmtypeResponses(cookie):
 
        for onedir in dirslist:
          try:
-           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + onedir + '/created').st_ctime)
+           ctime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + onedir + '/created').st_ctime)
          except:
            pass
          else:
@@ -2049,32 +2053,32 @@ def makeVmtypeResponses(cookie):
              newestCtime = ctime
              newestUUID  = onedir
 
-       # If we find an instance for this vmtype, get its state.
+       # If we find an instance for this machinetype, get its state.
        # The one we have picked was the one created most recently.
        # For fizzles, this is the best indicator of what will happen
-       # if we create another VM of this vmtype now.
+       # if we create another VM of this machinetype now.
        if newestUUID:
          
          try:
-           startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/started')
+           startedStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + newestUUID + '/started')
            timeStarted = int(startedStat.st_ctime)
          except:
            timeStarted = None
 
          try:
-           heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/heartbeat')
+           heartbeatStat = os.stat('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + newestUUID + '/heartbeat')
            timeHeartbeat = int(heartbeatStat.st_ctime)
          except:
            timeHeartbeat = None
 
          try:                  
-           f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/shared/machinefeatures/hs06', 'r')
+           f = open('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + newestUUID + '/shared/machinefeatures/hs06', 'r')
            hs06 = float(f.readline().strip())
            f.close()
          except:
            hs06 = hs06PerMachine
 
-         hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/finished')
+         hasFinished = os.path.exists('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + newestUUID + '/finished')
 
          # some hardcoded timeouts here in case old files are left lying around 
          # this means that old files are ignored when working out the state
@@ -2085,7 +2089,7 @@ def makeVmtypeResponses(cookie):
            vmState = VacState.running
            totalHS06 += hs06
 
-           if int(time.time()) < timeStarted + vmtypes[vmtypeName]['fizzle_seconds']:
+           if int(time.time()) < timeStarted + machinetypes[machinetypeName]['fizzle_seconds']:
              numBeforeFizzle += 1
 
          elif not timeStarted and (newestCtime > int(time.time() - 3600)):
@@ -2097,15 +2101,15 @@ def makeVmtypeResponses(cookie):
            vmState = VacState.shutdown
 
            try:
-             f = open('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + '/shared/machineoutputs/shutdown_message')
+             f = open('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + newestUUID + '/shared/machineoutputs/shutdown_message')
              shutdownMessage = f.readline().strip()
              f.close()
              messageCode = int(shutdownMessage[0:3])
-             shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + vmtypeName + '/' + newestUUID + 
+             shutdownMessageTime = int(os.stat('/var/lib/vac/machines/' + vmName + '/' + machinetypeName + '/' + newestUUID + 
                                                '/shared/machineoutputs/shutdown_message').st_ctime)
            except:
              # No explicit shutdown message with a message code, so we make one up if necessary
-             if timeStarted and timeHeartbeat and (timeHeartbeat - timeStarted) < vmtypes[vmtypeName]['fizzle_seconds']:
+             if timeStarted and timeHeartbeat and (timeHeartbeat - timeStarted) < machinetypes[machinetypeName]['fizzle_seconds']:
                shutdownMessageTime = timeHeartbeat
                shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
                           
@@ -2124,9 +2128,9 @@ def makeVmtypeResponses(cookie):
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
                 'factory'       	: os.uname()[1],
-                'num_vmtypes'       	: len(vmtypes),
+                'num_machinetypes'       	: len(machinetypes),
 
-                'vmtype'		: vmtypeName,
+                'machinetype'		: machinetypeName,
                 'total_hs06'        	: totalHS06,
                 'num_before_fizzle' 	: numBeforeFizzle,
                 'shutdown_message'  	: lastShutdownMessage,
@@ -2138,7 +2142,7 @@ def makeVmtypeResponses(cookie):
        responseDict['gocdb_site'] = gocdbSitename
        
      try:
-       responseDict['fqan'] = vmtypes[vmtypeName]['accounting_fqan']
+       responseDict['fqan'] = machinetypes[machinetypeName]['accounting_fqan']
      except:
        pass
 

@@ -37,7 +37,7 @@ This command uses the VacQuery UDP Protocol to contact the factory machines in t
 Vac space and outputs a summary of their responses. Each line in the output
 corresponds to the reported status of one virtual machine slot. This command
 can be used to get a quick overview of the status of a Vac space, including 
-which vmtypes are running and where, and the outcomes of virtual machines 
+which machinetypes are running and where, and the outcomes of virtual machines 
 that are currently shut down. By default all factories in the current
 space are contacted, but this can be limited to one or more by giving the
 hostnames of factory machines on the command line. Hostnames will be
@@ -48,11 +48,11 @@ returned, and at a new site you will get no output from this command
 until some VMs have at least started.
 
 .HP
-.B "machinetype VMTYPE"
+.B "machinetype MACHINETYPE"
 .br
-Shows the most recent status of the given vmtype on the virtual machine
+Shows the most recent status of the given machinetype on the virtual machine
 slots of all factories that respond. This includes virtual machines which
-ran for this vmtype but have shut down, and will display their shutdown 
+ran for this machinetype but have shut down, and will display their shutdown 
 messages if available. 
 
 .HP

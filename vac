@@ -65,7 +65,7 @@ def queryMachines(options, factoryList):
                                        startingCount += 1
                 totalCount += 1
 
-                if not response['vmtype']:
+                if not response['machinetype']:
                   hoursStr = 22 * ' '
                   percentStr = '      '
 
@@ -101,7 +101,7 @@ def queryMachines(options, factoryList):
 
                 print (
                        vmName + ' ' +
-                       ((response['vmtype'] + 14 * ' ') if response['vmtype'] else 10 * '-' + '    ')[0:14] + ' ' + 
+                       ((response['machinetype'] + 14 * ' ') if response['machinetype'] else 10 * '-' + '    ')[0:14] + ' ' + 
                        stateStr + '  ' + 
                        hoursStr[0:21] + 
                        percentStr
@@ -109,16 +109,16 @@ def queryMachines(options, factoryList):
 
 def queryMachineType(options, machineTypeName, factoryList):
 
-  responses = vac.shared.sendVmtypesRequests(factoryList)
+  responses = vac.shared.sendMachinetypesRequests(factoryList)
 
   for factoryName in responses:
-    if 'vmtypes' in responses[factoryName] and machineTypeName in responses[factoryName]['vmtypes']:
+    if 'machinetypes' in responses[factoryName] and machineTypeName in responses[factoryName]['machinetypes']:
       print (
               factoryName.split('.')[0] + ' ' + 
-              str(responses[factoryName]['vmtypes'][machineTypeName]['total_hs06']) + ' ' +
-              str(responses[factoryName]['vmtypes'][machineTypeName]['num_before_fizzle']) + ' ' +
-              str(responses[factoryName]['vmtypes'][machineTypeName]['shutdown_time']) + ' "' +
-              str(responses[factoryName]['vmtypes'][machineTypeName]['shutdown_message']) + '"'
+              str(responses[factoryName]['machinetypes'][machineTypeName]['total_hs06']) + ' ' +
+              str(responses[factoryName]['machinetypes'][machineTypeName]['num_before_fizzle']) + ' ' +
+              str(responses[factoryName]['machinetypes'][machineTypeName]['shutdown_time']) + ' "' +
+              str(responses[factoryName]['machinetypes'][machineTypeName]['shutdown_message']) + '"'
             )
 
 def queryFactories(options, factoryList):
@@ -134,7 +134,7 @@ def queryFactories(options, factoryList):
 
 if __name__ == '__main__':
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] command [target]\n\nCommands:\n  scan\n  raw\n  vmtype")
+    parser = optparse.OptionParser(usage="usage: %prog [options] command [target]\n\nCommands:\n  machines\n  machinetype\n  factories")
 
     parser.add_option("-s", 
                       "--space",

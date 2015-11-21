@@ -61,7 +61,7 @@ install: $(INSTALL_FILES)
 		 $(RPM_BUILD_ROOT)/usr/share/man/man8 \
 		 $(RPM_BUILD_ROOT)/var/lib/vac/tmp \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/imagecache \
-	         $(RPM_BUILD_ROOT)/var/lib/vac/vmtypes \
+	         $(RPM_BUILD_ROOT)/var/lib/vac/machinetypes \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/apel-archive \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/apel-outgoing \
 	         $(RPM_BUILD_ROOT)/var/lib/vac/machineoutputs \

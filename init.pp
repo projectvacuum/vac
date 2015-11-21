@@ -47,34 +47,34 @@
 # (or not created).
 #
 #
-# A similar mechanism is used to install the files for vmtypes. Typically, 
+# A similar mechanism is used to install the files for machinetypes. Typically, 
 # these will be hostcert.pem and hostkey.pem and perhaps a static user_data
-# file. The vmtypes_path parameter of the class allows you to specify a
-# different path on the Puppet fileserver to the default 'modules/vac/vmtypes',
-# the vmtypes subdirectory of the Vac module's files directory. In the default
+# file. The machinetypes_path parameter of the class allows you to specify a
+# different path on the Puppet fileserver to the default 'modules/vac/machinetypes',
+# the machinetypes subdirectory of the Vac module's files directory. In the default
 # case, the tree looks like:
 # 
-#  puppet:///modules/vac/vmtypes/HOSTNAME/
-#  puppet:///modules/vac/vmtypes/SUBSPACE/
-#  puppet:///modules/vac/vmtypes/SUBSPACE1/
+#  puppet:///modules/vac/machinetypes/HOSTNAME/
+#  puppet:///modules/vac/machinetypes/SUBSPACE/
+#  puppet:///modules/vac/machinetypes/SUBSPACE1/
 #  ...
-#  puppet:///modules/vac/vmtypes/SUBSPACE9/
-#  puppet:///modules/vac/vmtypes/SPACE/
-#  puppet:///modules/vac/vmtypes/site/
+#  puppet:///modules/vac/machinetypes/SUBSPACE9/
+#  puppet:///modules/vac/machinetypes/SPACE/
+#  puppet:///modules/vac/machinetypes/site/
 #
 # This is similar to the configuration files tree, but instead of these
-# directories containing files they must contain vmtype directories suitable
-# for installing below /var/lib/vac/vmtypes/ . As above, the first vmtype
+# directories containing files they must contain machinetype directories suitable
+# for installing below /var/lib/vac/machinetypes/ . As above, the first machinetype
 # directory found with a given name is the one which will be installed.
 # 
 # 
-# For both configuration and vmtype files, you may want to create dedicated 
+# For both configuration and machinetype files, you may want to create dedicated 
 # areas of the Puppet fileserver tree outside of the vac module, either as
 # local modules or by directly inserting them. You can use the etc_path and
-# vmtypes_path parameters to point to your dedicated trees.
+# machinetypes_path parameters to point to your dedicated trees.
 #
 # Nagios/NRPE: 
-# In addition to the configuration and vmtype files, by setting nagios_nrpe
+# In addition to the configuration and machinetype files, by setting nagios_nrpe
 # to true you can install a Vac file in /etc/nrpe.d to enable Nagios NRPE
 # monitoring using Vac's check-vacd script. This will ensure the nrpe RPM
 # is installed and will restart the nrpe service to reread the configuration.
@@ -106,7 +106,7 @@ class vac ($space              = "vac01.${domain}",
            $subspace8          = '',
            $subspace9          = '',
            $etc_path           = 'modules/vac/vac.d',
-           $vmtypes_path       = 'modules/vac/vmtypes',
+           $machinetypes_path       = 'modules/vac/machinetypes',
            $nagios_nrpe        = false,
            $apel_bdii_hostport = '',
            $apel_cert_path     = '',
@@ -144,10 +144,10 @@ class vac ($space              = "vac01.${domain}",
        }
 
   #
-  # Install site-wide or increasingly specific vmtype files (probably hostcert.pem
-  # and hostkey.pem) under /var/lib/vac/vmtypes/...
+  # Install site-wide or increasingly specific machinetype files (probably hostcert.pem
+  # and hostkey.pem) under /var/lib/vac/machinetypes/...
   #
-  file { '/var/lib/vac/vmtypes':
+  file { '/var/lib/vac/machinetypes':
          require => Package['vac'],
          ensure  => directory,
          recurse      => true,
@@ -157,20 +157,20 @@ class vac ($space              = "vac01.${domain}",
          group        => 'root',
          sourceselect => 'all',
          source  => [ 
-                      "puppet:///${vmtypes_path}/${fqdn}",
+                      "puppet:///${machinetypes_path}/${fqdn}",
                       # we could use arrays for subspaces but it would be messy
-                      "puppet:///${vmtypes_path}/${space}:${subspace}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace1}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace2}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace3}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace4}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace5}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace6}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace7}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace8}",
-                      "puppet:///${vmtypes_path}/${space}:${subspace9}",
-                      "puppet:///${vmtypes_path}/${space}",
-                      "puppet:///${vmtypes_path}/site",
+                      "puppet:///${machinetypes_path}/${space}:${subspace}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace1}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace2}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace3}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace4}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace5}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace6}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace7}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace8}",
+                      "puppet:///${machinetypes_path}/${space}:${subspace9}",
+                      "puppet:///${machinetypes_path}/${space}",
+                      "puppet:///${machinetypes_path}/site",
                     ],
        }
 

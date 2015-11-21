@@ -8,7 +8,7 @@
 # the machineoutputs directory, waits 5 minutes, then shuts down
 # the VM. 
 #
-# In the [vmtype example] section of your /etc/vac.conf you must
+# In the [machinetype example] section of your /etc/vac.conf you must
 # include this option to tell the VMs where the proxy cache that
 # you use for cvmfs is located:
 #
@@ -27,9 +27,9 @@ hostname ##user_data_vm_hostname##
 # provided to this VM by Vac
 if [ `echo "##user_data_vmlm_version##" | cut -f1 -d' '` == 'Vac' ] ; then
  mkdir -p /etc/machineoutputs /etc/machinefeatures /etc/jobfeatures
- mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_vmtype##/##user_data_uuid##/shared/jobfeatures" /etc/jobfeatures
- mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_vmtype##/##user_data_uuid##/shared/machinefeatures" /etc/machinefeatures
- mount -o rw,nfsvers=3 "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_vmtype##/##user_data_uuid##/shared/machineoutputs" /etc/machineoutputs
+ mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_machinetype##/##user_data_uuid##/shared/jobfeatures" /etc/jobfeatures
+ mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_machinetype##/##user_data_uuid##/shared/machinefeatures" /etc/machinefeatures
+ mount -o rw,nfsvers=3 "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_machinetype##/##user_data_uuid##/shared/machineoutputs" /etc/machineoutputs
 fi
 
 # Create the epilog.sh which is run at the end of set up 
