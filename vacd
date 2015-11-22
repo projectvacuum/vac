@@ -170,11 +170,8 @@ def vacOneCycle():
      return
    else:     
      conn.close()
-
-   if vac.shared.deleteOldFiles:
-     vac.shared.cleanupVirtualmachineFiles()
    
-   vac.shared.cleanupLoggedMachineoutputs()
+   vac.shared.cleanupOldMachines()
 
    if not os.path.exists('/var/lib/vac/factory-daily') or \
       time.time() > (os.stat('/var/lib/vac/factory-daily').st_ctime + 86400.0):
@@ -267,14 +264,12 @@ def vacOneCycle():
        # If VM is still starting and we've come round again, then starting failed!
        vm.state = vac.shared.VacState.shutdown
        # Something has gone wrong, so we clean up
-       vac.shared.cleanupByNameUUID(vm.name, vm.machinetypeName, vm.uuidStr)
+       vm.destroy()
 
      if vm.state == vac.shared.VacState.shutdown:
        # create the finished file for the responder if not already there
        if vm.started and not vm.finishedFile:
                vm.writeApel()
-               if vac.shared.machinetypes[vm.machinetypeName]['log_machineoutputs']:
-                 vm.logMachineoutputs()
                vac.vacutils.logLine('Create finished file for ' + vm.name)
                vm.createFinishedFile()
 
