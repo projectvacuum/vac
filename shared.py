@@ -787,86 +787,76 @@ class VacVM:
        except:
          pass
    
-   def makeHttp1(self):
-      try:
-        os.makedirs('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      except OSError as exc: # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d'):
-            pass 
-        else: raise
+   def makeOpenStackData(self):
+   
+      if 'user_data' in machinetypes[self.machinetypeName]:
+        try:
+          self.setupUserDataContents()        
+          vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/user_data',
+                                  self.userDataContents, 
+                                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+        except:
+#This needs to be more verbose. What if fetching remote user_data fails etc
+          raise NameError('Failed to create user_data')
 
-      # context.sh covers legacy amiconfig configuration in CernVM
-      f = open('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/context.sh', 'w')
+      metaData = {}
 
       if 'root_public_key' in machinetypes[self.machinetypeName]:
 
-          if machinetypes[self.machinetypeName]['root_public_key'][0] == '/':
-              root_public_key_file = machinetypes[self.machinetypeName]['root_public_key']
-          else:
-              root_public_key_file = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_public_key']
+        if machinetypes[self.machinetypeName]['root_public_key'][0] == '/':
+          root_public_key_file = machinetypes[self.machinetypeName]['root_public_key']
+        else:
+          root_public_key_file = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_public_key']
+          
+        try:
+          publicKey = open(root_public_key_file, 'r').read()
+        except:
+          raise NameError('Failed to read ' + root_public_key_file)
+        else:
+          metaData['public_keys'] = { "0" : publicKey }
+          
+      metaData['uuid']              = self.uuidStr
+      metaData['availability_zone'] = spaceName
+      metaData['hostname']          = self.name
+      metaData['name']              = self.name
+      
+      metaData['meta'] = {
+                           'machinefeatures' : 'http://' + factoryAddress + '/machinefeatures',
+                           'jobfeatures'     : 'http://' + factoryAddress + '/jobfeatures',
+                           'joboutputs'      : 'http://' + factoryAddress + '/joboutputs',
+                           'machinetype'     : self.machinetypeName
+                         }
+      
+      try:
+        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/meta_data.json',
+                                metaData,
+                                stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+      except:
+        raise NameError('Failed to create meta_data.json')
 
-          try:
-           shutil.copy2(root_public_key_file, '/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/root.pub')
-          except:
-           raise NameError('Failed to copy ' + root_public_key_file)
-                      
-          f.write('ROOT_PUBKEY=root.pub\n')
-  
-      if 'user_data' in machinetypes[self.machinetypeName]:
+   def makeMJF(self):
+      machinesDir = '/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr
 
-          self.setupUserDataContents()
+      os.makedirs(machinesDir + '/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs(machinesDir + '/jobfeatures',     stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs(machinesDir + '/joboutputs',      stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-          if self.userDataContents:
-            f.write('EC2_USER_DATA=' +  base64.b64encode(self.userDataContents) + '\n')
-            
-          # user-data and (null) meta-data covers Cloud Init's NoCloud data source
-          open('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/user-data','w').write(self.userDataContents)
-          open('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d/meta-data','w').write('')
-  
-      f.write('ONE_CONTEXT_PATH="/var/lib/amiconfig"\n')
-      f.write('MACHINEFEATURES="/etc/machinefeatures"\n')
-      f.write('JOBFEATURES="/etc/jobfeatures"\n')
-      f.close()
-
-      # Cloud Init NoCloud data source requires joliet and rock-ridge extensions, and volume label to be cidata (amiconfig doesn't care)
-      os.system('genisoimage -quiet -joliet -rock -V cidata -o /var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr 
-                + '/context.iso /var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/iso.d')
-
-   def makeHttp2(self):
-      os.makedirs('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      os.makedirs('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machineoutputs', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      os.makedirs('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-
-      # Vac specific extensions
-             
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_factory',
-                 os.uname()[1], stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_machinetype',
-                 self.machinetypeName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_space',
-                 spaceName, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/vac_uuid',
-                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-    
       # Standard machinefeatures
 
       # HEPSPEC06 per virtual machine
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/hs06',
+      vac.vacutils.createFile(machinesDir + '/machinefeatures/hs06',
                  str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't know the physical vs logical cores distinction here so we just use cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/phys_cores',
+      vac.vacutils.createFile(machinesDir + '/machinefeatures/phys_cores',
                  str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # again just use cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/log_cores',
+      vac.vacutils.createFile(machinesDir + '/machinefeatures/log_cores',
                  str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # tell them they have the whole VM to themselves; they are in the only jobslot here
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/jobslots',
+      vac.vacutils.createFile(machinesDir + '/machinefeatures/jobslots',
                 '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Use earlier shutdown time if given in config
@@ -881,69 +871,63 @@ class VacVM:
         cpuLimitSecs = 0
 
       # calculate the absolute shutdown time for the VM, as a machine
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/shutdowntime',
+      vac.vacutils.createFile(machinesDir + '/machinefeatures/shutdowntime',
                  str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # additional machinefeatures options defined in configuration
       if machinefeaturesOptions:
         for oneOption,oneValue in machinefeaturesOptions.iteritems():
-          vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machinefeatures/' + oneOption,
+          vac.vacutils.createFile(machinesDir + '/machinefeatures/' + oneOption,
                                   oneValue,
                                   stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Standard  jobfeatures
       
       # calculate the absolute shutdown time for the VM, as a job
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/shutdowntime_job',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/shutdowntime_job',
                  str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we don't do this, so just say 1.0 for cpu factor
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpufactor_lrms',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/cpufactor_lrms',
                  '1.0', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs_lrms',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/cpu_limit_secs_lrms',
                  str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/cpu_limit_secs',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/cpu_limit_secs',
                  str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs_lrms',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/wall_limit_secs_lrms',
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/wall_limit_secs',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/wall_limit_secs',
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
       if self.name in gbScratchesMeasured:
-         vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/disk_limit_GB',
+         vac.vacutils.createFile(machinesDir + '/jobfeatures/disk_limit_GB',
                  str(gbScratchesMeasured[self.name]), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/jobstart_secs',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/jobstart_secs',
                  str(now), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_MB',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/mem_limit_MB',
                  str((mbPerMachine * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/mem_limit_bytes',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/mem_limit_bytes',
                  str(mbPerMachine * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
                         
       # cpuPerMachine again
-      vac.vacutils.createFile('/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/jobfeatures/allocated_CPU',
+      vac.vacutils.createFile(machinesDir + '/jobfeatures/allocated_CPU',
                  str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # do the NFS exports
-
-      exportAddress = natPrefix + str(self.ordinal)
-
-      os.system('exportfs -o no_root_squash ' + exportAddress + ':/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared')
-      os.system('exportfs -o no_root_squash,rw ' + exportAddress + ':/var/lib/vac/machines/' + self.machinetypeName + '/' + self.uuidStr + '/shared/machineoutputs')
 
    def setupUserDataContents(self):
  
@@ -1058,16 +1042,6 @@ class VacVM:
                               str(self.created) + ' ' + self.machinetypeName + ' ' + self.uuidStr,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      try:
-        rootDiskFileName = self.makeRootDisk()
-      except:
-        return 'failed to make root disk image'
-        
-      try:
-        self.makeHttp()
-      except Exception as e:
-        return 'failed to make HTTP files (' + str(e) + ')'
-        
       if self.name in gbScratchesMeasured::
 
         if not os.path.exists('/dev/' + volumeGroup + '/' + self.name):
@@ -1127,8 +1101,15 @@ class VacVM:
 
       vac.vacutils.logLine('Using MAC ' + mac + ' when creating ' + self.name)
 
-      # this goes after the rest of the setup since it populates machinefeatures and jobfeatures
-      self.makeHttp2()
+      try:
+        self.makeOpenStackMetaData()
+      except Exception as e:
+        return 'Failed making OpenStack meta_data (' + str(e) + ')'
+        
+      try:
+        self.makeMJF()
+      except Exception as e:
+        return 'Failed making MJF files (' + str(e) + ')'
 
       try:
           conn = libvirt.open(None)
@@ -1138,6 +1119,11 @@ class VacVM:
       if conn == None:
           return 'failed to open connection to the hypervisor'
                 
+      try:
+        rootDiskFileName = self.makeRootDisk()
+      except:
+        return 'failed to make root disk image'
+        
       if domainType == 'kvm':
       
           if os.path.isfile("/usr/libexec/qemu-kvm"):
