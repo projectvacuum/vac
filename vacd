@@ -466,7 +466,7 @@ def vacResponder():
 
    sys.exit(0) # if we break out of while loop then we exit
 
-class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class mjfHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
    def do_GET(self):
      self.send_response(200)
@@ -474,24 +474,37 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
      self.end_headers()
      self.wfile.write('123')
 
-def vacHttpd():
+class metadataHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+   def do_GET(self):
+     self.send_response(200)
+     self.send_header('Content-type','text/plain')
+     self.end_headers()
+     self.wfile.write('567')
+
+def vacHttpd(idStr, ip):
+   # idStr is 'metadata' or 'mjf'
 
    si = file('/dev/null', 'r')
    os.dup2(si.fileno(), sys.stdin.fileno())
 
-   so = file('/var/log/vacd-httpd', 'a+')
+   so = file('/var/log/vacd-' + idStr, 'a+')
    os.dup2(so.fileno(), sys.stdout.fileno())
           
-   se = file('/var/log/vacd-httpd', 'a+', 0)     
+   se = file('/var/log/vacd-' + idStr, 'a+', 0)
    os.dup2(se.fileno(), sys.stderr.fileno())
  
-   vac.vacutils.createFile('/var/lib/vac/httpd.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+   vac.vacutils.createFile('/var/lib/vac/' + idStr + '.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-   vac.vacutils.logLine('vac httpd starts')
+   vac.vacutils.logLine('vac ' + idStr + ' (httpd) starts')
    
-   vac.vacutils.setProcessName('vacd-httpd')
+   vac.vacutils.setProcessName('vacd-' + idStr)
 
-   httpd = BaseHTTPServer.HTTPServer(('169.254.169.254', 80), vacHttpdHandler)
+   try:
+     httpd = BaseHTTPServer.HTTPServer((ip, 80), locals()[idStr + 'HttpdHandler'])
+   except Exception as e:
+     vac.vacutils.logLine('Failed creating ' + idStr + ' httpd (' + str(e) + ') - exiting')
+     sys.exit(0)     
 
    while True:
    
@@ -500,7 +513,7 @@ def vacHttpd():
      except:
        pass
            
-     so = file('/var/log/vacd-httpd', 'a+')
+     so = file('/var/log/vacd-' + idStr, 'a+')
      os.dup2(so.fileno(), sys.stdout.fileno())
           
      try:
@@ -508,20 +521,20 @@ def vacHttpd():
      except:
        pass
 
-     se = file('/var/log/vacd-httpd', 'a+', 0)
+     se = file('/var/log/vacd-' + idStr, 'a+', 0)
      os.dup2(se.fileno(), sys.stderr.fileno())
 
      try:
-       pr = open('/var/lib/vac/httpd.pid', 'r')
+       pr = open('/var/lib/vac/' + idStr + '.pid', 'r')
        pid = int(pr.read().strip())
        pr.close()
        
        if pid != os.getpid():
-         vac.vacutils.logLine('os.getpid ' + os.getpid() + ' does not match httpd.pid ' + pid + ' - exiting')
+         vac.vacutils.logLine('os.getpid ' + os.getpid() + ' does not match ' + idStr + '.pid ' + pid + ' - exiting')
          break
-                
+
      except:
-       vac.vacutils.logLine('no httpd.pid - exiting')
+       vac.vacutils.logLine('no ' + idStr + '.pid - exiting')
        break
 
      # so log file is updated before we start waiting        
@@ -529,7 +542,7 @@ def vacHttpd():
      sys.stderr.flush()
 
      # Update httpd heartbeat file
-     vac.vacutils.createFile('/var/lib/vac/httpd-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+     vac.vacutils.createFile('/var/lib/vac/' + idStr + '-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
      httpd.handle_request()
 
@@ -562,7 +575,8 @@ if __name__ == '__main__':
 
         elif os.fork() == 0:
 
-          vacHttpd()
+          vacHttpd('mjf',      shared.factoryAddress )
+          vacHttpd('metadata', shared.metadataAddress)
 
         else:
           try:

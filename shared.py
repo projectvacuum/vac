@@ -62,11 +62,12 @@ import vac
 # so we can define the VacQuery protocol version here
 vacQueryVersion = '0.2'
 
-natNetwork     = '169.254.0.0'
-natNetmask     = '255.255.0.0'
-natPrefix      = '169.254.169.'
-factoryAddress = '169.254.169.254'
-udpBufferSize  = 16777216
+natNetwork      = '169.254.0.0'
+natNetmask      = '255.255.0.0'
+natPrefix       = '169.254.169.'
+factoryAddress  = '169.254.169.253'
+metadataAddress = '169.254.169.254'
+udpBufferSize   = 16777216
 
 domainType = None
 overloadPerCpu = None
@@ -405,24 +406,6 @@ def readConf():
              
              machinetypes[sectionNameSplit[1]] = machinetype
                           
-#      # Define VMs
-#      ordinal = 0
-#         
-#      while ordinal < numVirtualmachines:           
-#           virtualmachine = {}
-#           
-#           virtualmachine['ordinal'] = ordinal
-#           
-#           nameParts = os.uname()[1].split('.',1)
-#           
-#           vmName = nameParts[0] + '-%02d' % ordinal + '.' + nameParts[1]
-#                      
-#           if gbScratch > 0:
-#              virtualmachine['scratch_volume'] = '/dev/' + volumeGroup + '/' + vmName
-#           
-#           virtualmachines[vmName] = virtualmachine
-#           ordinal += 1
-
       # Finished successfully, with no error to return
       return None
 
