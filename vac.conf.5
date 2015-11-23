@@ -24,17 +24,6 @@ For ease of management, any configuration file ending in .conf in the
 directory /etc/vac.d will be read, in 
 alphanumeric order by name, and then /etc/vac.conf is read if present. 
 
-.SH NFS SHARED DIRECTORIES
-
-Vac makes directories available to the VM via NFS which can be mounted 
-inside the VM at:
-.br
-/etc/jobfeatures
-.br
-/etc/machinefeatures
-.br
-/etc/machineoutputs
-
 .SH [SETTINGS] OPTIONS
 
 The [settings] section is required and has options which apply to all virtual
@@ -214,7 +203,7 @@ has passed.
 
 .B heartbeat_file
 allows the machinetype to nominate a file which will be created in 
-/etc/machineoutputs before fizzle_seconds has passed. If this file is
+$JOBOUTPUTS before fizzle_seconds has passed. If this file is
 not created by then and maintained for the lifetime of the VM, the 
 VM will be destroyed.
 
@@ -243,16 +232,9 @@ disk image. Default vda.
 is the device name exposed to the VM that is associated with the scratch
 logical volume. Default vdb.
 
-.B log_machineoutputs
-can be set to True to enable recording of all the files from
-/etc/machineoutputs inside the VM, to subdirectories of 
-/var/lib/vac/machineoutputs when the VM finishes or is killed. The 
-subdirectories are named after the UUID of the VM, and grouped together
-in separate directories for each machinetype. Default False.
-
-.B machineoutputs_days
+.B machines_dir_days
 sets the expiration time in days for per-VM directories created under
-/var/lib/vac/machineoutputs.
+/var/lib/vac/machines.
 
 .B accounting_fqan
 is used to specify a FQAN to include when writing APEL accounting 

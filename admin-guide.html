@@ -44,12 +44,8 @@ isn't enabled. Please check the libvirt documentation to try to identify
 where the problem is.
 
 <p>
-To start using Vac to manage VMs, it's necessary to have a standard NFS
-server installed and running. Vac uses NFS to share some directories from
-the factory machine to its virtual machines.
-It's not necessary to configure the NFS server, as Vac uses exportfs
-commands to create and destroy exports dynamically. If you have any iptables
-rules blocking NFS you should disable them before starting vacd.
+<!-- If you have any iptables
+rules blocking NFS you should disable them before starting vacd. -->
 The factory machine must have a fully qualified domain name (FDQN) as
 its hostname. So factory1.example.com not just factory1. 
 The 169.254.0.0 network should not be configured on the factory machine
@@ -257,8 +253,7 @@ Network problems are usually caused by:
 <p>
 libvirtd attempts to configure the factory machine's iptables rules to
 support network address translation / masquerading from the private NAT
-network. In addition, you need to allow NFS mounts of directories exported
-by the factory to the VM. Assumming the virbr1 virtual interface is used
+network. Assumming the virbr1 virtual interface is used
 for the private network, then iptables can be set up using the
 iptables-restore command without relying on libvirtd:
 
@@ -277,7 +272,7 @@ COMMIT
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
-# Catch-all, including NFS
+# Catch-all, including HTTP
 -A INPUT -i virbr1 -p udp -j ACCEPT 
 -A INPUT -i virbr1 -p tcp -j ACCEPT 
 # Forward to/from private network
