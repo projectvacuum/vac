@@ -34,8 +34,11 @@
 #  Contacts: Andrew.McNab@cern.ch  http://www.gridpp.ac.uk/vac/
 #
 
+import re
 import uuid
-import os, errno, sys
+import os
+import errno
+import sys
 import json
 import time
 import subprocess
@@ -191,8 +194,8 @@ def vacOneCycle():
       # In case of unresolvable problems, we end this cycle
       return
 
-   vac.vacutils.logLine(str(numVirtualmachines + ' VMs available to this factory machine')
-   vac.vacutils.logLine('VM Types configuration: ' + str(vac.shared.machinetypes))
+   vac.vacutils.logLine(str(vac.shared.numVirtualmachines) + ' VMs available to this factory machine')
+   vac.vacutils.logLine('Machine types configuration: ' + str(vac.shared.machinetypes))
    vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
    # These are updated at the END of each cycle of the for loop
@@ -201,7 +204,7 @@ def vacOneCycle():
    runningCount  = 0
    startedOne    = False
    
-   for ordinal in range(numVirtualmachines):
+   for ordinal in range(vac.shared.numVirtualmachines):
    
      vmname = vac.shared.nameFromOrdinal(ordinal)   
      vm     = vac.shared.VacVM(ordinal)
@@ -283,7 +286,7 @@ def vacOneCycle():
          # count up the running VMs' CPUs on the this factory
          totalCpusForCount = 0
   
-         for ordinal in range(numVirtualmachines):
+         for ordinal in range(vac.shared.numVirtualmachines):
          
            vmForCount = vac.shared.VacVM(ordinal)
 
@@ -466,23 +469,48 @@ def vacResponder():
 
    sys.exit(0) # if we break out of while loop then we exit
 
-class mjfHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
    def do_GET(self):
-     self.send_response(200)
-     self.send_header('Content-type','text/plain')
-     self.end_headers()
-     self.wfile.write('123')
 
-class metadataHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+     body = None
+   
+     if self.client_address[0].startswith(vac.shared.natPrefix):
+       try:    
+         ordinal = int(self.client_address[0].split('.')[3])
+       except:
+         vac.vacutils.logLine('Failed to get ordinal from ' + str(self.client_address))
+       else:
+         try:
+           createdStr, machinetypeName, uuidStr = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
+           created = int(createdStr)
+         except Exception as e:
+           vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')
+         else:
+           body = self.makeBody(created, machinetypeName, uuidStr, self.path)
 
-   def do_GET(self):
-     self.send_response(200)
-     self.send_header('Content-type','text/plain')
-     self.end_headers()
-     self.wfile.write('567')
+     if body is None:
+       self.send_response(404)
+       self.send_header('Content-type','text/plain')
+       self.end_headers()
+       self.wfile.write('Not found')
+     else:
+       self.send_response(200)
+       self.send_header('Content-type','text/plain')
+       self.end_headers()
+       self.wfile.write(body)
 
-def vacHttpd(idStr, ip):
+class mjfHttpdHandler(vacHttpdHandler):
+
+   def makeBody(self, created, machinetypeName, uuidStr, path):
+      return vac.shared.makeMjfBody(created, machinetypeName, uuidStr, path)
+
+class metadataHttpdHandler(vacHttpdHandler):
+
+   def makeBody(self, created, machinetypeName, uuidStr, path):
+      return vac.shared.makeMetadataBody(created, machinetypeName, uuidStr, path)
+            
+def vacHttpd(idStr):
    # idStr is 'metadata' or 'mjf'
 
    si = file('/dev/null', 'r')
@@ -499,12 +527,14 @@ def vacHttpd(idStr, ip):
    vac.vacutils.logLine('vac ' + idStr + ' (httpd) starts')
    
    vac.vacutils.setProcessName('vacd-' + idStr)
-
-   try:
-     httpd = BaseHTTPServer.HTTPServer((ip, 80), locals()[idStr + 'HttpdHandler'])
-   except Exception as e:
-     vac.vacutils.logLine('Failed creating ' + idStr + ' httpd (' + str(e) + ') - exiting')
-     sys.exit(0)     
+ 
+   if idStr == 'mjf':
+     httpd = BaseHTTPServer.HTTPServer((vac.shared.factoryAddress, 80), mjfHttpdHandler)
+   elif idStr == 'metadata':
+     httpd = BaseHTTPServer.HTTPServer((vac.shared.metadataAddress, 80), metadataHttpdHandler)
+   else:
+     vac.vacutils.logLine('vacHttpd(only metadata or mjf) !!')
+     sys.exit(0)
 
    while True:
    
@@ -575,8 +605,11 @@ if __name__ == '__main__':
 
         elif os.fork() == 0:
 
-          vacHttpd('mjf',      shared.factoryAddress )
-          vacHttpd('metadata', shared.metadataAddress)
+          vacHttpd('mjf')
+
+        elif os.fork() == 0:
+
+          vacHttpd('metadata')
 
         else:
           try:
