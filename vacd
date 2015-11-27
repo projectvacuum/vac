@@ -470,6 +470,7 @@ def vacResponder():
    sys.exit(0) # if we break out of while loop then we exit
 
 class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+   # Base class for mjfHttpdHandler and metadataHttpHandler, each with their own self.makeBody()
 
    def do_GET(self):
 
@@ -487,27 +488,64 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
          except Exception as e:
            vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')
          else:
-           body = self.makeBody(created, machinetypeName, uuidStr, self.path)
+           # makeBody comes from the correct subclass
+           body = self.makeGetBody(created, machinetypeName, uuidStr, self.path)
 
-     if body is None:
-       self.send_response(404)
-       self.send_header('Content-type','text/plain')
-       self.end_headers()
-       self.wfile.write('Not found')
-     else:
-       self.send_response(200)
-       self.send_header('Content-type','text/plain')
-       self.end_headers()
-       self.wfile.write(body)
+     try:
+       if body is None:
+         self.send_response(404)
+         self.end_headers()
+       else:
+         self.send_response(200)
+                  
+         if body.startswith('<html>'):
+           self.send_header('Content-type','text/html')
+         else:
+           self.send_header('Content-type','text/plain')
+
+         self.end_headers()
+         self.wfile.write(body)
+     except Exception as e:
+       vac.vacutils.logLine('Sending HTTP response fails with exception ' + str(e))
 
 class mjfHttpdHandler(vacHttpdHandler):
 
-   def makeBody(self, created, machinetypeName, uuidStr, path):
+   def makeGetBody(self, created, machinetypeName, uuidStr, path):
       return vac.shared.makeMjfBody(created, machinetypeName, uuidStr, path)
+      
+   def do_PUT(self):
+      
+     if self.client_address[0].startswith(vac.shared.natPrefix):
+       try:    
+         ordinal = int(self.client_address[0].split('.')[3])
+       except:
+         vac.vacutils.logLine('Failed to get ordinal from ' + str(self.client_address))
+       else:
+         try:
+           createdStr, machinetypeName, uuidStr = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
+           created = int(createdStr)
+         except Exception as e:
+           vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')
+         else:
+           try:
+             body = self.rfile.read()
+#WHAT NEXT??
+
+     try:
+       if body is None:
+         self.send_response(404)
+         self.end_headers()
+       else:
+         self.send_response(200)
+         self.send_header('Content-type','text/plain')
+         self.end_headers()
+         self.wfile.write(body)
+     except Exception as e:
+       vac.vacutils.logLine('Sending HTTP response fails with exception ' + str(e))
 
 class metadataHttpdHandler(vacHttpdHandler):
 
-   def makeBody(self, created, machinetypeName, uuidStr, path):
+   def makeGetBody(self, created, machinetypeName, uuidStr, path):
       return vac.shared.makeMetadataBody(created, machinetypeName, uuidStr, path)
             
 def vacHttpd(idStr):
@@ -529,9 +567,9 @@ def vacHttpd(idStr):
    vac.vacutils.setProcessName('vacd-' + idStr)
  
    if idStr == 'mjf':
-     httpd = BaseHTTPServer.HTTPServer((vac.shared.factoryAddress, 80), mjfHttpdHandler)
+     httpd = BaseHTTPServer.HTTPServer((vac.shared.mjfAddress, 80), mjfHttpdHandler)
    elif idStr == 'metadata':
-     httpd = BaseHTTPServer.HTTPServer((vac.shared.metadataAddress, 80), metadataHttpdHandler)
+     httpd = BaseHTTPServer.HTTPServer((vac.shared.factoryAddress, 80), metadataHttpdHandler)
    else:
      vac.vacutils.logLine('vacHttpd(only metadata or mjf) !!')
      sys.exit(0)
