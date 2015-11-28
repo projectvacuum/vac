@@ -235,6 +235,19 @@ if __name__ == '__main__':
                                                isLegacyProxy = options.isLegacyProxy)
               sys.exit(0)
 
+        if args[0] == 'cernvm-signature':
+            if len(args) == 2:
+              dict = vac.vacutils.getCernvmImageData(args[1])
+              if dict is None:
+                print 'Failed to verify signature'
+                sys.exit(1)
+              else:
+                print dict
+                sys.exit(0)                
+            else:
+              print 'cernvm-signature command requires the filename argument!'
+              sys.exit(2)
+
     print 'Must give command argument to vac!'
     sys.exit(1)
                                                                       

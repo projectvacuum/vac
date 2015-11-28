@@ -41,14 +41,16 @@ import re
 import sys
 import stat
 import time
+import json
 import ctypes
 import string
 import urllib
 import StringIO
 import tempfile
 import calendar
-
+import hashlib
 import pycurl
+import base64
 import M2Crypto
 
 def logLine(text):
@@ -305,6 +307,96 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False):
      proxyString += oneOldCert.as_pem()
 
    return proxyString 
+
+def getCernvmImageData(fileName):
+
+   data = { 'verified' : False }
+
+   try:
+     length = os.stat(fileName).st_size
+   except Exception as e:
+     logLine('Failed to get CernVM image size (' + str(e) + ')')     
+     return data
+   
+   if length <= 65536:
+     logLine('CernVM image only ' + str(length) + ' bytes long: must be more than 65536')
+     return data
+
+   try:
+     f = open(fileName, 'r')
+   except Exception as e:
+     logLine('Failed to open CernVM image (' + str(e) + ')')
+     return data
+
+   try:
+     f.seek(-64 * 1024, os.SEEK_END)
+     metadataBlock = f.read(32 * 1024).rstrip("\x00")
+     # Quick hack until the metadata section is fixed in the CernVM images (extra comma)
+     metadataBlock = metadataBlock.replace('HEAD",\n', 'HEAD"\n')
+     metadataDict  = json.loads(metadataBlock)
+
+     if 'ucernvm-version' in metadataDict:
+       data['version'] = metadataDict['ucernvm-version']
+   except Exception as e:
+     logLine('Failed to load Metadata Block JSON from CernVM image (' + str(e) + ')')
+
+   try:
+     f.seek(-32 * 1024, os.SEEK_END)
+     signatureBlock = f.read(32 * 1024).rstrip("\x00")
+     # Quick hack until the howto-verify section is fixed in the CernVM images (missing commas)
+     signatureBlock = signatureBlock.replace('signature>"\n', 'signature>",\n').replace('cvm-sign01.cern.ch"\n', 'cvm-sign01.cern.ch",\n')
+     signatureDict  = json.loads(signatureBlock)
+   except Exception as e:
+     logLine('Failed to load Signature Block JSON from CernVM image (' + str(e) + ')')
+     return data
+
+   try:
+     f.seek(0, os.SEEK_SET)
+     digestableImage = f.read(length - 32 * 1024)
+     hash = hashlib.sha256(digestableImage)
+     digest = hash.digest()
+   except Exception as e:
+     logLine('Failed to make digest of CernVM image (' + str(e) + ')')
+     return data
+
+   try:
+     certificate = base64.b64decode(signatureDict['certificate'])
+     x509 = M2Crypto.X509.load_cert_string(certificate)
+     rsaPubkey = x509.get_pubkey().get_rsa()
+   except Exception as e:
+     logLine('Failed to get X.509 certificate and RSA public key (' + str(e) + ')')
+     return data
+
+   try:
+     signature = base64.b64decode(signatureDict['signature'])
+   except:
+     logLine('Failed to get signature from CernVM Signature Block')
+     return data
+
+   if not rsaPubkey.verify(digest, signature, 'sha256'):
+     logLine('Certificate and calculated hash do not match given signature')
+     return data
+
+   try:
+     # This isn't provided by M2Crypto, so we use openssl command
+     p = os.popen('/usr/bin/openssl verify -CApath /etc/grid-security/certificates >/dev/null', 'w')
+     p.write(certificate)
+
+     if p.close() is None:
+       try:
+         dn = str(x509.get_subject())
+       except Exception as e:
+         logLine('Failed to get X.509 Subject DN (' + str(e) + ')')
+         return data
+       else:
+         data['verified'] = True
+         data['dn']       = dn
+         
+   except Exception as e:
+     logLine('Failed to run /usr/bin/openssl verify command (' + str(e) + ')')
+     return data
+   
+   return data
 
 def getRemoteRootImage(url, imageCache, tmpDir):
 
