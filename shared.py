@@ -291,7 +291,7 @@ def readConf():
 
          sectionNameSplit = sectionName.lower().split(None,1)
          
-         # For now, can still define these machinetype sections with [machinetype ...]
+         # For now, can still define these machinetype sections with [vmtype ...] too
          if sectionNameSplit[0] == 'machinetype' or sectionNameSplit[0] == 'vmtype':
          
              if string.translate(sectionNameSplit[1], None, '0123456789abcdefghijklmnopqrstuvwxyz-') != '':
@@ -299,6 +299,9 @@ def readConf():
          
              machinetype = {}
              machinetype['root_image'] = parser.get(sectionName, 'root_image')
+
+             if parser.has_option(sectionName, 'cernvm_signing_dn'):
+                 machinetype['cernvm_signing_dn'] = parser.get(sectionName, 'cernvm_signing_dn').strip()
 
              if parser.has_option(sectionName, 'target_share'):
                  machinetype['share'] = float(parser.get(sectionName, 'target_share'))
@@ -1068,6 +1071,15 @@ class VacVM:
             cernvmCdrom = machinetypes[self.machinetypeName]['root_image']
           else:
             cernvmCdrom = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
+
+          if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
+            cernvmDict = vac.vacutils.getCernvmImageData(cernvmCdrom)
+            if cernvmDict['verified'] == False:
+              return 'Failed to verify signature/cert for ' + cernvmCdrom            
+            elif re.search(machinetypes[self.machinetypeName]['cernvm_signing_dn'],  cernvmDict['dn']) is None:
+              return 'Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn']
+            else:
+              vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
       
           if domainType == 'kvm':
             cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +

@@ -234,7 +234,7 @@ logical volume. Default vdb.
 
 .B machines_dir_days
 sets the expiration time in days for per-VM directories created under
-/var/lib/vac/machines.
+/var/lib/vac/machines. Default 3.
 
 .B accounting_fqan
 is used to specify a FQAN to include when writing APEL accounting 
@@ -253,6 +253,17 @@ VM starts using an If-Modified-Since request to minimise network load.
 Alternatively, the images may be files in the local filesystem.
 With cernvm3 machine_model, the files are ISO CDROM-style boot images; 
 with the cernvm2 machine_model, they are the root hard disk image itself.
+
+.B cernvm_signing_dn
+is used to specify a regular expression to match the DN of an X.509
+certificate used to verify the authenticity of the root image. Vac
+attempts to obtain the certificate and signature from a CernVM Signature 
+Block at the end of the image file, verifies the
+certificate using the CA files in /etc/grid-security/certificates, and
+compares the certificate DN to cernvm_signing_dn. If this option is
+given, all these verification steps must be satisified for the image
+to be used. As of 2015, CernVM images are signed with a DN matching
+the regular expression /CN=cvm-sign01\\.cern\\.ch$
 
 .B root_public_key
 is the file name of a public key supplied to the contextualization which

@@ -310,7 +310,7 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False):
 
 def getCernvmImageData(fileName):
 
-   data = { 'verified' : False }
+   data = { 'verified' : False, 'dn' : None }
 
    try:
      length = os.stat(fileName).st_size
