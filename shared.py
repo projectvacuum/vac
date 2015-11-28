@@ -597,15 +597,13 @@ class VacVM:
 
       try: 
         self.shutdownMessage = open(self.machinesDir() + '/joboutputs/shutdown_message', 'r').read().strip()
-        self.timeShutdownMessage = int(os.stat('/var/lib/vac/machines/' + self.machinetypeName + 
-                                            '/' + self.uuidStr + '/joboutputs/shutdown_message').st_ctime)
+        self.timeShutdownMessage = int(os.stat(self.machinesDir() + '/joboutputs/shutdown_message').st_ctime)
       except:
         self.shutdownMessage = None
         self.timeShutdownMessage = None
                         
       try: 
-        self.shutdownTime = int(open(self.machinesDir() 
-                                         + '/machinefeatures/shutdowntime', 'r').read().strip())
+        self.shutdownTime = int(open(self.machinesDir() + '/machinefeatures/shutdowntime', 'r').read().strip())
       except:
         self.shutdownTime = None
       else:
@@ -623,29 +621,24 @@ class VacVM:
                pass
 
       try:
-        self.joboutputsHeartbeat = \
-                         int(os.stat('/var/lib/vac/machines/' + self.machinetypeName + '/' + 
-                                     self.uuidStr + '/joboutputs/' + 
-                                     machinetypes[self.machinetypeName]['heartbeat_file']).st_mtime)
+        self.joboutputsHeartbeat = int(os.stat(self.machinesDir() + '/joboutputs/' + 
+                                               machinetypes[self.machinetypeName]['heartbeat_file']).st_mtime)
       except:
         self.joboutputsHeartbeat = None
 
       try: 
-        self.cpus = int(open(self.machinesDir() 
-                                + '/jobfeatures/allocated_CPU', 'r').read().strip())
+        self.cpus = int(open(self.machinesDir() + '/jobfeatures/allocated_CPU', 'r').read().strip())
       except:
         pass
       
       try: 
-        self.hs06 = float(open(self.machinesDir() 
-                                + '/machinefeatures/hs06', 'r').read().strip())
+        self.hs06 = float(open(self.machinesDir() + '/machinefeatures/hs06', 'r').read().strip())
       except:
         self.hs06 = hs06PerMachine
       
       try: 
         # we use our mem_limit_bytes to avoid usage of 1000^2 for memory in MJF mem_limit_MB spec
-        self.mb = (int(open(self.machinesDir() 
-                                + '/jobfeatures/mem_limit_bytes', 'r').read().strip()) / 1048576)
+        self.mb = (int(open(self.machinesDir() + '/jobfeatures/mem_limit_bytes', 'r').read().strip()) / 1048576)
       except:
         self.mb = mbPerMachine
       
@@ -1440,9 +1433,10 @@ def makeMjfBody(created, machinetypeName, uuidStr, path):
    # Fold // to /
    requestURI = path.replace('//','/')
 
-   try:
-     dummy, whichDir, keyName = requestURI.split('/')
-   except:
+   splitRequestURI = requestURI.split('/')
+
+   if len(splitRequestURI) > 3:
+     # Subdirectories are now allowed
      return None
 
    machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
@@ -1455,21 +1449,21 @@ def makeMjfBody(created, machinetypeName, uuidStr, path):
      try:
        body = '<html><body><ul>'
 
-       for fileName in os.listdir(machinesDir + '/' + whichDir):
-         body += '<li><a href="' + fileName + '">' + fileName + '</a></li>'
+       for fileName in os.listdir(machinesDir + '/' + splitRequestURI[1]):
+         body += '<li><a href="' + splitRequestURI[2] + '">' + splitRequestURI[2] + '</a></li>'
          
        body += '</ul></body></html>'
        return body
      except Exception as e:
-       vac.vacutils.logLine('Failed to make directory listing for ' + machinesDir + '/' + whichDir + ' (' + str(e) + ')')
+       vac.vacutils.logLine('Failed to make directory listing for ' + machinesDir + '/' + splitRequestURI[1] + ' (' + str(e) + ')')
        return None
 
-   elif (whichDir == 'machinefeatures' or whichDir == 'jobfeatures') and keyName:
+   elif (splitRequestURI[1] == 'machinefeatures' or splitRequestURI[1] == 'jobfeatures') and splitRequestURI[2]:
      # Return an individual MJF value
      try:
-       return open(machinesDir + '/' + whichDir + '/' + keyName, 'r').read()
+       return open(machinesDir + '/' + splitRequestURI[1] + '/' + splitRequestURI[2], 'r').read()
      except Exception as e:
-       vac.vacutils.logLine('Failed to get MJF value from ' + machinesDir + '/' + whichDir + '/' + keyName + ' (' + str(e) + ')')
+       vac.vacutils.logLine('Failed to get MJF value from ' + machinesDir + '/' + splitRequestURI[1] + '/' + splitRequestURI[2] + ' (' + str(e) + ')')
        return None
 
    return None
@@ -1504,6 +1498,29 @@ def makeMetadataBody(created, machinetypeName, uuidStr, path):
 
    # No body (and therefore 404) if we don't recognise the request
    return None
+
+def writePutBody(created, machinetypeName, uuidStr, path, body):
+
+   # Fold // to /
+   requestURI = path.replace('//','/')
+   
+   splitRequestURI = requestURI.split('/')
+   
+   if len(splitRequestURI) != 3 or splitRequestURI[1] != 'joboutputs' or not splitRequestURI[2]:
+     return False
+
+   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
+   
+   try:
+     vac.vacutils.createFile(machinesDir + '/joboutputs/' + splitRequestURI[2],
+                             body,
+                             stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+   except Exception as e:
+     vac.vacutils.logLine('Failed to write ' + machinesDir + '/joboutputs/' + splitRequestURI[2] + ' (' + str(e) + ')')
+     return False
+
+   vac.vacutils.logLine('Wrote ' + machinesDir + '/joboutputs/' + splitRequestURI[2])
+   return True
 
 def sendMachinetypesRequests(factoryList = None):
 

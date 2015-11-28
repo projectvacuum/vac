@@ -90,7 +90,7 @@
 # fileserver (without the leading puppet:///). 
 # YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
 #
-# Andrew.McNab@cern.ch  December 2014  http://www.gridpp.ac.uk/vac/
+# Andrew.McNab@cern.ch  November 2015  http://www.gridpp.ac.uk/vac/
 #
 
 #
@@ -106,7 +106,7 @@ class vac ($space              = "vac01.${domain}",
            $subspace8          = '',
            $subspace9          = '',
            $etc_path           = 'modules/vac/vac.d',
-           $machinetypes_path       = 'modules/vac/machinetypes',
+           $machinetypes_path  = 'modules/vac/machinetypes',
            $nagios_nrpe        = false,
            $apel_bdii_hostport = '',
            $apel_cert_path     = '',
@@ -192,10 +192,6 @@ class vac ($space              = "vac01.${domain}",
              enable => true,
              ensure => "running",
           }
-  service { 'rpcbind':
-             enable => true,
-             ensure => "running",
-          }
   service { 'cgconfig':
              enable  => true,
              ensure  => "running",
@@ -210,11 +206,6 @@ class vac ($space              = "vac01.${domain}",
              command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
              unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
              before  => Service['ksm'],
-          }
-  service { 'nfs':
-             enable  => true,
-             ensure  => "running",
-             require => Service['rpcbind'],
           }
   service { 'ksm':
              enable => true,

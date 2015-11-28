@@ -68,7 +68,7 @@ when writing APEL accounting records. Defaults to 1.
 .B shutdown_time
 can be set to apply a limit on the shutdown time for all VMs. This value is 
 used if it is ever earlier than the shutdown time calculated from the 
-machinetype's max_wallclock_seconds. In this case /etc/machinefeatures/shutdowntime 
+machinetype's max_wallclock_seconds. In this case $MACHINEFEATURES/shutdowntime 
 is updated for the VM and Vac will kill the VM if that shutdown time is
 reached. As shutdown_time is approached, VMs will be created with shorter
 and shorter lifetimes if their min_wallclock_seconds settings permit.
@@ -95,19 +95,6 @@ and bugs at the versions currently in use. Defaults to True.
 If set, this option gives a space-separated list of HOST:PORT to send 
 VacQuery UDP packets to. This can be used to monitor the ongoing status
 of factories and VMs via site or central VacMon services.
-
-.B total_machines
-gives the number of VMs to be defined by Vac. The default value is the 
-number of processors counted using /proc/cpuinfo and in normal operation
-the total_machines option should not be used. In particular, it must never
-be decreased while VMs are running.
-.br
-The VM names are formed by
-adding a hyphen and the VM number to the hostname component of its fully
-qualified domain name. For example, factory1.example.com would have
-factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
-addresses are formed with the prefix 56:4D as the first two bytes, and
-the four bytes of the IP address as the remaining four bytes. 
 
 .B cpu_total 
 is derived from /proc/cpuinfo by default and does not usually need to be 
@@ -152,6 +139,19 @@ used for outgoing network connections from the VMs to other machines.
 For example, eth1. This option is only needed if you have multiple 
 network interfaces on the factory and only one should be used for traffic
 originating from the VMs.
+
+.B total_machines
+can be used to set the number of VMs to be defined by Vac. The default 
+value is the number of processors counted using /proc/cpuinfo and in normal
+operation 
+.B the total_machines option should not be used. In particular, it must never be decreased while VMs are running.
+
+The VM names are formed by
+adding a hyphen and the VM number to the hostname component of its fully
+qualified domain name. For example, factory1.example.com would have
+factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
+addresses are formed with the prefix 56:4D as the first two bytes, and
+the four bytes of the IP address as the remaining four bytes. 
 
 .SH [MACHINETYPE ...] SECTIONS
 
@@ -214,8 +214,8 @@ heartbeat_seconds then the VM will be destroyed. If heartbeat_seconds
 is 0, then only the existence of the file will be checked. Default 0.
 
 .B max_wallclock_seconds
-gives the maximum lifetime of a VM. Vac will create 
-/etc/machinefeatures/shutdowntime inside the VM using this value to 
+gives the maximum lifetime of a VM. Vac will set 
+$MACHINEFEATURES/shutdowntime for the VM using this value to 
 communicate it to the VM. Vac will destroy the VM if it is still
 running after this amount of time. Default 86400.
 
@@ -337,7 +337,7 @@ are the hostname of the Vac factory machine.
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
 
-vacd is part of Vac: http://www.gridpp.ac.uk/vac/
+More about Vac: http://www.gridpp.ac.uk/vac/
 .SH "SEE ALSO"
 .BR vacd(8), 
 .BR vac(1),

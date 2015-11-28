@@ -1,5 +1,7 @@
 ==================== Changes in Vac version 0.20.0 ===================== 
 - vmtype -> machinetype in options and code
+- NFS and contextualization ISO image replaced by vacd-metadata and 
+  vacd-mjf HTTP servers
 ==================== Changes in Vac version 0.19.0 ===================== 
 - Fix shutdownTime bug identified by Ewan MacMahon
 - qemu-kvm can be in /usr/libexec (SL6) or /usr/bin (Fedora)

@@ -44,8 +44,6 @@ isn't enabled. Please check the libvirt documentation to try to identify
 where the problem is.
 
 <p>
-<!-- If you have any iptables
-rules blocking NFS you should disable them before starting vacd. -->
 The factory machine must have a fully qualified domain name (FDQN) as
 its hostname. So factory1.example.com not just factory1. 
 The 169.254.0.0 network should not be configured on the factory machine
@@ -71,12 +69,6 @@ used as a virtual CE name where necessary in other systems.
 <dd>Since we're creating a space that contains a single factory machine, 
     set this to be the FQDN of the factory machine you're workng on.
 
-<dt><b>total_machines</b>
-<dd>Set this to the number of VMs to create and manage on this factory.
-    Vac will create hostnames for the VMs from the factory name. For
-    example, factory1.example.com will lead to factory1-00.example.com,
-    factory1-01.example.com, ...
-  
 <dt><b>root_public_key =</b> in [machinetype example]
 <dd>This setting is not strictly necessary but is very useful. By copying
     an RSA key pair to /root/.ssh on the factory machine, or creating
@@ -115,7 +107,10 @@ and /var/log/vacd-responder .
 <p>
 In its log file, you should be able to see the factory
 daemon trying to decide what to do and then creating the example
-VM which runs for 5 minutes then shuts itself down. When deciding
+VM which runs for 5 minutes then shuts itself down.
+Vac will create hostnames for the VMs from the factory name. For
+example, factory1.example.com will lead to factory1-00.example.com,
+factory1-01.example.com, ...  When deciding
 what to do, the factory queries its own responder via UDP and this
 should be visible in the responder's log file.
 

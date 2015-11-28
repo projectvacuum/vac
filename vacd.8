@@ -8,10 +8,13 @@
 .B vacd
 is a daemon which implements the Vacuum model on a factory (hypervisor) machine.
 
-When vacd starts, it forks itself into two daemons
-which change their process names to vacd-factory and vacd-responder. The
+When vacd starts, it forks itself into four daemons
+which change their process names to vacd-factory, vacd-responder,
+vacd-metadata, and vacd-mjf. The
 factory daemon is responsible for managing the life cycle of VMs. The responder
-replies to queries from factories about what is currently running. 
+replies to queries from factories about what is currently running. The
+metadata and mjf daemons are HTTP servers which serve EC2 and OpenStack
+metadata, and Machine/Job Features files to the virtual machines.
 
 .SH CONFIGURATION FILES
 
@@ -25,8 +28,9 @@ the configuration.
 
 .SH LOG FILES
 
-The two daemon processes write to /var/log/vacd-factory and 
-/var/log/vacd-responder respectively.
+The fourd daemon processes write to /var/log/vacd-factory,  
+/var/log/vacd-responder, /var/log/vacd-metadata, and 
+/var/log/vacd-mjf.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>

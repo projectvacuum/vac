@@ -1,5 +1,7 @@
 /var/log/vacd-factory
 /var/log/vacd-responder
+/var/log/vacd-metadata
+/var/log/vacd-mjf
 {
   daily
   missingok
