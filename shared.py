@@ -692,7 +692,7 @@ class VacVM:
       if (self.heartbeat - self.started) < machinetypes[self.machinetypeName]['fizzle_seconds']:
         return
         
-      nowTime = time.localtime()
+      nowTime = time.gmtime()
 
       try:
         os.makedirs(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d', nowTime), stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)

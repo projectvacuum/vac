@@ -60,6 +60,32 @@ messages if available.
 .br
 Outputs the raw responses from one or more factory machines.
 
+.HP
+.B "proxy-init"
+.br
+Requires the --cert and --key options and may take the --legacy-proxy
+option. Creates a legacy Globus proxy or RFC proxy (the default.) 
+
+.HP
+.B "cernvm-signature image
+.br
+Outputs the CernVM metadata and signature information from an image,
+indicating if the signature verification succeeded and the associated
+signing X.509 DN.
+
+.HP
+.B "apel-sync [YYYYMM [YYYYMM [YYYYMM ... ]]]"
+.br
+Takes zero or more six digit year-month strings and writes APEL
+Sync message record file(s) to today's subdirectory of 
+/var/lib/vac/apel-outgoing based on the corresponding months'
+records in daily subdirectories of /var/lib/vac/apel-archive . If
+no year-month string is given on the command line, then the year-month
+containing the time 24 hours before now is used. This means that vac
+apel-sync can be run every day from cron to publish sync summaries of
+the current month's progress, with a final whole-month summary being
+published during the first day of the next month.
+
 .SH CONFIGURATION FILES
 
 The vac command uses the settings of the
