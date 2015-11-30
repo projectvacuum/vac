@@ -35,7 +35,8 @@ include VERSION
 
 INSTALL_FILES=vacd vac \
           __init__.py shared.py vacutils.py \
-          vacd.init check-vacd VERSION vacd.logrotate \
+          vacd.init vac-ssmsend.init check-vacd VERSION \
+          vacd.logrotate \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           RELEASE example.vac.conf example.user_data \
           admin-guide.html vac-ssmsend-prod.cfg \
@@ -90,6 +91,8 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/usr/share/man/man8
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
+	cp vac-ssmsend.init \
+	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vac-ssmsend
 	cp vacd.logrotate \
 	   $(RPM_BUILD_ROOT)/etc/logrotate.d/vacd
 	cp vac-ssmsend-prod.cfg \
