@@ -292,7 +292,7 @@ class vac ($space              = "vac01.${domain}",
       file { '/etc/cron.d/vac-ssmsend-cron':
              require => Package['vac'],
              ensure  => 'file',
-             content => "22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend-cron.log 2>&1\n",
+             content => "22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend.log 2>&1\n",
              owner   => 'root',
              group   => 'root',
              mode    => '0644',
