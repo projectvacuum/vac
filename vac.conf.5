@@ -48,10 +48,6 @@ machinetype.
 is how long to wait before giving up on more UDP replies. Defaults to 5.0
 seconds.
 
-.B domain_type
-gives the type of hypervisor used, and can be either kvm or xen. kvm is the
-default and is the preferred choice for production use.
-
 .B cpu_per_machine
 sets the number of virtual CPUs to assign to each VM. Along with cpu_total,
 this is also used when calculating how many virtual machines can be created.
@@ -163,7 +159,7 @@ that machinetype.
 
 .B machine_model
 is required and tells Vac how to configure the virtual hardware seen by
-the VMs of this machinetype. Currently cernvm2 or cernvm3. Default cernvm3.
+the VMs of this machinetype. Currently cernvm3 or vm-raw. Default cernvm3.
 
 .B target_share
 gives the desired share of the total VMs available in this space for this

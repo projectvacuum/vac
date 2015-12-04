@@ -17,31 +17,24 @@
 # All other ##user_data__## sustitutions for this template are
 # generated automatically by Vac.
 #
-# Andrew.McNab@cern.ch December 2014
+# Andrew.McNab@cern.ch December 2015
 #
 
 # Set the hostname if available; display otherwise
 hostname ##user_data_vm_hostname##
 
-# Possibly make MJF directories and mount the three NFS directories
-# provided to this VM by Vac
-if [ `echo "##user_data_vmlm_version##" | cut -f1 -d' '` == 'Vac' ] ; then
- mkdir -p /etc/machineoutputs /etc/machinefeatures /etc/jobfeatures
- mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_machinetype##/##user_data_uuid##/shared/jobfeatures" /etc/jobfeatures
- mount "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_machinetype##/##user_data_uuid##/shared/machinefeatures" /etc/machinefeatures
- mount -o rw,nfsvers=3 "169.254.169.254:/var/lib/vac/machines/##user_data_vm_hostname##/##user_data_machinetype##/##user_data_uuid##/shared/machineoutputs" /etc/machineoutputs
-fi
+mkdir -p /etc/joboutputs
 
 # Create the epilog.sh which is run at the end of set up 
 # within the CernVM virtual machine
 cat <<EP_EOF >>/var/lib/hepix/context/epilog.sh
 #!/bin/sh
 (
-echo 'Created by example user_data' > /etc/machineoutputs/example.txt
+echo 'Created by example user_data' > /etc/joboutputs/example.txt
 sleep 300
 /sbin/shutdown -h now 'VM shutting down ...'
 sleep 1234567890
-) > /etc/machineoutputs/example.log 2>&1
+) > /etc/joboutputs/example.log 2>&1
 EP_EOF
 chmod +x /var/lib/hepix/context/epilog.sh
 exit 0

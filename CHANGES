@@ -7,6 +7,7 @@
 - Add vac-ssmsend.init for running ssmsend at boot up and shut down
 - Add apel-sync subcommand to vac command, to be run by cron daily 
   to add Sync records into those published by ssmsend.
+- Drop Xen support. machine_model now cernvm3 or vm-raw (using QCOW2)
 ==================== Changes in Vac version 0.19.0 ===================== 
 - Fix shutdownTime bug identified by Ewan MacMahon
 - qemu-kvm can be in /usr/libexec (SL6) or /usr/bin (Fedora)

@@ -69,7 +69,6 @@ factoryAddress  = '169.254.169.254'
 mjfAddress      = '169.254.169.253'
 udpBufferSize   = 16777216
 
-domainType = None
 overloadPerCpu = None
 gocdbSitename = None
 
@@ -98,14 +97,13 @@ gbScratch = None
 machinefeaturesOptions = None
 
 def readConf():
-      global domainType, gocdbSitename, \
+      global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, gbScratchesMeasured, machinetypes, vacmons, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
-      domainType = 'kvm'
       overloadPerCpu = 2.0
       gocdbSitename = None
 
@@ -173,18 +171,14 @@ def readConf():
         gocdbSitename = parser.get('settings','gocdb_sitename').strip()
         
       if parser.has_option('settings', 'domain_type'):
-          # defaults to 'kvm' but can specify 'xen' instead
-          domainType = parser.get('settings','domain_type').strip()
+          print 'domain_type is deprecated - please remove from the Vac configuration!'          
           
       if parser.has_option('settings', 'cpu_total'):
           # Option limit on number of processors Vac can allocate.
           numCpus = int(parser.get('settings','cpu_total').strip())
 
-          # /proc/cpuinfo wrong on Xen, so override counted number          
-          if domainType == 'xen':
-           cpuCount = numCpus
-          # Otherwise check setting against counted number
-          elif numCpus > cpuCount:
+          # Check setting against counted number
+          if numCpus > cpuCount:
            return 'cpu_total cannot be greater than number of processors!'
       else:
           # Defaults to count from /proc/cpuinfo
@@ -569,9 +563,7 @@ class VacVM:
                           
       if dom:
       
-        if domState == libvirt.VIR_DOMAIN_RUNNING or \
-             (domState == libvirt.VIR_DOMAIN_NOSTATE and domainType == 'xen') or \
-             domState == libvirt.VIR_DOMAIN_BLOCKED:
+        if domState == libvirt.VIR_DOMAIN_RUNNING or domState == libvirt.VIR_DOMAIN_BLOCKED:
           self.state = VacState.running
 
         else:
@@ -945,7 +937,7 @@ class VacVM:
       # Exceptions have to be caught by function calling makeRootDisk()
       fTmp, fileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
 
-      # kvm and Xen are the same for uCernVM 3
+      # CernVM 3 just needs a big empty file
       if self.model == 'cernvm3':
          vac.vacutils.logLine('Make 70 GB sparse file ' + fileName)
          try:
@@ -955,27 +947,43 @@ class VacVM:
           return fileName
          except:
           raise NameError('creation of sparse disk image fails!')
-         
-      elif domainType == 'kvm':
-         # With kvm we can make a small QEMU qcow2 disk for each instance of 
-         # this virtualhostname, backed by the full image given in conf
-         if os.system('qemu-img create -b ' + machinetypes[self.machinetypeName]['root_image'] + 
-             ' -f qcow2 ' + fileName + ' >/dev/null') != 0:
-          vac.vacutils.logLine('creation of COW disk image fails!')
-          raise NameError('Creation of COW disk image fails!')
+
+      elif self.model == 'vm-raw':
+
+         if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
+           try:
+              rawFileName = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
+           except Exception as e:
+              return str(e)
+         elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
+           rawFileName = machinetypes[self.machinetypeName]['root_image']
+         else:
+           rawFileName = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
+
+         if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
+           cernvmDict = vac.vacutils.getCernvmImageData(rawFileName)
+           if cernvmDict['verified'] == False:
+             return 'Failed to verify signature/cert for ' + rawFileName
+           elif re.search(machinetypes[self.machinetypeName]['cernvm_signing_dn'],  cernvmDict['dn']) is None:
+             return 'Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn']
+           else:
+             vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
+
+         # Make a small QEMU qcow2 disk for this instance,
+         # backed by the full image given in conf
+         if os.system('qemu-img create -b ' + rawFileName + ' -f qcow2 ' + fileName + ' >/dev/null') != 0:
+          raise NameError('creation of copy-on-write disk image fails!')
          else:
           return fileName
 
-      elif domainType == 'xen':
-         # Because Xen COW is broken, we copy the root.disk, overwriting 
-         # any copy already in the top level directory of this virtualhostname.
-         # To avoid long startups, the source should be a sparse file too.
-         vac.vacutils.logLine('copy from ' + machinetypes[self.machinetypeName]['root_image'] + ' to ' + fileName)
-         if os.system('/bin/cp --force --sparse=always ' + machinetypes[self.machinetypeName]['root_image'] + ' ' + fileName) != 0:
-          vac.vacutils.logLine('copy of disk image fails!')
-          raise NameError('copy of disk image fails!')
-         else:
-          return fileName
+#      elif self.model == 'monolithic':
+#         # Just copy the root.disk.
+#         # To avoid long startups, the source should ideally be a sparse file too.
+#         vac.vacutils.logLine('copy from ' + machinetypes[self.machinetypeName]['root_image'] + ' to ' + fileName)
+#         if os.system('/bin/cp --force --sparse=always ' + machinetypes[self.machinetypeName]['root_image'] + ' ' + fileName) != 0:
+#          raise NameError('copy of disk image fails!')
+#         else:
+#          return fileName
 
       return None
 
@@ -1044,25 +1052,19 @@ class VacVM:
             return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing'
 
         self.measureScratchDisk()
-        if domainType == 'kvm':
-            scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
-                                  " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
-                                  " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
-                                  "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
-        elif domainType == 'xen':
-            scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                  " <driver name='phy'/>\n" +
-                                  " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
-                                  " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + "' bus='ide'/>\n</disk>")
+        scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
+                              " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
+                              " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
+                              " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
+                              "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
       else:
         scratch_volume_xml = ""
 
       if self.model != 'cernvm3':
           cernvm_cdrom_xml    = ""
-          bootloader_args_xml = ""
       else:
-          if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
+          # For cernvm3 need to set up the ISO boot image
+          if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':          
             try:
               cernvmCdrom = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
             except Exception as e:
@@ -1081,17 +1083,10 @@ class VacVM:
             else:
               vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
       
-          if domainType == 'kvm':
-            cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                                " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
-                                " <source file='" + cernvmCdrom  + "'/>\n" +
-                                " <target dev='hdc' />\n<readonly />\n</disk>")
-          elif domainType == 'xen':
-            cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                                " <source file='" + cernvmCdrom + "'/>\n" +
-                                " <target dev='hdc' />\n<readonly />\n</disk>")
-
-            bootloader_args_xml = "\n<bootloader_args>" + cernvmCdrom + "</bootloader_args>"
+          cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                              " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
+                              " <source file='" + cernvmCdrom  + "'/>\n" +
+                              " <target dev='hdc' />\n<readonly />\n</disk>")
 
       ip      = natPrefix + str(self.ordinal)
       ipBytes = ip.split('.')
@@ -1122,16 +1117,14 @@ class VacVM:
       except Exception as e:
         return 'Failed to make root disk image (' + str(e) + ')'
         
-      if domainType == 'kvm':
-      
-          if os.path.isfile("/usr/libexec/qemu-kvm"):
+      if os.path.isfile("/usr/libexec/qemu-kvm"):
             qemuKvmFile = "/usr/libexec/qemu-kvm"
-          elif os.path.isfile("/usr/bin/qemu-kvm"):
+      elif os.path.isfile("/usr/bin/qemu-kvm"):
             qemuKvmFile = "/usr/bin/qemu-kvm"
-          else:
+      else:
             return "qemu-kvm not in /usr/libexec or /usr/bin!"
       
-          xmldesc=( """<domain type='kvm'>
+      xmldesc=( """<domain type='kvm'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
   <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
@@ -1158,7 +1151,7 @@ class VacVM:
   <devices>
     <emulator>""" + qemuKvmFile + """</emulator>
     <disk type='file' device='disk'>""" + 
-    ("<driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />" if (self.model=='cernvm2') else "<driver name='qemu' cache='unsafe' type='raw' error_policy='report' />") + 
+    ("<driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />" if (self.model=='vm-raw') else "<driver name='qemu' cache='unsafe' type='raw' error_policy='report' />") + 
     """<source file='""" + rootDiskFileName + """' /> 
      <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='""" + 
      ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/>
@@ -1187,45 +1180,7 @@ class VacVM:
   </devices>
 </domain>
 """ )
-      elif domainType == 'xen':
-          xmldesc=( """<domain type='xen'>
-  <name>""" + self.name + """</name>
-  <uuid>""" + self.uuidStr + """</uuid>
-  <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
-  <currentMemory unit='MiB'>""" + str(mbPerMachine) + """</currentMemory>
-  <vcpu>""" + str(cpuPerMachine) + """</vcpu>
-  <bootloader>/usr/bin/pygrub</bootloader>""" + bootloader_args_xml + """
-  <os>
-    <type arch='x86_64' machine='xenpv'>linux</type>
-  </os>
-  <clock offset='utc' adjustment='reset'/>
-  <on_poweroff>destroy</on_poweroff>
-  <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
-  <devices>
-    <disk type='file' device='disk'>
-      <driver name='file'/>
-      <source file='""" + rootDiskFileName +  """' />
-      <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='ide'/>
-    </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
-    <console type='pty'>
-      <target type='xen' port='0'/>
-    </console>
-    <graphics type='vnc' port='"""  + str(5900 + self.ordinal) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
-    <interface type='network'>
-      <mac address='""" + mac + """'/>
-      <source network='vac_""" + natNetwork + """'/>
-      <model type='virtio'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
-    </interface>
-  </devices>
-</domain>
-""" )
 
-      else:
-          conn.close()
-          return 'domain_type not recognised!'
-      
       vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/started',
                   str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       
@@ -1493,6 +1448,15 @@ def makeMetadataBody(created, machinetypeName, uuidStr, path):
        return open(machinesDir + '/user_data', 'r').read()
      except Exception as e:
        return None
+
+   # meta-data directory listing
+   if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/$|^/openstack/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/$', requestURI):
+     body = ''
+
+     for fileName in ['public-keys/0/openssh-key', 'ami-id', 'instance-id']:
+       body += fileName + '\n'
+         
+     return body
 
    # EC2 SSH key
    if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/public-keys/0/openssh-key$', requestURI):

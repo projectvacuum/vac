@@ -312,14 +312,13 @@ def vacOneCycle():
                vac.vacutils.logLine('VM creation fails with: ' + createError)
                vac.vacutils.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              else:
-               # we update heartbeat after creating a VM in case that took a while
-               # (several minutes for Xen, without COW disk images)
+               # We update heartbeat after creating a VM in case that took a while
                vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-               # remember we've started one this cycle
+               # Remember we've started one this cycle
                startedOne = True
 
-               # if no VM creation errors, then cleanup any old message   
+               # If no VM creation errors, then cleanup any old message   
                try:
                  os.remove('/var/lib/vac/factory-error')
                except OSError:
