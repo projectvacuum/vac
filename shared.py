@@ -911,7 +911,7 @@ class VacVM:
       try:
         userDataContents = vac.vacutils.createUserData(
                                                shutdownTime       = tmpShutdownTime,
-                                               machinetypesPath	  = '/var/lib/vac/machinetypes',
+                                               machinetypePath	  = '/var/lib/vac/machinetypes/' + self.machinetypeName,
                                                options		  = machinetypes[self.machinetypeName],
                                                versionString	  = 'Vac ' + vacVersion,
                                                spaceName	  = spaceName, 
