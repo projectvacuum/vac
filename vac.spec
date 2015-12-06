@@ -44,7 +44,7 @@ fi
 /usr/share/doc/vac-%{version}
 %{python_sitearch}/vac
 /var/lib/vac
-/etc/rc.d/init.d/vacd
+/etc/rc.d/init.d/*
 /etc/logrotate.d/vacd
 /etc/vac.d
 /etc/apel/vac-ssmsend-prod.cfg

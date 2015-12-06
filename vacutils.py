@@ -550,7 +550,7 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
       targetYear  = int(targetYearMonth[0:4])
    except:
       print 'Cannot parse as YYYYMM: ' + targetYearMonth
-      continue
+      return 1
       
    numberJobs = 0
    site       = None
@@ -609,9 +609,7 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
    if vac.vacutils.createFile(syncFileName, syncRecord,
                               stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, tmpDir):
       print 'Created ' + syncFileName
-   else:
-      print 'Failed to create ' + syncFileName
+      return 0
 
-   return 0
-
-                                                                                
+   print 'Failed to create ' + syncFileName
+   return 2
