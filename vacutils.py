@@ -542,4 +542,76 @@ def setProcessName(processName):
    except:
      logLine('Failed setting process name in argv[] to ' + processName)
      return
-          
+
+def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
+
+   try:
+      targetMonth = int(targetYearMonth[4:6])
+      targetYear  = int(targetYearMonth[0:4])
+   except:
+      print 'Cannot parse as YYYYMM: ' + targetYearMonth
+      continue
+      
+   numberJobs = 0
+   site       = None
+   submitHost = None
+
+   recordsList = glob.glob(dirPrefix + '/apel-archive/' + targetYearMonth + '*/*')
+   # We go backwards in time, assuming that site and SubmitHost for 
+   # the most recent record are correct
+   recordsList.sort(reverse=True)
+
+   for fileName in recordsList:
+      thisSite = None
+      thisSubmitHost = None
+    
+      for line in open(fileName, 'r'):
+        if line.startswith('Site:'):
+          thisSite = line[5:].strip()
+        elif line.startswith('SubmitHost:'):
+          thisSubmitHost = line[11:].strip()
+    
+        if thisSite and thisSubmitHost:
+          break  
+
+      if thisSite is None:
+        print 'No Site given in ' + fileName + ' !! - please fix this - skipping'
+        continue
+      
+      if thisSubmitHost is None:
+        print 'No SubmitHost given in ' + fileName + ' !! - please fix this - skipping'
+        continue
+      
+      if site is None:
+        site = thisSite
+      elif site != thisSite:
+        print 'Site changes from ' + site + ' to ' + thisSite + ' - please fix ' + fileName + ' - skipping'
+        continue
+      
+      if submitHost is None:
+        submitHost = thisSubmitHost
+      elif submitHost != thisSubmitHost:
+        print 'SubmitHost changes from ' + submitHost + ' to ' + thisSubmitHost + ' - please fix ' + fileName + ' - skipping'
+        continue
+      
+      numberJobs += 1
+
+   syncRecord = 'APEL-sync-message: v0.1\n'               \
+                'Site: ' + site + '\n'                    \
+                'SubmitHost: ' + submitHost + '\n'        \
+                'NumberOfJobs: ' + str(numberJobs) + '\n' \
+                'Month: ' + str(targetMonth) + '\n'       \
+                'Year: ' + str(targetYear) + '\n'         \
+                '%%\n'
+
+   syncFileName = time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d/%H%M%S', time.gmtime()) + str(time.time() % 1)[2:][:8]
+
+   if vac.vacutils.createFile(syncFileName, syncRecord,
+                              stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, tmpDir):
+      print 'Created ' + syncFileName
+   else:
+      print 'Failed to create ' + syncFileName
+
+   return 0
+
+                                                                                
