@@ -51,6 +51,7 @@ import multiprocessing
 import stat
 import random
 import BaseHTTPServer
+import SocketServer
 
 import libvirt
 
@@ -471,6 +472,15 @@ def vacResponder():
 class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
    # Base class for mjfHttpdHandler and metadataHttpHandler, each with their own self.makeBody()
 
+   def log_message(self, format, *args):
+     # Custom log message 
+     sys.stderr.write("%s %d %d [%s] %s\n" %
+                      (self.address_string(),                       
+                       os.getpid(),
+                       os.getppid(),
+                       self.log_date_time_string(),
+                       format%args))
+
    def do_GET(self):
 
      body = None
@@ -554,6 +564,9 @@ class metadataHttpdHandler(vacHttpdHandler):
    def makeGetBody(self, created, machinetypeName, uuidStr, path):
       return vac.shared.makeMetadataBody(created, machinetypeName, uuidStr, path)
             
+class ForkingHTTPServer(SocketServer.ForkingMixIn, BaseHTTPServer.HTTPServer):
+   pass
+
 def vacHttpd(idStr):
    # idStr is 'metadata' or 'mjf'
 
@@ -573,9 +586,9 @@ def vacHttpd(idStr):
    vac.vacutils.setProcessName('vacd-' + idStr)
  
    if idStr == 'mjf':
-     httpd = BaseHTTPServer.HTTPServer((vac.shared.mjfAddress, 80), mjfHttpdHandler)
+     httpd = ForkingHTTPServer((vac.shared.mjfAddress, 80), mjfHttpdHandler)
    elif idStr == 'metadata':
-     httpd = BaseHTTPServer.HTTPServer((vac.shared.factoryAddress, 80), metadataHttpdHandler)
+     httpd = ForkingHTTPServer((vac.shared.factoryAddress, 80), metadataHttpdHandler)
    else:
      vac.vacutils.logLine('vacHttpd(only metadata or mjf) !!')
      sys.exit(0)
@@ -622,53 +635,21 @@ def vacHttpd(idStr):
 
    sys.exit(0) # if we break out of while loop then we exit
 
-#
-# PROGRAM MAIN !!!
-# 
+def vacFactory():
+        
+    try:
+      os.remove('/var/lib/vac/factory-daily')
+    except:
+      pass
 
-libvirt.registerErrorHandler(vacLibvirtErrorHandler, 'context')
-
-if __name__ == '__main__':
-
-    if (os.fork() != 0):
-      sys.exit() # first parent
-
-    else:
-      os.chdir("/")
-      os.setsid()
-      os.umask(0) 
-
-      if os.fork() != 0:
-        sys.exit() # second parent
-
-      else:
-             
-        if os.fork() == 0:
-
-          vacResponder()
-
-        elif os.fork() == 0:
-
-          vacHttpd('mjf')
-
-        elif os.fork() == 0:
-
-          vacHttpd('metadata')
-
-        else:
-          try:
-             os.remove('/var/lib/vac/factory-daily')
-          except:
-             pass
-
-          vac.vacutils.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+    vac.vacutils.createFile('/var/lib/vac/factory.pid', str(os.getpid()) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
           
-          vac.vacutils.setProcessName('vacd-factory')
+    vac.vacutils.setProcessName('vacd-factory')
 
-          si = file('/dev/null', 'r')
-          os.dup2(si.fileno(), sys.stdin.fileno())
+    si = file('/dev/null', 'r')
+    os.dup2(si.fileno(), sys.stdin.fileno())
 
-          while True:
+    while True:
           
             try:
               close(so)
@@ -699,7 +680,7 @@ if __name__ == '__main__':
                print 'no factory.pid - exiting'
                break
 
-            # Fork a subprocess to run each cycle          
+            # Fork a subprocess to run each cycle
             cyclePid = os.fork()
         
             # Otherwise each subprocess starts from the same point in the sequence!
@@ -716,5 +697,43 @@ if __name__ == '__main__':
 
             time.sleep(60)
  
-          sys.exit(0) # if we break out of the while loop, then we exit
-          
+    sys.exit(0) # if we break out of the while loop, then we exit
+#
+# PROGRAM MAIN !!!
+# 
+
+libvirt.registerErrorHandler(vacLibvirtErrorHandler, 'context')
+
+if __name__ == '__main__':
+
+    if (os.fork() != 0):
+      sys.exit() # first parent
+
+    else:
+      os.chdir("/")
+      os.umask(0) 
+
+      if os.fork() != 0:
+        sys.exit() # second parent
+
+      else:
+             
+        if os.fork() == 0:
+
+          os.setsid()
+          vacResponder()
+
+        elif os.fork() == 0:
+
+          os.setsid()
+          vacHttpd('mjf')
+
+        elif os.fork() == 0:
+
+          os.setsid()
+          vacHttpd('metadata')
+
+        else:
+        
+          os.setsid()
+          vacFactory()

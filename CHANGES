@@ -1,7 +1,7 @@
 ==================== Changes in Vac version 0.20.0 ===================== 
 - vmtype -> machinetype in options and code
 - NFS and contextualization ISO image replaced by vacd-metadata and 
-  vacd-mjf HTTP servers
+  vacd-mjf forking HTTP servers
 - cernvm_signing_dn option added, to check signatures of CernVM boot
   images
 - Add vac-ssmsend.init for running ssmsend at boot up and shut down
