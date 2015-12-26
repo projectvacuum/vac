@@ -679,6 +679,10 @@ class VacVM:
       # Write accounting information about a VM that has finished
       if self.state != VacState.shutdown or not self.started or not self.heartbeat:
         return
+                
+      # Ignore machinetypes we don't know about
+      if self.machinetypeName not in machinetypes:
+        return
 
       # If the VM just ran for fizzle_seconds, then we don't log it
       if (self.heartbeat - self.started) < machinetypes[self.machinetypeName]['fizzle_seconds']:
@@ -1164,6 +1168,7 @@ class VacVM:
       <source network='vac_""" + natNetwork + """'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+      <filterref filter='clean-traffic'/>
     </interface>
     <serial type="file">
       <source path="/var/lib/vac/machines/"""  + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + """/console.log"/>
@@ -1877,6 +1882,7 @@ def makeMachinetypeResponses(cookie):
 
      totalHS06               = 0.0
      numBeforeFizzle         = 0
+     totalMachines           = 0
 
      # Go through the VM slots, looking for starting/running instances of this machinetype
      for ordinal in range(numVirtualmachines):
@@ -1920,7 +1926,8 @@ def makeMachinetypeResponses(cookie):
            (timeHeartbeat > int(time.time() - 3600)) and
            not hasFinished):
          # Running
-         totalHS06 += hs06
+         totalHS06     += hs06
+         totalMachines += 1
 
          if int(time.time()) < timeStarted + machinetypes[machinetypeName]['fizzle_seconds']:
            numBeforeFizzle += 1
@@ -1928,6 +1935,7 @@ def makeMachinetypeResponses(cookie):
        elif not timeStarted and (created > int(time.time() - 3600)):
          # Starting
          totalHS06       += hs06
+         totalMachines   += 1
          numBeforeFizzle += 1
 
      # Now go through older instances in /var/lib/vac/machines, looking for the most recently
@@ -1977,6 +1985,7 @@ def makeMachinetypeResponses(cookie):
 
                 'machinetype'		: machinetypeName,
                 'total_hs06'        	: totalHS06,
+                'total_machines'        : totalMachines,
                 'num_before_fizzle' 	: numBeforeFizzle,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime,
@@ -2042,5 +2051,126 @@ def makeFactoryResponse(cookie):
      responseDict['gocdb_site'] = gocdbSitename
 
    return json.dumps(responseDict)
+
+def publishGlueStatus():
+# Gather data about this space and its machinetypes
+#  responses = vac.shared.sendMachinesRequests(factoryList)
+#  responses = vac.shared.sendMachinetypesRequests(factoryList)
+#  responses = vac.shared.sendFactoriesRequests(factoryList)
+# Count up the required totals
+# Create and publish 2.0 JSON
+# Create and publish 2.1 JSON
+     
+    responses = vac.shared.sendMachinesRequests(factoryList)
+    responses = vac.shared.sendMachinetypesRequests(factoryList)
+    responses = vac.shared.sendFactoriesRequests(factoryList)
+
+def createGlueStatus(glueVersion = '2.0', runningMachines = 0, totalMachines = 0):
+    """Return a GLUE 2.0/2.1 JSON string describing this space's status"""
+
+    if glueVersion == '2.0':
+      attributePrefix          = ''
+      jobsOrVM                 = 'Jobs'
+    elif glueVersion == '2.1':
+      attributePrefix          = 'Cloud'
+      jobsOrVM                 = 'VM'
+    else:
+      return
+
+    glue2 = { attributePrefix + 'ComputingService' : [ {
+                     'CreationTime'       : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                     'ID'                 : 'urn:glue2:' + attributePrefix + 'ComputingService:' + spaceName,
+                     'Name'               : 'Vac',
+                     'Type'               : 'uk.ac.gridpp.vac',
+                     'QualityLevel'       : 'production',
+                     'Running' + jobsOrVM : self.runningMachines,
+                     'Total' + jobsOrVM   : self.totalMachines
+                                                       } ]
+            }
+                 
+    computingShares           = []
+    mappingPolicies           = []
+    executionEnvironments     = []
+    cloudComputeInstanceTypes = []
+
+    for machinetypeName in self.machinetypes:
+
+      # (Cloud)ComputingShare
+      
+      tmpDict = {
+                    'Associations'   : { 'ServiceID' : 'urn:glue2:' + attributePrefix + 'ComputingService:' + self.spaceName },
+                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                    'ID'             : 'urn:glue2:' + attributePrefix + 'ComputingShare:' + self.spaceName + ':' + machinetypeName,
+                    'Name'           : machinetypeName,
+                    'Running' + jobsOrVM : self.machinetypes[machinetypeName].runningMachines,
+                    'ServingState'   : 'production'
+                }
+
+      if glueVersion == '2.0':
+        tmpDict['MaxWallTime']    = self.machinetypes[machinetypeName].max_wallclock_seconds
+        tmpDict['MaxCPUTime']     = self.machinetypes[machinetypeName].max_wallclock_seconds
+        tmpDict['MaxTotalJobs']   = self.machinetypes[machinetypeName].max_machines
+        tmpDict['MaxRunningJobs'] = self.machinetypes[machinetypeName].max_machines
+        tmpDict['TotalJobs']      = self.machinetypes[machinetypeName].totalMachines
+      elif glueVersion == '2.1':
+        tmpDict['MaxVM']          = self.machinetypes[machinetypeName].max_machines
+        tmpDict['TotalVM']        = self.machinetypes[machinetypeName].totalMachines
+
+      computingShares.append(tmpDict)
+
+      # Mapping policy
+
+      try:
+        vo = self.machinetypes[machinetypeName].accounting_fqan.split('/')[1]
+      except:
+        pass
+      else:                
+        mappingPolicies.append({
+                    'Associations'   : { 'ShareID' : 'urn:glue2:' + attributePrefix + 'ComputingShare:' + self.spaceName + ':' + machinetypeName },
+                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                    'ID'             : 'urn:glue2:MappingPolicy:' + self.spaceName + ':' + machinetypeName,
+                    'Name'           : machinetypeName,
+                    'Rule'           : [ 'VO:' + vo, 'VOMS:' + self.machinetypes[machinetypeName].accounting_fqan ],
+                    'Scheme'         : 'org.glite.standard'
+                               })
+
+      # ExecutionEnvironment or CloudComputeInstanceType
+
+      if glueVersion == '2.0':
+        executionEnvironments.append({
+                    'Associations'   : { 'ShareID' : 'urn:glue2:ComputingShare:' + self.spaceName + ':' + machinetypeName },
+                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                    'ID'             : 'urn:glue2:ExecutionEnvironment:' + self.spaceName + ':' + machinetypeName,
+                    'Name'           : machinetypeName,
+                    'Platform'       : 'x86_64',
+                    'OSFamily'       : 'linux',
+                    'OSName'         : 'CernVM 3'
+                                     })
+      elif glueVersion == '2.1':
+        cloudComputeInstanceTypes.append({
+                    'Associations'   : { 'ShareID' : 'urn:glue2:CloudComputingShare:' + self.spaceName + ':' + machinetypeName },
+                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                    'ID'             : 'urn:glue2:CloudComputeInstanceType:' + self.spaceName + ':' + machinetypeName,
+                    'Name'           : machinetypeName,
+                    'Platform'       : 'x86_64'
+                                         })
+
+    if len(computingShares) > 0:
+      glue2[attributePrefix + 'ComputingShare'] = computingShares
+
+      if len(mappingPolicies) > 0:
+        glue2['MappingPolicy'] = mappingPolicies
+        
+      if len(executionEnvironments) > 0:
+        glue2['ExecutionEnvironment'] = executionEnvironments
+
+      if len(cloudComputeInstanceTypes) > 0:
+        glue2['CloudComputeInstanceType'] = cloudComputeInstanceTypes
+
+    try:
+      vac.vacutils.createFile('/var/lib/vcycle/spaces/' + self.spaceName + '/glue-' + glueVersion + '.json', json.dumps(self.glue2), 
+                                 0644, '/var/lib/vcycle/tmp')
+    except:
+      vacvacutils.logLine('Failed writing GLUE ' + glueVersion + ' JSON to /var/lib/vcycle/spaces/' + self.spaceName + '/glue-' + glueVersion + '.json')
 
           

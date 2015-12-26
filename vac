@@ -111,18 +111,18 @@ def queryMachines(options, factoryList):
                        percentStr
                       )
 
-def queryMachineType(options, machineTypeName, factoryList):
+def queryMachinetype(options, machinetypeName, factoryList):
 
   responses = vac.shared.sendMachinetypesRequests(factoryList)
 
   for factoryName in responses:
-    if 'machinetypes' in responses[factoryName] and machineTypeName in responses[factoryName]['machinetypes']:
+    if 'machinetypes' in responses[factoryName] and machinetypeName in responses[factoryName]['machinetypes']:
       print (
               factoryName.split('.')[0] + ' ' + 
-              str(responses[factoryName]['machinetypes'][machineTypeName]['total_hs06']) + ' ' +
-              str(responses[factoryName]['machinetypes'][machineTypeName]['num_before_fizzle']) + ' ' +
-              str(responses[factoryName]['machinetypes'][machineTypeName]['shutdown_time']) + ' "' +
-              str(responses[factoryName]['machinetypes'][machineTypeName]['shutdown_message']) + '"'
+              str(responses[factoryName]['machinetypes'][machinetypeName]['total_hs06']) + ' ' +
+              str(responses[factoryName]['machinetypes'][machinetypeName]['num_before_fizzle']) + ' ' +
+              str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time']) + ' "' +
+              str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']) + '"'
             )
 
 def queryFactories(options, factoryList):
@@ -228,10 +228,10 @@ if __name__ == '__main__':
             sys.exit(0)
 
         if args[0] == 'machinetype' and len(args) == 2:
-            queryMachineType(options, args[1], None)
+            queryMachinetype(options, args[1], None)
             sys.exit(0)
         elif args[0] == 'machinetype' and len(args) > 2:
-            queryMachineType(options, args[1], args[2:])
+            queryMachinetype(options, args[1], args[2:])
             sys.exit(0)
         elif args[0] == 'machinetype':
             print 'machinetype command requires an argument!'
