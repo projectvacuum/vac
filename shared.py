@@ -1773,7 +1773,7 @@ def makeMachineResponses(cookie):
      name = nameFromOrdinal(ordinal)
 
      try:
-       createdStr, manchinetypeName, uuidStr = open('/var/lib/vac/slots/' + name,'r').read().split()
+       (createdStr, machinetypeName, uuidStr) = open('/var/lib/vac/slots/' + name,'r').read().split()
        created = int(createdStr)
 
      except:
@@ -1841,7 +1841,7 @@ def makeMachineResponses(cookie):
          except:
            pass
                                                                                                                          
-       vac.vacutils.logLine(vmName + ' is ' + str(vmState) + ' (' + str(machinetypeName) + ', started ' + str(created) + ')')
+       vac.vacutils.logLine(name + ' is ' + str(vmState) + ' (' + str(machinetypeName) + ', started ' + str(created) + ')')
 
        responseDict = {
                 'method'		: 'machine',
@@ -1852,7 +1852,7 @@ def makeMachineResponses(cookie):
                 'factory'       	: os.uname()[1],
                 'num_machines'       	: numVirtualmachines,
 
-                'machine' 		: vmName,
+                'machine' 		: name,
                 'state'			: vmState,
                 'uuid'			: uuidStr,
                 'created_time'		: created,
@@ -1890,7 +1890,7 @@ def makeMachinetypeResponses(cookie):
        name = nameFromOrdinal(ordinal)
 
        try:
-         createdStr, machinetypeNameTmp, uuidStr = open('/var/lib/vac/slots/' + name,'r').read().split()
+         (createdStr, machinetypeNameTmp, uuidStr) = open('/var/lib/vac/slots/' + name,'r').read().split()
          created = int(createdStr)
 
        except:
