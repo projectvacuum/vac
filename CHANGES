@@ -10,6 +10,7 @@
 - Use libvirt network filters to stop IP spoofing etc by VMs
 - Run vac apel-sync and ssmsend when vacd service is stopped
 - Create ssmsend and vac apel-sync cron entries during Vac RPM install
+- VacQuery response always includes site, instead of optional gocdb_site
 ==================== Changes in Vac version 0.19.0 ===================== 
 - Fix shutdownTime bug identified by Ewan MacMahon
 - qemu-kvm can be in /usr/libexec (SL6) or /usr/bin (Fedora)

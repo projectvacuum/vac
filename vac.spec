@@ -29,6 +29,9 @@ if [ "$1" = "0" ] ; then
   service vacd stop
 fi
 
+# Cleanup
+rm -f /etc/cron.d/vac-ssmsend
+
 %post
 service vacd status
 if [ $? = 0 ] ; then
@@ -39,9 +42,6 @@ fi
 # Try to run ssmsend hourly, and make APEL-SYNC records at midday
 echo `shuf -i 0-59 -n 1`' * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend 2>&1' > /etc/cron.d/vac-ssmsend
 echo '0 12 * * * root /usr/sbin/vac apel-sync >>/var/log/vac-ssmsend 2>&1' >>/etc/cron.d/vac-ssmsend
-
-%postun
-rm -f /etc/cron.d/vac-ssmsend
 
 %files
 /usr/sbin/*

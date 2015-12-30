@@ -1867,8 +1867,10 @@ def makeMachineResponses(cookie):
                       }
 
        if gocdbSitename:
-         responseDict['gocdb_site'] = gocdbSitename
-
+         responseDict['site'] = gocdbSitename
+       elif:
+         responseDict['site'] = spaceName
+       
        responses.append(json.dumps(responseDict))                              
 
    return responses
@@ -1993,7 +1995,9 @@ def makeMachinetypeResponses(cookie):
                      }
 
      if gocdbSitename:
-       responseDict['gocdb_site'] = gocdbSitename
+       responseDict['site'] = gocdbSitename
+     else:
+       responseDict['site'] = spaceName
        
      try:
        responseDict['fqan'] = machinetypes[machinetypeName]['accounting_fqan']
@@ -2048,7 +2052,10 @@ def makeFactoryResponse(cookie):
                   }
 
    if gocdbSitename:
-     responseDict['gocdb_site'] = gocdbSitename
+     responseDict['site'] = gocdbSitename
+   else
+     responseDict['site'] = spaceName
+   
 
    return json.dumps(responseDict)
 
