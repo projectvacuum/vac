@@ -607,7 +607,10 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
 
    gmtime = time.gmtime()
 
-   os.makedirs(time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d', gmtime)
+   try:
+     os.makedirs(time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d', gmtime))
+   except:
+     pass
 
    syncFileName = time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d/%H%M%S', gmtime) + str(time.time() % 1)[2:][:8]
 
