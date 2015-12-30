@@ -3,6 +3,7 @@
 /var/log/vacd-metadata
 /var/log/vacd-mjf
 /var/log/vac-ssmsend
+/var/log/vac-ssmsend-prod
 {
   daily
   missingok
