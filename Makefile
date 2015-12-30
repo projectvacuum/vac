@@ -91,8 +91,6 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/usr/share/man/man8
 	cp vacd.init \
 	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vacd
-	cp vac-ssmsend.init \
-	   $(RPM_BUILD_ROOT)/etc/rc.d/init.d/vac-ssmsend
 	cp vacd.logrotate \
 	   $(RPM_BUILD_ROOT)/etc/logrotate.d/vacd
 	cp vac-ssmsend-prod.cfg \

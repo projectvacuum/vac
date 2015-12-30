@@ -24,6 +24,14 @@ start() {
 stop() {
 	[ "$EUID" != "0" ] && exit 3
 
+        if [ -x /usr/bin/ssmsend ] ; then
+          echo -n $"Running ssmsend for Vac: "
+  	  /usr/bin/vac apel-sync >> /var/log/vac-ssmsend 2>&1
+	  /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >> /var/log/vac-ssmsend 2>&1
+	  # ssmsend returns 0 even on error, so just print OK
+          echo_success
+        fi
+			        		
         # Stop daemon
         echo -n $"Shutting down vacd: "
 	killproc vacd-factory

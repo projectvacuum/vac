@@ -522,38 +522,38 @@ SSM client documentation for details</a>. One you have agreed use of APEL
 with the APEL team, had your certificate authorized, and done any requested
 tests, it should be sufficient that: you install the apel-ssm RPM on each 
 machine, install a host certificate (vac-apel-cert.pem) and key 
-(vac-apel-key.pem) authorized to talk to APEL in /etc/grid-security, make
-sure gocdb_sitename is set, and arrange to run the ssmsend command from cron. 
+(vac-apel-key.pem) authorized to talk to APEL in /etc/grid-security, and make
+sure gocdb_sitename is set. 
+
+<p>
+The Vac RPM installs suitable cron entries in
+/etc/cron.d/vac-ssmsend and will start running ssmsend as soon as the PEM
+files are installed in /etc/grid-security.
+The ssmsend command can safely be run multiple times per day as it does
+not connect to APEL if there are no new messages or if the PEM files are not
+in place, and deletes messages once they are sent. By default, the Vac RPM 
+creates cron entries to run ssmsend at a randomly chosen minute each hour, 
+chosen at install time. 
 
 <p>
 APEL has consistency checking which expects APEL Sync summary records to be 
-published for each month. The vac apel-sync command can be run from cron to make
+published for each month. The vac apel-sync command is also run from the
+vac-ssmsend cron entries at midday to make
 these records each day for the current month and for the complete previous
 month during the first day of the next month. These summaries are based on
 the contents of /var/lib/vac/apel-archive.
-
-<p>
-The ssmsend command can safely be run multiple times per day as it does
-not connect to APEL if there are no new messages, and deletes messages 
-once they are sent. It can be run hourly and made to 
-use vac-ssmsend-prod.cfg installed by the Vac RPM, by
-placing the file vac-ssmsend-cron in /etc/cron.d:
-<pre> 
-20 8 * * * root /usr/bin/vac apel-sync >> /var/log/vac-ssmsend.log 2>&amp;1
-22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend.log 2>&amp;1
-</pre>
-
-<p>
-If you use the vac-ssmsend-prod.cfg file for production, please change the 
-value of the bdii option to a local or regional top bdii to avoid loading 
-the default service included in the file.
 
 <p>
 If you forget to
 give gocdb_sitename at some point, you can make copies of the records in
 /var/lib/vac/apel-archive with the &quot;Site:&quot; fields corrected
 to your GOCDB sitename and put them in /var/lib/vac/apel-outgoing for
-publishing by ssmsend.
+publishing when ssmsend is next run automatically from cron.
+
+<p>
+ssmsend is also run from /etc/rc.d/init.d/vacd when the vacd service is
+stopped. This should ensure that any unsent accounting messages are
+sent to the central APEL service as long as the factory is shutdown cleanly.
 
 <h2 style="border-bottom: 1px solid">Puppet</h2>
 
