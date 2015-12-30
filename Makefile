@@ -35,7 +35,7 @@ include VERSION
 
 INSTALL_FILES=vacd vac \
           __init__.py shared.py vacutils.py \
-          vacd.init vac-ssmsend.init check-vacd VERSION \
+          vacd.init check-vacd VERSION \
           vacd.logrotate \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           RELEASE example.vac.conf example.user_data \
