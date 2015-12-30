@@ -27,10 +27,10 @@ make install PYTHON_SITEARCH=%{python_sitearch}
 if [ "$1" = "0" ] ; then
   # if uninstallation rather than upgrade then stop
   service vacd stop
-fi
 
-# Cleanup
-rm -f /etc/cron.d/vac-ssmsend
+  # cleanup cron script too
+  rm -f /etc/cron.d/vac-ssmsend
+fi
 
 %post
 service vacd status

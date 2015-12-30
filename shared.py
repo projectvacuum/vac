@@ -1868,7 +1868,7 @@ def makeMachineResponses(cookie):
 
        if gocdbSitename:
          responseDict['site'] = gocdbSitename
-       elif:
+       else:
          responseDict['site'] = spaceName
        
        responses.append(json.dumps(responseDict))                              
@@ -2053,7 +2053,7 @@ def makeFactoryResponse(cookie):
 
    if gocdbSitename:
      responseDict['site'] = gocdbSitename
-   else
+   else:
      responseDict['site'] = spaceName
    
 
