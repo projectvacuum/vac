@@ -605,10 +605,13 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
                 'Year: ' + str(targetYear) + '\n'         \
                 '%%\n'
 
-   syncFileName = time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d/%H%M%S', time.gmtime()) + str(time.time() % 1)[2:][:8]
+   gmtime = time.gmtime()
 
-   if vac.vacutils.createFile(syncFileName, syncRecord,
-                              stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, tmpDir):
+   os.makedirs(time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d', gmtime)
+
+   syncFileName = time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d/%H%M%S', gmtime) + str(time.time() % 1)[2:][:8]
+
+   if createFile(syncFileName, syncRecord, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, tmpDir):
       print 'Created ' + syncFileName
       return 0
 
