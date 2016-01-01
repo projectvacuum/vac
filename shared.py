@@ -1851,6 +1851,7 @@ def makeMachineResponses(cookie):
                 'space'		    	: spaceName,
                 'factory'       	: os.uname()[1],
                 'num_machines'       	: numVirtualmachines,
+                'time_sent'		: int(time.time()),
 
                 'machine' 		: name,
                 'state'			: vmState,
@@ -1984,6 +1985,7 @@ def makeMachinetypeResponses(cookie):
                 'space'		    	: spaceName,
                 'factory'       	: os.uname()[1],
                 'num_machinetypes'      : len(machinetypes),
+                'time_sent'		: int(time.time()),
 
                 'machinetype'		: machinetypeName,
                 'total_hs06'        	: totalHS06,
@@ -2032,6 +2034,7 @@ def makeFactoryResponse(cookie):
                 'space'		    	   : spaceName,
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),
+
                 'total_cpus'		   : numCpus,
                 'running_cpus'             : runningCpus,
                 'total_machines'           : numVirtualmachines,
