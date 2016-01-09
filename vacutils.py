@@ -620,3 +620,13 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
 
    print 'Failed to create ' + syncFileName
    return 2
+
+
+def makeSshFingerprint(pubFileLine):
+   # Convert a line from an ssh id_rsa.pub (or id_dsa.pub) file to a fingerprint
+
+   try:
+     fingerprint = hashlib.md5(base64.b64decode(pubFileLine.strip().split()[1].encode('ascii'))).hexdigest()
+     return ':'.join(fingerprint[i:i+2] for i in range(0, len(fingerprint), 2))
+   except:
+     return None
