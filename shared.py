@@ -2026,6 +2026,26 @@ def makeFactoryResponse(cookie):
      runningCpus     = 0
      runningMachines = 0
 
+   try:
+     factoryHeartbeatTime = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
+   except:
+     factoryHeartbeatTime = 0
+
+   try:
+     responderHeartbeatTime = int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime)
+   except:
+     responderHeartbeatTime = 0
+
+   try:
+     mjfHeartbeatTime = int(os.stat('/var/lib/vac/mjf-heartbeat').st_ctime)
+   except:
+     mjfHeartbeatTime = 0
+
+   try:
+     metadataHeartbeatTime = int(os.stat('/var/lib/vac/metadata-heartbeat').st_ctime)
+   except:
+     metadataHeartbeatTime = 0
+
    responseDict = {
                 'method'		   : 'factory',
                 'vac_version'		   : 'Vac ' + vacVersion,
@@ -2046,8 +2066,10 @@ def makeFactoryResponse(cookie):
                 'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
                 'load_average'		   : loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
-                'factory_heartbeat_time'   : int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime),
-                'responder_heartbeat_time' : int(os.stat('/var/lib/vac/responder-heartbeat').st_ctime),
+                'factory_heartbeat_time'   : factoryHeartbeatTime,
+                'responder_heartbeat_time' : responderHeartbeatTime,
+                'mjf_heartbeat_time'       : mjfHeartbeatTime,
+                'metadata_heartbeat_time'  : metadataHeartbeatTime,
                 'swap_used_kb'		   : memory['SwapTotal'] - memory['SwapFree'],
                 'swap_free_kb'		   : memory['SwapFree'],
                 'mem_used_kb'		   : memory['MemTotal'] - memory['MemFree'],
