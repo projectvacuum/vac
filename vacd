@@ -725,13 +725,19 @@ if __name__ == '__main__':
 
         elif os.fork() == 0:
 
-          os.setsid()
-          vacHttpd('mjf')
+          os.setsid()          
+          # If server fails (eg can't bind) then keep trying
+          while True:
+            vacHttpd('mjf')
+            time.sleep(60)
 
         elif os.fork() == 0:
 
           os.setsid()
-          vacHttpd('metadata')
+          # If server fails (eg can't bind) then keep trying
+          while True:
+            vacHttpd('metadata')
+            time.sleep(60)
 
         else:
         
