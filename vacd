@@ -565,8 +565,14 @@ class metadataHttpdHandler(vacHttpdHandler):
       return vac.shared.makeMetadataBody(created, machinetypeName, uuidStr, path)
             
 class ForkingHTTPServer(SocketServer.ForkingMixIn, BaseHTTPServer.HTTPServer):
-   pass
+   
+   request_queue_size = 256
 
+#   def server_bind(self):
+#      BaseHTTPServer.HTTPServer.server_bind(self)
+#      # Socket only waits for 300 seconds at a time: so heartbeat can be written etc
+#      self.socket.settimeout(300)
+      
 def vacHttpd(idStr):
    # idStr is 'metadata' or 'mjf'
 
@@ -592,7 +598,7 @@ def vacHttpd(idStr):
    else:
      vac.vacutils.logLine('vacHttpd(only metadata or mjf) !!')
      sys.exit(0)
-
+     
    while True:
    
      try:
