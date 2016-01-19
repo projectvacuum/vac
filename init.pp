@@ -1,6 +1,6 @@
-#########################################
-###  Puppet Module for Vac on SL 6.x  ###
-#########################################
+########################################################
+###  Puppet Module for Vac 00.20 or later on SL 6.x  ###
+########################################################
 #
 # This file, init.pp, is sufficient to create a Vac module in your Puppet
 # set up. It should be installed in the modules part of your tree:
@@ -63,12 +63,13 @@
 #  puppet:///modules/vac/machinetypes/site/
 #
 # This is similar to the configuration files tree, but instead of these
-# directories containing files they must contain machinetype directories suitable
-# for installing below /var/lib/vac/machinetypes/ . As above, the first machinetype
-# directory found with a given name is the one which will be installed.
+# directories containing files they must contain machinetype directories 
+# suitable for installing below /var/lib/vac/machinetypes/ . As above, the 
+# first machinetype directory found with a given name is the one which will be 
+# installed.
 # 
 # 
-# For both configuration and machinetype files, you may want to create dedicated 
+# For both configuration and machinetype files, you may want to create dedicated
 # areas of the Puppet fileserver tree outside of the vac module, either as
 # local modules or by directly inserting them. You can use the etc_path and
 # machinetypes_path parameters to point to your dedicated trees.
@@ -82,15 +83,13 @@
 # as a service.
 #
 # APEL:
-# If you give the apel_bdii_hostport, apel_cert_path, and apel_key_path 
-# parameters when invoking the class, the APEL ssmsend client will be run 
-# each hour from cron to send usage data to the production APEL service. 
-# The BDII service to use much be specified as HOST:PORT (without the 
-# leading ldap://). The two path parameters must be paths on the Puppet 
+# If you give the apel_cert_path and apel_key_path parameters when invoking the 
+# class, the APEL ssmsend client will be run each hour from cron to send usage data
+# to the production APEL service. The path parameters must be paths on the Puppet 
 # fileserver (without the leading puppet:///). 
 # YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
 #
-# Andrew.McNab@cern.ch  November 2015  http://www.gridpp.ac.uk/vac/
+# Andrew.McNab@cern.ch  January  2016  http://www.gridpp.ac.uk/vac/
 #
 
 #
@@ -203,13 +202,14 @@ class vac ($space              = "vac01.${domain}",
              require => Service['cgconfig'],
           }
   exec    { 'unset_merge_across_nodes':
-             command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
-             unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
-             before  => Service['ksm'],
+            command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
+            unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
+            before  => Service['ksm'],
           }
   service { 'ksm':
              enable => true,
              ensure => "running",
+             require => Service['numad'],
           }
   service { 'ksmtuned':
              enable  => true,
@@ -265,9 +265,9 @@ class vac ($space              = "vac01.${domain}",
     }
 
   #
-  # Enable and run APEL ssmsend from cron
+  # Install files used by the ssmsend cron installed by Vac RPM
   #
-  if ($apel_bdii_hostport != '') and ($apel_cert_path != '') and ($apel_key_path != '')
+  if ($apel_cert_path != '') and ($apel_key_path != '')
     {
       package { 'apel-ssm':
                 ensure  => 'installed',
@@ -288,27 +288,5 @@ class vac ($space              = "vac01.${domain}",
              group   => 'root',
              mode    => '0600',
            }
-
-      file { '/etc/cron.d/vac-ssmsend-cron':
-             require => Package['vac'],
-             ensure  => 'file',
-             content => "22 * * * * root /usr/bin/ssmsend -c /etc/apel/vac-ssmsend-prod.cfg >>/var/log/vac-ssmsend.log 2>&1\n",
-             owner   => 'root',
-             group   => 'root',
-             mode    => '0644',
-           }
-
-      exec { 'update_apel_bdii':
-             require => Package['vac'],
-             command => "/bin/sed -i 's|^bdii:.*|bdii: ldap://${apel_bdii_hostport}|' /etc/apel/vac-ssmsend-prod.cfg",
-             unless  => "/bin/grep '^bdii: ldap://${apel_bdii_hostport}\$' /etc/apel/vac-ssmsend-prod.cfg",
-           }
-
-    }
-  else # remove cron to disable if not both set
-    {
-      file { '/etc/cron.d/vac-ssmsend-cron':
-             ensure  => 'absent',
-           }      
     }
 }
