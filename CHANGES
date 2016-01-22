@@ -13,6 +13,7 @@
 - VacQuery response always includes site, instead of optional gocdb_site
   and always includes time_sent
 - Add vac-command RPM, same as vac RPM but without vacd and apel cron
+- Add --json output option to vac command
 ==================== Changes in Vac version 0.19.0 ===================== 
 - Fix shutdownTime bug identified by Ewan MacMahon
 - qemu-kvm can be in /usr/libexec (SL6) or /usr/bin (Fedora)

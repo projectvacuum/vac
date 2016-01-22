@@ -3,7 +3,7 @@
 #  vacd - Vac daemon which runs on factory nodes
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-5. All rights reserved.
+#  Copyright (c) 2013-6. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -483,6 +483,9 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
    def do_GET(self):
 
+     if not self.client_address[0].startswith(vac.shared.natPrefix):
+       return
+
      body = None
    
      if self.client_address[0].startswith(vac.shared.natPrefix):
@@ -522,10 +525,13 @@ class mjfHttpdHandler(vacHttpdHandler):
  # def do_GET(self): is in the vacHttpdHandler class and calls makeGetBody() here
       
    def makeGetBody(self, created, machinetypeName, uuidStr, path):
-      return vac.shared.makeMjfBody(created, machinetypeName, uuidStr, path)
+     return vac.shared.makeMjfBody(created, machinetypeName, uuidStr, path)
 
    def do_PUT(self):
    
+     if not self.client_address[0].startswith(vac.shared.natPrefix):
+       return
+
      success = False
         
      try:
@@ -533,12 +539,11 @@ class mjfHttpdHandler(vacHttpdHandler):
      except:
        body = None         
      else:
-       if self.client_address[0].startswith(vac.shared.natPrefix):
-         try:    
+       try:    
            ordinal = int(self.client_address[0].split('.')[3])
-         except:
+       except:
            vac.vacutils.logLine('Failed to get ordinal from ' + str(self.client_address))
-         else:
+       else:
            try:
              createdStr, machinetypeName, uuidStr = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
              created = int(createdStr)

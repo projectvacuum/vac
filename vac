@@ -3,7 +3,7 @@
 #  vac - Vac command line utility
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-5. All rights reserved.
+#  Copyright (c) 2013-6. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -55,11 +55,24 @@ def queryMachines(options, factoryList):
   totalCount    = 0
   runningCount  = 0
   startingCount = 0
+  n             = 0
+  
+  if options.returnJSON:
+    sys.stdout.write('[')
    
   responses = vac.shared.sendMachinesRequests(factoryList)
 
   for factoryName in responses:
-    for vmName,response in responses[factoryName]['machines'].iteritems():
+    for vmName in responses[factoryName]['machines']:
+          
+        if options.returnJSON:
+          if n > 0:
+            sys.stdout.write(',')
+
+          sys.stdout.write(json.dumps(responses[factoryName]['machines'][vmName]))
+
+        else:
+                response = responses[factoryName]['machines'][vmName]
    
                 stateStr = ('  ' + response['state'] + 10 * ' ')[0:11]
 
@@ -110,27 +123,74 @@ def queryMachines(options, factoryList):
                        hoursStr[0:21] + 
                        percentStr
                       )
+        n += 1
+        
+  if options.returnJSON:
+    print ']'
 
 def queryMachinetype(options, machinetypeName, factoryList):
 
   responses = vac.shared.sendMachinetypesRequests(factoryList)
 
+  if options.returnJSON:
+    sys.stdout.write('[')
+
+  n = 0
+  
   for factoryName in responses:
     if 'machinetypes' in responses[factoryName] and machinetypeName in responses[factoryName]['machinetypes']:
-      print (
-              factoryName.split('.')[0] + ' ' + 
-              str(responses[factoryName]['machinetypes'][machinetypeName]['total_hs06']) + ' ' +
-              str(responses[factoryName]['machinetypes'][machinetypeName]['num_before_fizzle']) + ' ' +
-              str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time']) + ' "' +
-              str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']) + '"'
-            )
+
+      if options.returnJSON:
+        if n > 0:
+          sys.stdout.write(',')
+      
+        sys.stdout.write(json.dumps(responses[factoryName]['machinetypes'][machinetypeName]))
+
+      else:
+        print (
+                factoryName.split('.')[0] + ' ' + 
+                str(responses[factoryName]['machinetypes'][machinetypeName]['total_hs06']) + ' ' +
+                str(responses[factoryName]['machinetypes'][machinetypeName]['num_before_fizzle']) + ' ' +
+                str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time']) + ' "' +
+                str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']) + '"'
+              )
+      n += 1
+
+  if options.returnJSON:
+    print ']'
 
 def queryFactories(options, factoryList):
    
   responses = vac.shared.sendFactoriesRequests(factoryList)
 
+  n = 0
+  
+  if options.returnJSON:
+    sys.stdout.write('[')
+
   for factoryName in responses:
-    print factoryName.split('.')[0] + ' ' + str(responses[factoryName])
+
+    if options.returnJSON:
+      if n > 0:
+        sys.stdout.write(',')
+    
+      sys.stdout.write(json.dumps(responses[factoryName]))
+    else:
+      print '%s %d/%d %d/%d %.2f %9d %9d %8d/%8d "%s"' % ( 
+                     factoryName.split('.')[0],                      
+                     responses[factoryName]['running_cpus'], responses[factoryName]['total_cpus'],
+                     responses[factoryName]['running_machines'], responses[factoryName]['total_machines'],
+                     responses[factoryName]['load_average'],
+                     responses[factoryName]['root_disk_avail_kb'],
+                     responses[factoryName]['vac_disk_avail_kb'],
+                     responses[factoryName]['mem_used_kb'], responses[factoryName]['mem_total_kb'], 
+                     responses[factoryName]['vac_version']
+                            )
+
+    n += 1
+
+  if options.returnJSON:
+    print ']'
 
 def makeSyncRecords(args):
 
@@ -168,11 +228,11 @@ if __name__ == '__main__':
                       dest="includeHS06", 
                       help="include HS06 information")
 
-    parser.add_option("-V", 
-                      "--include-versions",
+    parser.add_option("-J", 
+                      "--json",
                       action="store_true",
-                      dest="includeVersions", 
-                      help="include version information")
+                      dest="returnJSON", 
+                      help="return JSON")
 
     parser.add_option("-l", 
                       "--legacy-proxy",
