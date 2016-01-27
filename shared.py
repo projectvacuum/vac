@@ -883,11 +883,9 @@ class VacVM:
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
-      self.measureScratchDisk()
-      
+      # if have a scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
       if self.measuredScratchGB:
-         vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/disk_limit_GB',
+           vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/disk_limit_GB',
                  str(self.measuredScratchGB), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
@@ -1020,7 +1018,6 @@ class VacVM:
 
       os.makedirs(self.machinesDir(), stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-# Should do this somewhere else...
       try:
         os.makedirs('/var/lib/vac/slots', 
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1034,8 +1031,17 @@ class VacVM:
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      if gbScratch and volumeGroup and os.path.exists('/dev/' + volumeGroup):
+      if not gbScratch or not volumeGroup:
+        self.measuredScratchGB = 0
+        scratch_volume_xml = ""
 
+      elif not os.path.exists('/dev/' + volumeGroup):
+        vac.vacutils.logLine('No scratch logical volume for ' + self.name + ' as /dev/' + volumeGroup + ' does not exist')
+        self.measuredScratchGB = 0
+        scratch_volume_xml = ""
+      
+      else:          
+        # Should be possible, so try and raise exception if problems
         if not os.path.exists('/dev/' + volumeGroup + '/' + self.name):
             vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
             os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup + ' 2>&1')
@@ -1046,13 +1052,13 @@ class VacVM:
         except:
             return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing'
 
+        self.measureScratchDisk()
+      
         scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
                               " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                               " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
                               " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
                               "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
-      else:
-        scratch_volume_xml = ""
 
       if self.model != 'cernvm3':
           cernvm_cdrom_xml    = ""
