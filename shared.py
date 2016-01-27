@@ -88,7 +88,6 @@ vacVersion = None
 
 cpuPerMachine = None
 versionLogger = None
-gbScratchesMeasured = None
 machinetypes = None
 vacmons = None
 
@@ -100,7 +99,7 @@ def readConf():
       global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, versionLogger, gbScratchesMeasured, machinetypes, vacmons, \
+             cpuPerMachine, versionLogger, machinetypes, vacmons, \
              volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -123,7 +122,6 @@ def readConf():
 
       cpuPerMachine = 1
       versionLogger = True
-      gbScratchesMeasured = {}
       machinetypes = {}
       vacmons = []
       
@@ -886,9 +884,11 @@ class VacVM:
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
-      if self.name in gbScratchesMeasured:
+      self.measureScratchDisk()
+      
+      if self.scratchGB:
          vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/disk_limit_GB',
-                 str(gbScratchesMeasured[self.name]), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.scratchGB), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
@@ -980,15 +980,6 @@ class VacVM:
          else:
           return fileName
 
-#      elif self.model == 'monolithic':
-#         # Just copy the root.disk.
-#         # To avoid long startups, the source should ideally be a sparse file too.
-#         vac.vacutils.logLine('copy from ' + machinetypes[self.machinetypeName]['root_image'] + ' to ' + fileName)
-#         if os.system('/bin/cp --force --sparse=always ' + machinetypes[self.machinetypeName]['root_image'] + ' ' + fileName) != 0:
-#          raise NameError('copy of disk image fails!')
-#         else:
-#          return fileName
-
       return None
 
    def measureScratchDisk(self):
@@ -996,10 +987,10 @@ class VacVM:
       try:
        # get logical volume size in GB (1000^3 not 1024^3)
        f = os.popen('/sbin/lvs --nosuffix --units G --noheadings -o lv_size /dev/' + volumeGroup + '/' + self.name + ' 2>/dev/null', 'r')
-       sizeGB = float(f.readline())
+       self.scratchGB = float(f.readline())
        f.close()
-       gbScratchesMeasured[self.name] = sizeGB
       except:
+       self.scratchGB = 0
        vac.vacutils.logLine('failed to read size of /dev/' + volumeGroup + '/' + self.name + ' using lvs command')
        pass      
 
@@ -1043,7 +1034,7 @@ class VacVM:
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      if self.name in gbScratchesMeasured:
+      if gbScratch and volumeGroup:
 
         if not os.path.exists('/dev/' + volumeGroup + '/' + self.name):
             vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
@@ -1055,7 +1046,6 @@ class VacVM:
         except:
             return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing'
 
-        self.measureScratchDisk()
         scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
                               " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                               " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
