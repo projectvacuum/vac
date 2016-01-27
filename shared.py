@@ -886,9 +886,9 @@ class VacVM:
       # if we know the size of the scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
       self.measureScratchDisk()
       
-      if self.scratchGB:
+      if self.measuredScratchGB:
          vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/disk_limit_GB',
-                 str(self.scratchGB), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.measuredScratchGB), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # we are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
@@ -987,10 +987,10 @@ class VacVM:
       try:
        # get logical volume size in GB (1000^3 not 1024^3)
        f = os.popen('/sbin/lvs --nosuffix --units G --noheadings -o lv_size /dev/' + volumeGroup + '/' + self.name + ' 2>/dev/null', 'r')
-       self.scratchGB = float(f.readline())
+       self.measuredScratchGB = float(f.readline())
        f.close()
       except:
-       self.scratchGB = 0
+       self.measuredScratchGB = 0
        vac.vacutils.logLine('failed to read size of /dev/' + volumeGroup + '/' + self.name + ' using lvs command')
        pass      
 
@@ -1034,7 +1034,7 @@ class VacVM:
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      if gbScratch and volumeGroup:
+      if gbScratch and volumeGroup and os.path.exists('/dev/' + volumeGroup):
 
         if not os.path.exists('/dev/' + volumeGroup + '/' + self.name):
             vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
