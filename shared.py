@@ -2047,6 +2047,14 @@ def makeFactoryResponse(cookie):
    except:
      metadataHeartbeatTime = 0
 
+   try:
+     osIssue = open('/etc/issue.vac','r').readline()
+   except:
+     try:
+       osIssue = open('/etc/issue','r').readline()
+     except:
+       osIssue = os.uname()[2]
+
    responseDict = {
                 'method'		   : 'factory', # will be deprecated
                 'message_type'		   : 'factory_status',
@@ -2068,6 +2076,7 @@ def makeFactoryResponse(cookie):
                 'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
                 'load_average'		   : loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
+                'os_issue'		   : osIssue,
                 'factory_heartbeat_time'   : factoryHeartbeatTime,
                 'responder_heartbeat_time' : responderHeartbeatTime,
                 'mjf_heartbeat_time'       : mjfHeartbeatTime,
