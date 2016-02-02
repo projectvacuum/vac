@@ -440,28 +440,32 @@ def vacResponder():
      except:
        continue
      
-     if ('space'  in queryMessage and 
-         'cookie' in queryMessage and 
-         'method' in queryMessage and 
+     if ('cookie' in queryMessage and
+         'space'  in queryMessage and 
          queryMessage['space']  == vac.shared.spaceName):
           
          vac.vacutils.logLine("Received " + data + " from " + str(addr))
 
-         if queryMessage['method'] == 'machines':
+         ( or 'message_type' in queryMessage) and
+
+         if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
+            ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
            try:
              for response in vac.shared.makeMachineResponses(queryMessage['cookie']):
                sock.sendto(response, addr)
            except:
              pass
- 
-         elif queryMessage['method'] == 'machinetypes':
+
+         elif ('method' in queryMessage and queryMessage['method'] == 'machinetypes') or \
+              ('message_type' in queryMessage and queryMessage['message_type'] == 'machinetypes_query'):
            try:
              for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie']):
                sock.sendto(response, addr)
            except:
              pass
 
-         elif queryMessage['method'] == 'factories':
+         elif ('method' in queryMessage and queryMessage['method'] == 'factories') or \
+              ('message_type' in queryMessage and queryMessage['message_type'] == 'factory_query'):
            try:
              sock.sendto(vac.shared.makeFactoryResponse(queryMessage['cookie']), addr)
            except:

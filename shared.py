@@ -1541,7 +1541,8 @@ def sendMachinetypesRequests(factoryList = None):
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
-                                   'method'           : 'machinetypes'}),
+                                   'method'           : 'machinetypes', # will be deprecated
+                                   'message_type'     : 'machinetypes_query'}),
                        (factoryName,995))
 
          except socket.error:
@@ -1566,8 +1567,8 @@ def sendMachinetypesRequests(factoryList = None):
              continue
 
 # should check types as well as presence!
-           if 'method'			in response and \
-              response['method'] == 'machinetype' and \
+           if (('method' in response and response['method'] == 'machinetype') or # will be deprecated
+               ('message_type' in response and response['message_type'] == 'machinetype_status')) and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -1633,7 +1634,8 @@ def sendMachinesRequests(factoryList = None):
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
-                                   'method'           : 'machines'}),
+                                   'method'           : 'machines', # will be deprecated
+                                   'message_type'     : 'machines_query'}),
                        (factoryName,995))
 
          except socket.error:
@@ -1657,8 +1659,8 @@ def sendMachinesRequests(factoryList = None):
              continue
 
 # should check types as well as presence!
-           if 'method'			in response and \
-              response['method'] == 'machine' and \
+           if (('method' in response and response['method'] == 'machine') or # will be deprecated
+               ('message_type' in response and response['message_type'] == 'machine_status')) and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -1721,7 +1723,8 @@ def sendFactoriesRequests(factoryList = None):
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
-                                   'method'           : 'factories'}),
+                                   'method'           : 'factories',
+                                   'message_type'     : 'factory_query'}),
                        (factoryName,995))
 
          except socket.error:
@@ -1744,8 +1747,8 @@ def sendFactoriesRequests(factoryList = None):
              vac.vacutils.logLine('json.loads failed for ' + data)
              continue
 
-           if 'method'			in response and \
-              response['method'] == 'factory' and \
+           if (('method' in response and response['method'] == 'factory') or # will be deprecated
+               ('message_type' in response and response['message_type'] == 'factory_status')) and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -1840,7 +1843,8 @@ def makeMachineResponses(cookie):
        vac.vacutils.logLine(name + ' is ' + str(vmState) + ' (' + str(machinetypeName) + ', started ' + str(created) + ')')
 
        responseDict = {
-                'method'		: 'machine',
+                'method'		: 'machine', # will be deprecated
+                'message_type'		: 'machine_status',
                 'vac_version'		: 'Vac ' + vacVersion,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
@@ -1974,7 +1978,8 @@ def makeMachinetypeResponses(cookie):
                shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
 
      responseDict = {
-                'method'		: 'machinetype',
+                'method'		: 'machinetype', # will be deprecated
+                'message_type'		: 'machinetype_status',
                 'vac_version'		: 'Vac ' + vacVersion,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
@@ -2043,7 +2048,8 @@ def makeFactoryResponse(cookie):
      metadataHeartbeatTime = 0
 
    responseDict = {
-                'method'		   : 'factory',
+                'method'		   : 'factory', # will be deprecated
+                'message_type'		   : 'factory_status',
                 'vac_version'		   : 'Vac ' + vacVersion,
                 'vacquery_version'	   : 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	   : cookie,
@@ -2200,5 +2206,3 @@ def createGlueStatus(glueVersion = '2.0', runningMachines = 0, totalMachines = 0
                                  0644, '/var/lib/vcycle/tmp')
     except:
       vacvacutils.logLine('Failed writing GLUE ' + glueVersion + ' JSON to /var/lib/vcycle/spaces/' + self.spaceName + '/glue-' + glueVersion + '.json')
-
-          
