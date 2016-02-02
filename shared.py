@@ -2061,6 +2061,11 @@ def makeFactoryResponse(cookie):
      except:
        osIssue = os.uname()[2]
 
+   try:
+     bootTime = int(time.time() - float(open('/proc/uptime','r').readline().split()[0]))
+   except:
+     bootTime = 0
+
    responseDict = {
                 'method'		   : 'factory', # will be deprecated
                 'message_type'		   : 'factory_status',
@@ -2083,6 +2088,7 @@ def makeFactoryResponse(cookie):
                 'load_average'		   : loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
                 'os_issue'		   : osIssue,
+                'boot_time'		   : bootTime,
                 'factory_heartbeat_time'   : factoryHeartbeatTime,
                 'responder_heartbeat_time' : responderHeartbeatTime,
                 'mjf_heartbeat_time'       : mjfHeartbeatTime,
