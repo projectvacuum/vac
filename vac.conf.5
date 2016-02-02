@@ -300,8 +300,8 @@ Before the user_data file is used in starting a VM, several pattern based
 substitutions are performed by Vac. These patterns are in the form
 ##user_data___##. String values given to the option user_data_option_XXX
 replace patterns of the form ##user_data_option_XXX##. The contents of
-the files given to user_data_file_XXX options replace patterns of the
-form ##user_data_file_XXX##. In both cases XXX are arbitrary strings 
+the files given to user_data_file_XXX options also replace patterns of the
+form ##user_data_option_XXX##. In both cases XXX are arbitrary strings 
 consisting of letters, numbers, and underscores.
 
 The pattern ##user_data_x509_proxy## is replaced by the proxy created if the

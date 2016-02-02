@@ -191,8 +191,13 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
              f = open(oneValue, 'r')
            else:
              f = open(machinetypePath + '/' + oneValue, 'r')
-                           
+
+           # deprecated: replace ##user_data_file_xxxx## with value                           
            userDataContents = userDataContents.replace('##' + oneOption + '##', f.read())
+
+           # new behaviour: replace ##user_data_option_xxxx## with value from user_data_file_xxxx                           
+           userDataContents = userDataContents.replace('##user_data_option_' + oneOption[15:] + '##', f.read())
+
            f.close()
         except:
            raise NameError('Failed to read ' + oneValue + ' for ' + oneOption)          

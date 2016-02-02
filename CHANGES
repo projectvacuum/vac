@@ -1,4 +1,6 @@
 ==================== Changes in Vac version 00.21.00 =================== 
+- Fix bug preventing scratch partitions being used properly
+- user_data_file_xxxx now also replaces ##user_data_option_xxxx##
 ==================== Changes in Vac version 00.20.00 =================== 
 - vmtype -> machinetype in options and code
 - NFS and contextualization ISO image replaced by vacd-metadata and 
