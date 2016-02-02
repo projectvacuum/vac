@@ -57,6 +57,8 @@ import libvirt
 
 import vac
 
+mjfHttpdStartTime = 0
+
 def vacLibvirtErrorHandler(ctxt, err):
     global errno    
     errno = err            
@@ -235,9 +237,10 @@ def vacOneCycle():
        # and fizzle_seconds time has passed since the VM started...
        if 'heartbeat_file' in vac.shared.machinetypes[vm.machinetypeName] and \
           (vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds'] > 0) and \
-          (int(time.time()) > (vm.started + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds'])):
+          (int(time.time()) > (vm.started + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']))):
 
-          if vm.joboutputsHeartbeat is None:
+          if (int(time.time()) > mjfHttpdStartTime + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']) and \
+             vm.joboutputsHeartbeat is None:
             #  destroy VM if file does not exist (even if heartbeat_seconds is zero)
             vac.vacutils.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
                         str(vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
@@ -246,8 +249,8 @@ def vacOneCycle():
           else:
             # if heartbeat_seconds is set, we check the file is recent
             if (vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'] > 0) and \
-               (int(time.time()) > (vm.joboutputsHeartbeat + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'])):
-
+               (int(time.time()) > (vm.joboutputsHeartbeat + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'])) and \
+               (int(time.time()) > (mjfHttpdStartTime + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'])):
               vac.vacutils.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - vm.joboutputsHeartbeat) + 
                           ' seconds without updating heartbeat file (' + 
                           vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file'] + ') - destroying!')
@@ -721,6 +724,9 @@ def vacFactory():
 libvirt.registerErrorHandler(vacLibvirtErrorHandler, 'context')
 
 if __name__ == '__main__':
+
+    # Used when deciding whether to enforce VM heartbeat frequency
+    mjfHttpdStartTime = int(time.time())
 
     if (os.fork() != 0):
       sys.exit() # first parent

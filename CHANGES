@@ -7,6 +7,7 @@
 - Vac version logger mechanism now sends a factory_status message
   version_logger times per day. Still default 1. Can be 0, 24, ...
 - Add boot_time to factory_status messages
+- Take MJF httpd start time into account when enforcing VM heartbeat
 ==================== Changes in Vac version 00.20.00 =================== 
 - vmtype -> machinetype in options and code
 - NFS and contextualization ISO image replaced by vacd-metadata and 
