@@ -81,11 +81,11 @@ apel-archive and the Vac space name is used as a placeholder in the
 files.
 
 .B version_logger
-can be used to disable the logging of the version in use. Normally
+can be set to 0 to disable the logging of the version in use. Normally
 Vac sends one UDP packet per day to vac-version-logger.gridpp.ac.uk
 on port 8884 containing the factory and space names, and the Vac
 version number. This will be used to target patches for security
-and bugs at the versions currently in use. Defaults to True.
+and bugs at the versions currently in use. Defaults to 1.
 
 .B vacmon_hostport
 If set, this option gives a space-separated list of HOST:PORT to send 

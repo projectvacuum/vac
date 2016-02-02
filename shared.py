@@ -121,7 +121,7 @@ def readConf():
       vacVersion = '0.0.0'
 
       cpuPerMachine = 1
-      versionLogger = True
+      versionLogger = 1
       machinetypes = {}
       vacmons = []
       
@@ -213,11 +213,17 @@ def readConf():
       if parser.has_option('settings', 'forward_dev'):
            forwardDev = parser.get('settings','forward_dev').strip()
 
-      if (parser.has_option('settings', 'version_logger') and
-          parser.get('settings','version_logger').strip().lower() == 'false'):
-           versionLogger = False
-      else:
-           versionLogger = True
+      if parser.has_option('settings', 'version_logger'):
+        # deprecated true/false then integer messages per day
+        if parser.get('settings','version_logger').strip().lower() == 'true':
+           versionLogger = 1
+        elif parser.get('settings','version_logger').strip().lower() == 'false':
+           versionLogger = 0
+        else:
+           try:
+             versionLogger = int(parser.get('settings','version_logger').strip())
+           except:
+             versionLogger = 0
 
       if parser.has_option('settings', 'vacmon_hostport'):
            try:
