@@ -96,8 +96,7 @@ of factories and VMs via site or central VacMon services.
 is derived from /proc/cpuinfo by default and does not usually need to be 
 set explicitly. If set, then it provides an additional limit on the number 
 of virtual machines that will be created, calculated as cpu_total divided
-by cpu_per_machine, 
-even if total_machines is higher. This allows you to reduce the number
+by cpu_per_machine. This allows you to reduce the number
 of running VMs on a factory machine without having to kill running VMs.
 Instead, they are allowed to finish one by one and are only recreated if 
 cpu_total allows. 
@@ -117,11 +116,10 @@ VMs' fully qualified domain names as their names. For example,
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
-.B scratch_gb
-gives the size in GB (1000^3) when creating per-VM logical volumes for
-scratch partitions in volume_group. If set to zero then no logical
-volumes are created or used. The size of a logical volume is not 
-modified if it already exists. Defaults to 40.
+.B disk_gb_pe_cpu
+gives the size in GB (1000^3) when Vac creates per-VM logical volumes 
+in volume_group or when creating file-backed virtual disks. 
+Defaults to 40.
 
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking
@@ -135,12 +133,6 @@ used for outgoing network connections from the VMs to other machines.
 For example, eth1. This option is only needed if you have multiple 
 network interfaces on the factory and only one should be used for traffic
 originating from the VMs.
-
-.B total_machines
-can be used to set the number of VMs to be defined by Vac. The default 
-value is the number of processors counted using /proc/cpuinfo and in normal
-operation 
-.B the total_machines option should not be used. In particular, it must never be decreased while VMs are running.
 
 The VM names are formed by
 adding a hyphen and the VM number to the hostname component of its fully
@@ -225,8 +217,8 @@ is the device name exposed to the VM that is associated with the root
 disk image. Default vda.
 
 .B scratch_device
-is the device name exposed to the VM that is associated with the scratch
-logical volume. Default vdb.
+is the device name exposed to the VM that is associated with a scratch
+logical volume in the vm-raw model. Ignored for CernVM. Default vdb.
 
 .B machines_dir_days
 sets the expiration time in days for per-VM directories created under

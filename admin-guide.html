@@ -185,8 +185,9 @@ their hostname. So factory1.example.com etc, not just factory1.
 Vac uses a private NAT network for the set of virtual machines on a
 given factory. Vac then creates the VM FQDNs from the factory name
 by adding -00, -01, ... So factory1.example.com has factory1-00.example.com,
-factory1-01.example.com, ... as its VMs. The total number of virtual
-machines on the factory is specified by total_machines. Vac assigns IP
+factory1-01.example.com, ... as its VMs. The number of possible virtual
+machines on the factory is calculated by Vac from the number of logical
+processors in /proc/cpuinfo. Vac assigns IP
 addresses starting 169.254.169.0 for VM 0, 169.254.169.1 for VM 1 etc. 
 Unique MAC addresses are also assigned to each VM. 
 Using libvirt NAT machinery means this network is

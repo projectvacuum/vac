@@ -65,7 +65,7 @@ def vacLibvirtErrorHandler(ctxt, err):
       
 def pollFactories():
 
-   responses = vac.shared.sendMachinetypesRequests()
+   responses = vac.shared.sendMachinetypesRequests(clientName = 'vacd-factory')
 
    # Total HS06 of running/starting VMs per machinetype
    factoryMachinetypeTotals             = {}
@@ -186,7 +186,7 @@ def vacOneCycle():
            vac.vacutils.createFile('/var/lib/vac/version-logged', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
            try:
-             factoryMessage = vac.shared.makeFactoryResponse('0')
+             factoryMessage = vac.shared.makeFactoryResponse('0', clientName = 'vacd-factory')
              sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
              sock.sendto(factoryMessage, ('vac-version-logger.gridpp.ac.uk',8884))
              sock.close()       
@@ -344,7 +344,7 @@ def vacOneCycle():
    if vac.shared.vacmons:
      # Send VacQuery machinetype and factory messages to listed VacMons
      machinetypeMessages = vac.shared.makeMachinetypeResponses('0')
-     factoryMessage = vac.shared.makeFactoryResponse('0')
+     factoryMessage = vac.shared.makeFactoryResponse('0', clientName = 'vacd-factory')
      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
      for vacmonHostPort in vac.shared.vacmons:
@@ -455,7 +455,7 @@ def vacResponder():
          if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
             ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
            try:
-             for response in vac.shared.makeMachineResponses(queryMessage['cookie']):
+             for response in vac.shared.makeMachineResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
                sock.sendto(response, addr)
            except:
              pass
@@ -463,7 +463,7 @@ def vacResponder():
          elif ('method' in queryMessage and queryMessage['method'] == 'machinetypes') or \
               ('message_type' in queryMessage and queryMessage['message_type'] == 'machinetypes_query'):
            try:
-             for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie']):
+             for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
                sock.sendto(response, addr)
            except:
              pass
@@ -471,7 +471,7 @@ def vacResponder():
          elif ('method' in queryMessage and queryMessage['method'] == 'factories') or \
               ('message_type' in queryMessage and queryMessage['message_type'] == 'factory_query'):
            try:
-             sock.sendto(vac.shared.makeFactoryResponse(queryMessage['cookie']), addr)
+             sock.sendto(vac.shared.makeFactoryResponse(queryMessage['cookie'], clientName = 'vacd-responder'), addr)
            except:
              pass
 

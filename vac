@@ -60,7 +60,7 @@ def queryMachines(options, factoryList):
   if options.returnJSON:
     sys.stdout.write('[')
    
-  responses = vac.shared.sendMachinesRequests(factoryList)
+  responses = vac.shared.sendMachinesRequests(factoryList, 'vac-command')
 
   for factoryName in responses:
     for vmName in responses[factoryName]['machines']:
@@ -130,7 +130,7 @@ def queryMachines(options, factoryList):
 
 def queryMachinetype(options, machinetypeName, factoryList):
 
-  responses = vac.shared.sendMachinetypesRequests(factoryList)
+  responses = vac.shared.sendMachinetypesRequests(factoryList, clientName = 'vac-command')
 
   if options.returnJSON:
     sys.stdout.write('[')
@@ -159,7 +159,7 @@ def queryMachinetype(options, machinetypeName, factoryList):
   if options.returnJSON:
     print ']'
 
-def queryFactories(options, factoryList):
+def queryFactories(options, factoryList, clientName = 'vac-command'):
    
   responses = vac.shared.sendFactoriesRequests(factoryList)
 

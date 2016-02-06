@@ -92,7 +92,7 @@ machinetypes = None
 vacmons = None
 
 volumeGroup = None
-gbScratch = None
+gbDiskPerCpu = None
 machinefeaturesOptions = None
 
 def readConf():
@@ -100,7 +100,7 @@ def readConf():
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, machinetypes, vacmons, \
-             volumeGroup, gbScratch, overloadPerCpu, fixNetworking, machinefeaturesOptions
+             volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
       overloadPerCpu = 2.0
@@ -113,9 +113,9 @@ def readConf():
       forwardDev = None
       shutdownTime = None
 
-      numVirtualmachines = None
-      numCpus = None
       cpuCount = countProcProcessors()
+      numVirtualmachines = cpuCount
+      numCpus = None
       spaceName = None
       udpTimeoutSeconds = 5.0
       vacVersion = '0.0.0'
@@ -126,7 +126,7 @@ def readConf():
       vacmons = []
       
       volumeGroup = 'vac_volume_group'
-      gbScratch   = 40
+      gbDiskPerCpu = 40
       machinefeaturesOptions = {}
 
       try:
@@ -181,12 +181,9 @@ def readConf():
       else:
           # Defaults to count from /proc/cpuinfo
           numCpus = cpuCount
-                                                 
+
       if parser.has_option('settings', 'total_machines'):
-          # Number of VMs for Vac to auto-define.
-          numVirtualmachines = int(parser.get('settings','total_machines').strip())
-      else:
-          numVirtualmachines = cpuCount
+          print 'total_machines is deprecated. Please use cpu_total and cpu_per_machine to control number of VMs'
                                                  
       if parser.has_option('settings', 'overload_per_cpu'):
           # Multiplier to calculate overload veto against creating more VMs
@@ -197,9 +194,12 @@ def readConf():
           volumeGroup = parser.get('settings','volume_group').strip()
              
       if parser.has_option('settings', 'scratch_gb'):
-          # Size in GB (1000^3) of scratch volumes, 0 to disable, default is 40
-          gbScratch = int(parser.get('settings','scratch_gb').strip())
-             
+          # Deprecated
+          gbDiskPerCpu = int(parser.get('settings','scratch_gb').strip())
+      elif parser.has_option('settings', 'disk_gb_per_cpu'):
+          # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
+          gbDiskPerCpu = int(parser.get('settings','scratch_gb').strip())
+
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
           udpTimeoutSeconds = float(parser.get('settings','udp_timeout_seconds').strip())
@@ -889,11 +889,6 @@ class VacVM:
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # if have a scratch partition, we use it as the disk_limit_GB (1000^3 not 1024^3 bytes)
-      if self.measuredScratchGB:
-           vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/disk_limit_GB',
-                 str(self.measuredScratchGB), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
       # we are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
                  str(now), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
@@ -940,64 +935,6 @@ class VacVM:
       except:
         raise NameError('Failed writing to ' + self.machinesDir() + '/user_data')
       
-   def makeRootDisk(self):
-
-      # Exceptions have to be caught by function calling makeRootDisk()
-      fTmp, fileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
-
-      # CernVM 3 just needs a big empty file
-      if self.model == 'cernvm3':
-         vac.vacutils.logLine('Make 70 GB sparse file ' + fileName)
-         try:
-          f = open(fileName, 'ab')
-          f.truncate(70 * 1014 * 1024 * 1024)
-          f.close()
-          return fileName
-         except:
-          raise NameError('creation of sparse disk image fails!')
-
-      elif self.model == 'vm-raw':
-
-         if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
-           try:
-              rawFileName = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
-           except Exception as e:
-              return str(e)
-         elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
-           rawFileName = machinetypes[self.machinetypeName]['root_image']
-         else:
-           rawFileName = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
-
-         if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
-           cernvmDict = vac.vacutils.getCernvmImageData(rawFileName)
-           if cernvmDict['verified'] == False:
-             return 'Failed to verify signature/cert for ' + rawFileName
-           elif re.search(machinetypes[self.machinetypeName]['cernvm_signing_dn'],  cernvmDict['dn']) is None:
-             return 'Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn']
-           else:
-             vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
-
-         # Make a small QEMU qcow2 disk for this instance,
-         # backed by the full image given in conf
-         if os.system('qemu-img create -b ' + rawFileName + ' -f qcow2 ' + fileName + ' >/dev/null') != 0:
-          raise NameError('creation of copy-on-write disk image fails!')
-         else:
-          return fileName
-
-      return None
-
-   def measureScratchDisk(self):
-
-      try:
-       # get logical volume size in GB (1000^3 not 1024^3)
-       f = os.popen('/sbin/lvs --nosuffix --units G --noheadings -o lv_size /dev/' + volumeGroup + '/' + self.name + ' 2>/dev/null', 'r')
-       self.measuredScratchGB = float(f.readline())
-       f.close()
-      except:
-       self.measuredScratchGB = 0
-       vac.vacutils.logLine('failed to read size of /dev/' + volumeGroup + '/' + self.name + ' using lvs command')
-       pass      
-
    def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
@@ -1016,11 +953,17 @@ class VacVM:
 
       conn.close()
 
+      if os.path.exists('/dev/' + volumeGroup + '/' + self.name):
+        vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
+        os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+
    def createVM(self, machinetypeName):
       self.model           = machinetypes[machinetypeName]['machine_model']
       self.created         = int(time.time())
       self.machinetypeName = machinetypeName
       self.uuidStr         = str(uuid.uuid4())
+      scratch_volume_xml   = ""
+      cernvm_cdrom_xml     = ""
 
       os.makedirs(self.machinesDir(), stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
@@ -1037,50 +980,64 @@ class VacVM:
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      if not gbScratch or not volumeGroup:
-        self.measuredScratchGB = 0
-        scratch_volume_xml = ""
-
-      elif not os.path.exists('/dev/' + volumeGroup):
-        vac.vacutils.logLine('No scratch logical volume for ' + self.name + ' as /dev/' + volumeGroup + ' does not exist')
-        self.measuredScratchGB = 0
-        scratch_volume_xml = ""
+      if self.model=='vm-raw':
+        # non-CernVM VM model
       
-      else:          
-        # Should be possible, so try and raise exception if problems
-        if not os.path.exists('/dev/' + volumeGroup + '/' + self.name):
-            vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
-            os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbScratch) + 'G ' + volumeGroup + ' 2>&1')
+        if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
+          try:
+            rawFileName = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
+          except Exception as e:
+            return 'Failed fetching root_image ' + machinetypes[self.machinetypeName]['root_image'] + ' (' + str(e) + ')'
+        elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
+           rawFileName = machinetypes[self.machinetypeName]['root_image']
+        else:
+           rawFileName = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
 
-        try:
-            if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
-              return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device'
-        except:
-            return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing'
+        if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
+          cernvmDict = vac.vacutils.getCernvmImageData(rawFileName)
+          if cernvmDict['verified'] == False:
+            return 'Failed to verify signature/cert for ' + rawFileName
+          elif re.search(machinetypes[self.machinetypeName]['cernvm_signing_dn'],  cernvmDict['dn']) is None:
+            return 'Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn']
+          else:
+            vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
 
-        self.measureScratchDisk()
+        fTmp, rootDiskFileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
+
+        # Make a small QEMU qcow2 disk for this instance,  backed by the full image stored elsewhere
+        if os.system('qemu-img create -b ' + rawFileName + ' -f qcow2 ' + rootDiskFileName + ' >/dev/null') != 0:
+          return 'Creation of copy-on-write disk image fails!'
+
+        root_disk_xml = """<disk type='file' device='disk'>
+                           <driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />
+                           <source file='""" + rootDiskFileName + """' />
+                           <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='""" + 
+                           ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/>
+                           </disk>"""
+
+        # For vm-raw, maybe we have logical volume to use as scratch too?
+        if gbDiskPerCpu and volumeGroup and os.path.exists('/dev/' + volumeGroup):
+          scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
+                                " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
+                                " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
+                                " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
+                                "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
       
-        scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                              " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
-                              " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
-                              " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
-                              "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
-
-      if self.model != 'cernvm3':
-          cernvm_cdrom_xml    = ""
       else:
-          # For cernvm3 need to set up the ISO boot image
-          if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':          
+        # CernVM VM model
+            
+        # For cernvm3 always need to set up the ISO boot image
+        if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
             try:
               cernvmCdrom = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp')
             except Exception as e:
               return str(e)
-          elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
+        elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
             cernvmCdrom = machinetypes[self.machinetypeName]['root_image']
-          else:
+        else:
             cernvmCdrom = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
 
-          if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
+        if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
             cernvmDict = vac.vacutils.getCernvmImageData(cernvmCdrom)
             if cernvmDict['verified'] == False:
               return 'Failed to verify signature/cert for ' + cernvmCdrom            
@@ -1089,11 +1046,55 @@ class VacVM:
             else:
               vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
       
-          cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
-                              " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
-                              " <source file='" + cernvmCdrom  + "'/>\n" +
-                              " <target dev='hdc' />\n<readonly />\n</disk>")
+        cernvm_cdrom_xml = ("<disk type='file' device='cdrom'>\n" +
+                            " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
+                            " <source file='" + cernvmCdrom  + "'/>\n" +
+                            " <target dev='hdc' />\n<readonly />\n</disk>")
+                            
+        # Now the disk file or logical volume to provide the virtual hard drives
 
+        if volumeGroup and os.path.exists('/dev/' + volumeGroup):
+          # Create logical volume for CernVM
+
+          # First remove any leftover volume of the same name
+          if os.path.exists('/dev/' + volumeGroup + '/' + self.name):
+            vac.vacutils.logLine('Remove leftover logical volume /dev/' + volumeGroup + '/' + self.name)
+            os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+
+          # Now create logical volume
+          vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
+          os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbDiskPerCpu * cpuPerMachine) + 'G ' + volumeGroup + ' 2>&1')
+
+          try:
+            if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
+              return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device'
+          except:
+            return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing'
+      
+          root_disk_xml = ("<disk type='block' device='disk'>\n" +
+                           " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
+                           " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
+                           " <target dev='" + machinetypes[self.machinetypeName]['root_device'] + 
+                           "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + "'/>\n</disk>")        
+        else:
+          # Create big empty disk file for CernVM
+
+          try:
+            fTmp, rootDiskFileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
+            vac.vacutils.logLine('Make ' + str(gbDiskPerCpu + cpuPerMachine) + ' GB sparse file ' + rootDiskFileName)
+            f = open(rootDiskFileName, 'ab')
+            f.truncate(gbDiskPerCpu + cpuPerMachine * 1014 * 1024 * 1024)
+            f.close()
+          except:
+            return 'Creation of sparse disk image fails!'
+
+          root_disk_xml = """<disk type='file' device='disk'><driver name='qemu' cache='unsafe' type='raw' error_policy='report' />
+                             <source file='""" + rootDiskFileName + """' />
+                             <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' 
+                              bus='""" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/></disk>"""
+
+
+    
       ip      = natPrefix + str(self.ordinal)
       ipBytes = ip.split('.')
       mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
@@ -1111,24 +1112,19 @@ class VacVM:
         return 'Failed making OpenStack meta_data (' + str(e) + ')'
         
       try:
-          conn = libvirt.open(None)
+        conn = libvirt.open(None)
       except:
-          return 'exception when opening connection to the hypervisor'
+        return 'exception when opening connection to the hypervisor'
 
       if conn == None:
-          return 'failed to open connection to the hypervisor'
-                
-      try:
-        rootDiskFileName = self.makeRootDisk()
-      except Exception as e:
-        return 'Failed to make root disk image (' + str(e) + ')'
-        
+        return 'failed to open connection to the hypervisor'
+
       if os.path.isfile("/usr/libexec/qemu-kvm"):
-            qemuKvmFile = "/usr/libexec/qemu-kvm"
+        qemuKvmFile = "/usr/libexec/qemu-kvm"
       elif os.path.isfile("/usr/bin/qemu-kvm"):
-            qemuKvmFile = "/usr/bin/qemu-kvm"
+        qemuKvmFile = "/usr/bin/qemu-kvm"
       else:
-            return "qemu-kvm not in /usr/libexec or /usr/bin!"
+        return "qemu-kvm not in /usr/libexec or /usr/bin!"
       
       xmldesc=( """<domain type='kvm'>
   <name>""" + self.name + """</name>
@@ -1155,13 +1151,7 @@ class VacVM:
   <on_reboot>destroy</on_reboot>
   <on_crash>destroy</on_crash>
   <devices>
-    <emulator>""" + qemuKvmFile + """</emulator>
-    <disk type='file' device='disk'>""" + 
-    ("<driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />" if (self.model=='vm-raw') else "<driver name='qemu' cache='unsafe' type='raw' error_policy='report' />") + 
-    """<source file='""" + rootDiskFileName + """' /> 
-     <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='""" + 
-     ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/>
-    </disk>""" + scratch_volume_xml + cernvm_cdrom_xml + """
+    <emulator>""" + qemuKvmFile + """</emulator>""" + root_disk_xml + scratch_disk_xml + cernvm_cdrom_xml + """
     <controller type='usb' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
     </controller>
@@ -1505,7 +1495,7 @@ def writePutBody(created, machinetypeName, uuidStr, path, body):
    vac.vacutils.logLine('Wrote ' + machinesDir + '/joboutputs/' + splitRequestURI[2])
    return True
 
-def sendMachinetypesRequests(factoryList = None):
+def sendMachinetypesRequests(factoryList = None, clientName = '-'):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1543,7 +1533,7 @@ def sendMachinetypesRequests(factoryList = None):
 
          requestsRequired += 1
          try:          
-           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion,
+           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion + ' ' + clientName,
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
@@ -1598,7 +1588,7 @@ def sendMachinetypesRequests(factoryList = None):
 
    return responses
 
-def sendMachinesRequests(factoryList = None):
+def sendMachinesRequests(factoryList = None, clientName = '-'):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1636,7 +1626,7 @@ def sendMachinesRequests(factoryList = None):
 
          requestsRequired += 1
          try:          
-           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion,
+           sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion + ' ' + clientName,
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
@@ -1696,7 +1686,7 @@ def sendMachinesRequests(factoryList = None):
 
    return responses
 
-def sendFactoriesRequests(factoryList = None):
+def sendFactoriesRequests(factoryList = None, clientName = '-'):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1769,7 +1759,7 @@ def sendFactoriesRequests(factoryList = None):
 
    return responses
 
-def makeMachineResponses(cookie):
+def makeMachineResponses(cookie, clientName = '-'):
    responses = []
 
    # Go through the machine slots, sending one message for each
@@ -1851,7 +1841,7 @@ def makeMachineResponses(cookie):
        responseDict = {
                 'method'		: 'machine', # will be deprecated
                 'message_type'		: 'machine_status',
-                'vac_version'		: 'Vac ' + vacVersion,
+                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
@@ -1882,7 +1872,7 @@ def makeMachineResponses(cookie):
 
    return responses
    
-def makeMachinetypeResponses(cookie):
+def makeMachinetypeResponses(cookie, clientName = '-'):
    # Send back machinetype messages to the querying factory or client
    responses = []
 
@@ -1986,7 +1976,7 @@ def makeMachinetypeResponses(cookie):
      responseDict = {
                 'method'		: 'machinetype', # will be deprecated
                 'message_type'		: 'machinetype_status',
-                'vac_version'		: 'Vac ' + vacVersion,
+                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
@@ -2017,7 +2007,7 @@ def makeMachinetypeResponses(cookie):
 
    return responses
    
-def makeFactoryResponse(cookie):
+def makeFactoryResponse(cookie, clientName = '-'):
    # Send back factory status message to the querying client
 
    vacDiskStatFS  = os.statvfs('/var/lib/vac')
@@ -2069,7 +2059,7 @@ def makeFactoryResponse(cookie):
    responseDict = {
                 'method'		   : 'factory', # will be deprecated
                 'message_type'		   : 'factory_status',
-                'vac_version'		   : 'Vac ' + vacVersion,
+                'vac_version'		   : 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	   : 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	   : cookie,
                 'space'		    	   : spaceName,
@@ -2078,8 +2068,8 @@ def makeFactoryResponse(cookie):
 
                 'total_cpus'		   : numCpus,
                 'running_cpus'             : runningCpus,
-                'total_machines'           : numVirtualmachines,
                 'running_machines'         : runningMachines,
+                'total_machines'           : numCpus / cpuPerMachine,
                 'total_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
