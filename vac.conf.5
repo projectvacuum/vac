@@ -116,10 +116,12 @@ VMs' fully qualified domain names as their names. For example,
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
-.B disk_gb_pe_cpu
-gives the size in GB (1000^3) when Vac creates per-VM logical volumes 
-in volume_group or when creating file-backed virtual disks. 
-Defaults to 40.
+.B disk_gb_per_cpu
+explicitly sets the size of disks to create for VMs in GB (1000^3). For
+logical volumes, Vac normally creates the disk size using the space 
+available to Vac in volume_group, cpu_total, and cpu_per_machine. For
+file-backed virtual disks, the default value of 40 GB is used unless
+overriden by disk_gb_per_cpu.
 
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking

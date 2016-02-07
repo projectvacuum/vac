@@ -38,7 +38,6 @@ import os
 import sys
 import uuid
 import time
-import json
 import glob
 import errno
 import base64
@@ -56,18 +55,22 @@ import pycurl
 import libvirt
 import ConfigParser
 
+import json
+json.encoder.FLOAT_REPR = lambda f: ("%.2f" % f)
+
 import vac
 
 # All VacQuery requests and responses are in this file
 # so we can define the VacQuery protocol version here
-vacQueryVersion = '0.2'
+vacQueryVersion = '0.3'
 
-natNetwork      = '169.254.0.0'
-natNetmask      = '255.255.0.0'
-natPrefix       = '169.254.169.'
-factoryAddress  = '169.254.169.254'
-mjfAddress      = '169.254.169.253'
-udpBufferSize   = 16777216
+natNetwork          = '169.254.0.0'
+natNetmask          = '255.255.0.0'
+natPrefix           = '169.254.169.'
+factoryAddress      = '169.254.169.254'
+mjfAddress          = '169.254.169.253'
+udpBufferSize       = 16777216
+gbDiskPerCpuDefault = 40
 
 overloadPerCpu = None
 gocdbSitename = None
@@ -126,7 +129,6 @@ def readConf():
       vacmons = []
       
       volumeGroup = 'vac_volume_group'
-      gbDiskPerCpu = 40
       machinefeaturesOptions = {}
 
       try:
@@ -1016,7 +1018,12 @@ class VacVM:
                            </disk>"""
 
         # For vm-raw, maybe we have logical volume to use as scratch too?
-        if gbDiskPerCpu and volumeGroup and os.path.exists('/dev/' + volumeGroup):
+        if volumeGroup and os.path.exists('/dev/' + volumeGroup):
+          try:
+            self.createLogicalVolume()
+          except Exception as e:
+            return 'Failed to create required logical volume: ' + str(e)
+
           scratch_disk_xml = ("<disk type='block' device='disk'>\n" +
                               " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
                               " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
@@ -1054,22 +1061,12 @@ class VacVM:
         # Now the disk file or logical volume to provide the virtual hard drives
 
         if volumeGroup and os.path.exists('/dev/' + volumeGroup):
-          # Create logical volume for CernVM
-
-          # First remove any leftover volume of the same name
-          if os.path.exists('/dev/' + volumeGroup + '/' + self.name):
-            vac.vacutils.logLine('Remove leftover logical volume /dev/' + volumeGroup + '/' + self.name)
-            os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
-
-          # Now create logical volume
-          vac.vacutils.logLine('Trying to create scratch logical volume for ' + self.name + ' in ' + volumeGroup)
-          os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(gbDiskPerCpu * cpuPerMachine) + 'G ' + volumeGroup + ' 2>&1')
+          # Create logical volume for CernVM: fail if not able to do this
 
           try:
-            if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
-              return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device'
-          except:
-            return 'failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing'
+            self.createLogicalVolume()
+          except Exception as e:
+            return 'Failed to create required logical volume: ' + str(e)
       
           root_disk_xml = ("<disk type='block' device='disk'>\n" +
                            " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
@@ -1084,10 +1081,12 @@ class VacVM:
           # Create big empty disk file for CernVM
 
           try:
+            gbDisk = (gbDiskPerCpu if gbDiskPerCpu else gbDiskPerCpuDefault) * cpuPerMachine
+          
             fTmp, rootDiskFileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
-            vac.vacutils.logLine('Make ' + str(gbDiskPerCpu + cpuPerMachine) + ' GB sparse file ' + rootDiskFileName)
+            vac.vacutils.logLine('Make ' + str(gbDisk) + ' GB sparse file ' + rootDiskFileName)
             f = open(rootDiskFileName, 'ab')
-            f.truncate(gbDiskPerCpu + cpuPerMachine * 1014 * 1024 * 1024)
+            f.truncate(gbDisk * 1000000000)
             f.close()
           except:
             return 'Creation of sparse disk image fails!'
@@ -1096,8 +1095,6 @@ class VacVM:
                              <source file='""" + rootDiskFileName + """' />
                              <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' 
                               bus='""" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/></disk>"""
-
-
     
       ip      = natPrefix + str(self.ordinal)
       ipBytes = ip.split('.')
@@ -1206,6 +1203,65 @@ class VacVM:
       # Everything ok so return no error message
       return None
 
+   def createLogicalVolume(self):
+
+     # Always remove any leftover volume of the same name
+     if os.path.exists('/dev/' + volumeGroup + '/' + self.name):
+       vac.vacutils.logLine('Remove leftover logical volume /dev/' + volumeGroup + '/' + self.name)
+       os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+
+     try:
+       vgsResult = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()
+       vgTotalBytes = int(vgsResult[0])
+       vgExtentBytes = int(vgsResult[1])
+     except Exception as e:
+       raise NameError('Measuring size of volume group ' + volumeGroup + ' fails with ' + str(e))
+
+     try:
+       f = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvs --noheadings --units B --nosuffix --options lv_name,lv_size ' + volumeGroup, 'r')
+     except Exception as e:
+       raise NameError('Measuring size of logical volumes in ' + volumeGroup + ' fails with ' + str(e))
+
+     vgVacBytes = 0
+     vgNonVacBytes = 0
+     nameParts = os.uname()[1].split('.',1)
+     domainRegex = nameParts[1].replace('.','\.')
+
+     while True:
+       try:
+        name,sizeStr = f.readline().strip().split()
+        size = int(sizeStr)
+       except:
+        break
+
+       if re.search('^' + nameParts[0] + '-[0-9][0-9]\.' + domainRegex + '$', name) is None:
+        vgNonVacBytes += size
+       else:
+        vgVacBytes += size
+
+     f.close()
+
+     vac.vacutils.logLine('Volume group ' + volumeGroup + ' has ' + str(vgVacBytes) + ' bytes used by Vac and ' + str(vgNonVacBytes) + 
+                          ' bytes by others, out of ' + str(vgTotalBytes) + ' bytes in total. The extent size is ' + str(vgExtentBytes) + ' bytes.')
+
+     # Now try to create logical volume
+     vac.vacutils.logLine('Trying to create logical volume for ' + self.name + ' in ' + volumeGroup)
+
+     if gbDiskPerCpu:
+       # Fixed size has been given in configuration. Round down to match extent size.
+       sizeToCreate = ((gbDiskPerCpu * cpuPerMachine * 1000000000) / vgExtentBytes) * vgExtentBytes
+     else:
+       # Not given, so calculate. Round down to match extent size.
+       sizeToCreate = ((cpuPerMachine * (vgTotalBytes - vgNonVacBytes) / numCpus) / vgExtentBytes) * vgExtentBytes
+     
+     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
+
+     try:
+       if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
+         raise NameError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device')
+     except:
+         raise NameError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing')
+      
 def checkNetwork():
       # Check and if necessary create network and set its attributes
 
@@ -2046,7 +2102,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
      osIssue = open('/etc/issue.vac','r').readline()
    except:
      try:
-       osIssue = open('/etc/issue','r').readline()
+       osIssue = open('/etc/issue','r').readline().strip()
      except:
        osIssue = os.uname()[2]
 
@@ -2216,3 +2272,4 @@ def createGlueStatus(glueVersion = '2.0', runningMachines = 0, totalMachines = 0
                                  0644, '/var/lib/vcycle/tmp')
     except:
       vacvacutils.logLine('Failed writing GLUE ' + glueVersion + ' JSON to /var/lib/vcycle/spaces/' + self.spaceName + '/glue-' + glueVersion + '.json')
+
