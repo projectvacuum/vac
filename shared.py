@@ -198,7 +198,7 @@ def readConf():
           gbDiskPerCpu = int(parser.get('settings','scratch_gb').strip())
       elif parser.has_option('settings', 'disk_gb_per_cpu'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
-          gbDiskPerCpu = int(parser.get('settings','scratch_gb').strip())
+          gbDiskPerCpu = int(parser.get('settings','disk_gb_per_cpu').strip())
 
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
@@ -962,7 +962,7 @@ class VacVM:
       self.created         = int(time.time())
       self.machinetypeName = machinetypeName
       self.uuidStr         = str(uuid.uuid4())
-      scratch_volume_xml   = ""
+      scratch_disk_xml     = ""
       cernvm_cdrom_xml     = ""
 
       os.makedirs(self.machinesDir(), stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1011,17 +1011,17 @@ class VacVM:
         root_disk_xml = """<disk type='file' device='disk'>
                            <driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />
                            <source file='""" + rootDiskFileName + """' />
-                           <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' bus='""" + 
-                           ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/>
+                           <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' 
+                            bus='""" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/>
                            </disk>"""
 
         # For vm-raw, maybe we have logical volume to use as scratch too?
         if gbDiskPerCpu and volumeGroup and os.path.exists('/dev/' + volumeGroup):
-          scratch_volume_xml = ("<disk type='block' device='disk'>\n" +
-                                " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
-                                " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
-                                " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
-                                "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
+          scratch_disk_xml = ("<disk type='block' device='disk'>\n" +
+                              " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
+                              " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
+                              " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
+                              "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
       
       else:
         # CernVM VM model
@@ -1076,6 +1076,10 @@ class VacVM:
                            " <source dev='/dev/" + volumeGroup + "/" + self.name  + "'/>\n" +
                            " <target dev='" + machinetypes[self.machinetypeName]['root_device'] + 
                            "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + "'/>\n</disk>")        
+
+          # Unused
+          rootDiskFileName = None
+
         else:
           # Create big empty disk file for CernVM
 
@@ -1152,9 +1156,6 @@ class VacVM:
   <on_crash>destroy</on_crash>
   <devices>
     <emulator>""" + qemuKvmFile + """</emulator>""" + root_disk_xml + scratch_disk_xml + cernvm_cdrom_xml + """
-    <controller type='usb' index='0'>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
-    </controller>
     <interface type='network'>
       <mac address='""" + mac + """'/>
       <source network='vac_""" + natNetwork + """'/>
@@ -1171,9 +1172,6 @@ class VacVM:
       <model type='vga' vram='9216' heads='1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
     </video>
-    <memballoon model='virtio'>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
-    </memballoon>
   </devices>
 </domain>
 """ )
@@ -1191,9 +1189,10 @@ class VacVM:
            conn.close()
            return 'exception when trying to create VM domain'
       finally:
-           # We unlink the big, sparse root disk image once libvirt has it open too, 
+           # If used, we unlink the big, sparse root disk image once libvirt has it open too,
            # so it disappears when libvirt is finished with it
-           os.remove(rootDiskFileName)
+           if rootDiskFileName:
+             os.remove(rootDiskFileName)
            
       if not dom:
            vac.vacutils.logLine('Failed when trying to create VM domain for ' + self.name)
@@ -1743,7 +1742,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
              vac.vacutils.logLine('json.loads failed for ' + data)
              continue
 
-           if (('method' in response and response['method'] == 'factory') or # will be deprecated
+           if (('method' in response and response['method'] == 'factory') or 
                ('message_type' in response and response['message_type'] == 'factory_status')) and \
               'cookie' 			in response and \
               'space' 			in response and \

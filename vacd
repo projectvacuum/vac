@@ -237,7 +237,7 @@ def vacOneCycle():
        # and fizzle_seconds time has passed since the VM started...
        if 'heartbeat_file' in vac.shared.machinetypes[vm.machinetypeName] and \
           (vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds'] > 0) and \
-          (int(time.time()) > (vm.started + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']))):
+          (int(time.time()) > (vm.started + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds'])):
 
           if (int(time.time()) > mjfHttpdStartTime + vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']) and \
              vm.joboutputsHeartbeat is None:
@@ -272,7 +272,7 @@ def vacOneCycle():
        # If VM is still starting and we've come round again, then starting failed!
        vm.state = vac.shared.VacState.shutdown
        # Something has gone wrong, so we clean up
-       vm.destroy()
+       vm.destroyVM()
 
      if vm.state == vac.shared.VacState.shutdown:
        # create the finished file for the responder if not already there
@@ -449,8 +449,6 @@ def vacResponder():
          queryMessage['space']  == vac.shared.spaceName):
           
          vac.vacutils.logLine("Received " + data + " from " + str(addr))
-
-         ( or 'message_type' in queryMessage) and
 
          if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
             ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
