@@ -295,12 +295,13 @@ the rules you have are sufficient for Vac.
 
 <p>
 Vac virtual machines can use logical volumes on the factory machine
-to provide additional, faster disk space. Normally these will be mounted at
-/scratch by the VM, as they are on conventional grid worker nodes. 
+to provide faster disk space. For the cernvm3 VM model, only one disk
+device is presentd to the VM: either a logical volume or a file-backed
+virtual disk.
 
 <p>By
 default, the block device associated with the logical volume is available to
-the VM is vdb, but this can changed with the scratch_device option in a
+the VM is vda, but this can changed with the root_device option in a
 [machinetype ...] section. 
 
 <p>
@@ -311,24 +312,18 @@ logical volume path for each VM. For example,
 
 <p>
 You <b>must</b> create the volume group with a name that matches the volume_group
-setting and you <b>may</b> create the individual logical volumes, with something 
-similar to this, where /dev/sda9 is a physical volume created 
-during Kickstart or with pvcreate:
-<pre>
-vgcreate vac_volume_group /dev/sda9
-lvcreate --name factory1-00.example.com -L 40G vac_volume_group
-lvcreate --name factory1-01.example.com -L 40G vac_volume_group
-lvcreate --name factory1-02.example.com -L 40G vac_volume_group
-...
-</pre>
+setting. Vac will create the logical volumes when it creates VMs.
 
 <p>
 During the creation of each virtual machine instance, Vac will attempt to
-create the logical volume in volume_group with lvcreate if it doesn't exist 
-already. The setting scratch_gb (default 40) will be used when doing this.
-Vac will then check the logical volume is satisfactory,
-measure its size using lvs, and provide it to the VM as vdb by default.
- 
+create the logical volume in volume_group with lvcreate. The setting 
+disk_gb_per_cpu can be used to set its size explicitly, but by default
+Vac will calculate the size based on the available space in the volume
+group not occupied by Vac logical volumes. This space will nominally
+be shared between the allocatable processors given by cpu_total and
+then multiplied by cpu_per_machine to give the size of logical volume
+to create for each VM.
+
 <h3>Installation of Vac: tar vs RPM</h3>
 
 <p>
