@@ -676,10 +676,26 @@ class VacVM:
                                   
    def createFinishedFile(self):
       try:
-        f = open('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished', 'w')
-        f.close()
+        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished'
+                                '',
+                                stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+
       except:
         vac.vacutils.logLine('Failed creating /var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished')
+
+      # Update the file for this machinetype in the finishes directory, about the most recently created but already finished machine
+
+      finishedFilesList = glob.glob('/var/lib/vac/machines/*:' + self.machinetypeName + ':*/finished')
+     
+      if finishedFilesList:
+        finishedFilesList.sort()
+
+        try:
+          vac.vacutils.createFile('/var/lib/vac/finishes/' + self.machinetypeName,
+                                  finishedFilesList[-1].split('/')[-2],
+                                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+        except:
+          vac.vacutils.logLine('Failed creating /var/lib/vac/finishes/' + self.machinetypeName)
 
    def writeApel(self):
       # Write accounting information about a VM that has finished
@@ -971,6 +987,8 @@ class VacVM:
 
       try:
         os.makedirs('/var/lib/vac/slots', 
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+        os.makedirs('/var/lib/vac/finishes',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
       except:
         pass
@@ -1992,19 +2010,18 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          totalMachines   += 1
          numBeforeFizzle += 1
 
-     # Now go through older instances in /var/lib/vac/machines, looking for the most recently
-     # created instance of this machinetype that has already finished
-     
-     finishedFilesList = glob.glob('/var/lib/vac/machines/*:' + machinetypeName + ':*/finished')
-     finishedFilesList.sort()
-     
+     # Outcome of the most recently created instance of this machinetype that has already finished
+
      shutdownMessage     = None
      shutdownMessageTime = None
      shutdownMachineName = None
 
-     if finishedFilesList:
-       dir = '/'.join(finishedFilesList[-1].split('/')[:-1])
-
+     try:
+       # Updated by createFinishedFile()
+       dir = open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip()
+     except:
+       pass
+     else:
        try:
          shutdownMessage = open(dir + '/joboutputs/shutdown_message').readline().strip()
          messageCode = int(shutdownMessage[0:3])
