@@ -557,7 +557,7 @@ class VacVM:
         return
 
       if not self.created or not self.uuidStr or not self.machinetypeName:
-        # if created, UUID, and machinetype not (never?) properly set then stop now
+        # if value of created, UUID, and machinetype not (never?) properly set then stop now
         self.state = VacState.shutdown
         return
         
@@ -676,7 +676,7 @@ class VacVM:
                                   
    def createFinishedFile(self):
       try:
-        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished'
+        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished',
                                 '',
                                 stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
@@ -987,8 +987,6 @@ class VacVM:
 
       try:
         os.makedirs('/var/lib/vac/slots', 
-                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-        os.makedirs('/var/lib/vac/finishes',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
       except:
         pass

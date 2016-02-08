@@ -278,11 +278,12 @@ def vacOneCycle():
        # create the finished file for the responder if not already there
        if vm.started and not vm.finishedFile:
                vm.writeApel()
-               vac.vacutils.logLine('Create finished file for ' + vm.name)
+               vac.vacutils.logLine('Create finished file for only-started VM ' + vm.name)
                vm.createFinishedFile()
 
-       elif not vm.finishedFile:
-               vac.vacutils.logLine('No finished file but no started time for ' + vm.name)
+       elif vm.created and not vm.finishedFile:
+               vac.vacutils.logLine('Create finished file for only-starting VM ' + vm.name)
+               vm.createFinishedFile()
   
        # we will only start one VM per cycle
        if startedOne:

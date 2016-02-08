@@ -48,6 +48,11 @@ space are contacted, but this can be limited to one or more by giving the
 hostnames of factory machines on the command line. Hostnames will be
 canonicalised if the FQDN isn't given.
 
+For running machines, the time running, the lifetime CPU efficiency, and
+the recent CPU efficiency are shown. The CPU efficiency is CPU time used
+divided by elapsed seconds, and may be more than 100% for virtual machines
+with more than one CPU.
+
 If no virtual machines have run on a factory, then no responses are
 returned, and at a new site you will get no output from this command
 until some VMs have at least started.
