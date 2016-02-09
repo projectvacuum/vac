@@ -198,7 +198,7 @@ def vacOneCycle():
       # In case of unresolvable problems, we end this cycle
       return
 
-   vac.vacutils.logLine(str(vac.shared.numVirtualmachines) + ' VMs available to this factory machine')
+   vac.vacutils.logLine('At most ' + str(vac.shared.numVirtualmachines) + ' VMs can be created on this VM factory')
    vac.vacutils.logLine('Machine types configuration: ' + str(vac.shared.machinetypes))
    vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
@@ -224,6 +224,19 @@ def vacOneCycle():
      if vm.state == vac.shared.VacState.running:
        # VM is happily running so we redo the machine's heartbeat file
        vm.createHeartbeatFile()
+       
+       if vac.shared.shutdownTime and (not self.shutdownTime or (vac.shared.shutdownTime < self.shutdownTime)):
+         # need to reduce shutdowntime in the VM
+         try:
+           vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/shutdowntime',
+                                    str(vac.shared.shutdownTime),
+                                    stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+           vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/shutdowntime_job',
+                                    str(vac.shared.shutdownTime),
+                                    stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+         except:
+           pass
 
        # ah, but are WE happy that it is still running?
        try:
@@ -275,13 +288,15 @@ def vacOneCycle():
        vm.destroyVM()
 
      if vm.state == vac.shared.VacState.shutdown:
-       # create the finished file for the responder if not already there
-       if vm.started and not vm.finishedFile:
+       # Create the finished file for the responder if not already there
+
+       if not vm.finished:
+         if vm.started:
                vm.writeApel()
-               vac.vacutils.logLine('Create finished file for only-started VM ' + vm.name)
+               vac.vacutils.logLine('Create finished file for VM ' + vm.name)
                vm.createFinishedFile()
 
-       elif vm.created and not vm.finishedFile:
+         elif vm.created:
                vac.vacutils.logLine('Create finished file for only-starting VM ' + vm.name)
                vm.createFinishedFile()
   
@@ -453,19 +468,19 @@ def vacResponder():
 
          if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
             ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
-           try:
-             for response in vac.shared.makeMachineResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
+           for response in vac.shared.makeMachineResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
+             try:
                sock.sendto(response, addr)
-           except:
-             pass
+             except Exception as e:
+               print str(e)
 
          elif ('method' in queryMessage and queryMessage['method'] == 'machinetypes') or \
               ('message_type' in queryMessage and queryMessage['message_type'] == 'machinetypes_query'):
-           try:
-             for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
+           for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
+             try:
                sock.sendto(response, addr)
-           except:
-             pass
+             except Exception as e:
+               print str(e)
 
          elif ('method' in queryMessage and queryMessage['method'] == 'factories') or \
               ('message_type' in queryMessage and queryMessage['message_type'] == 'factory_query'):

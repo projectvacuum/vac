@@ -518,12 +518,12 @@ class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
 class VacVM:
-   def __init__(self, ordinal):
+   def __init__(self, ordinal, checkHypervisor = True):
       self.ordinal          = ordinal
       self.name             = nameFromOrdinal(ordinal)
       self.state            = VacState.unknown
       self.started          = None
-      self.finishedFile     = None
+      self.finished         = None
       self.cpuSeconds       = 0
       self.cpus             = cpuPerMachine
       self.mbPerMachine     = None
@@ -537,59 +537,27 @@ class VacVM:
         self.machinetypeName = None
         self.created         = None
 
-      conn = libvirt.open(None)
-      if conn == None:
-        vac.vacutils.logLine('Failed to open connection to the hypervisor')
-        raise
-
-      try:
-        dom = conn.lookupByName(self.name)
-        domState = dom.info()[0]
-      except:
-        dom = None
-        domState = None
-
-      conn.close()
-      
-      if dom and self.uuidStr != dom.UUIDString():
-        # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
-        self.state = VacState.zombie
-        return
-
       if not self.created or not self.uuidStr or not self.machinetypeName:
         # if value of created, UUID, and machinetype not (never?) properly set then stop now
         self.state = VacState.shutdown
         return
-        
+
       try:
         self.started = int(os.stat(self.machinesDir() + '/started').st_ctime)
+        # state must be running or shutdown
       except:
         self.started = None
         self.state = VacState.starting
-                          
-      if dom:
-      
-        if domState == libvirt.VIR_DOMAIN_RUNNING or domState == libvirt.VIR_DOMAIN_BLOCKED:
-          self.state = VacState.running
 
-        else:
-          self.state = VacState.paused
-          vac.vacutils.logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
-
-        try:
-          self.cpuSeconds = int(dom.info()[4] / 1000000000.0)
-        except:
-          pass
-            
+      try:
+        self.finished = int(os.stat(self.machinesDir() + '/finished').st_ctime)
+      except:
+        self.finished = None
       else:
         self.state = VacState.shutdown
-         
-        try:
-          f = open(self.machinesDir() + '/heartbeat', 'r')
-          self.cpuSeconds = int(f.readline().split(' ')[0])
-          f.close()
-        except:
-          pass
+
+      if self.started and not self.finished:
+        self.state = VacState.running
 
       try:
         self.heartbeat = int(os.stat(self.machinesDir() + '/heartbeat').st_ctime)
@@ -598,28 +566,15 @@ class VacVM:
 
       try: 
         self.shutdownMessage = open(self.machinesDir() + '/joboutputs/shutdown_message', 'r').read().strip()
-        self.timeShutdownMessage = int(os.stat(self.machinesDir() + '/joboutputs/shutdown_message').st_ctime)
+        self.shutdownMessageTime = int(os.stat(self.machinesDir() + '/joboutputs/shutdown_message').st_ctime)
       except:
         self.shutdownMessage = None
-        self.timeShutdownMessage = None
+        self.shutdownMessageTime = None
                         
       try: 
         self.shutdownTime = int(open(self.machinesDir() + '/machinefeatures/shutdowntime', 'r').read().strip())
       except:
         self.shutdownTime = None
-      else:
-        if shutdownTime and (shutdownTime < self.shutdownTime):
-          # need to reduce shutdowntime in the VM
-          try:
-            vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/shutdowntime',
-                                    str(shutdownTime), 
-                                    stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-            vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/shutdowntime_job',
-                                    str(shutdownTime), 
-                                    stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-          except:
-               pass
 
       try:
         self.joboutputsHeartbeat = int(os.stat(self.machinesDir() + '/joboutputs/' + 
@@ -643,12 +598,58 @@ class VacVM:
       except:
         self.mb = mbPerMachine
       
-      if self.uuidStr and os.path.exists(self.machinesDir() 
-                                         + '/finished') :
-        self.finishedFile = True
-      else:
-        self.finishedFile = False
+      try:
+        # this is written by Vac as it monitors the machine through libvirt
+        oneLine = open(self.machinesDir + '/heartbeat', 'r').readline()
+                                    
+        self.cpuSeconds = int(oneLine.split(' ')[0])
+        try:
+          self.cpuPercentage = float(oneLine.split(' ')[1])
+        except:
+          self.cpuPercentage = 0
+                    
+      except:
+        self.cpuSeconds    = 0
+        self.cpuPercentage = 0
 
+      if checkHypervisor:
+        # By default we check the hypervisor too, but can set False to disable this in the responder
+
+        conn = libvirt.open(None)
+        if conn == None:
+          vac.vacutils.logLine('Failed to open connection to the hypervisor')
+          raise
+
+        try:
+          dom = conn.lookupByName(self.name)
+          domState = dom.info()[0]
+        except:
+          dom = None
+          domState = None
+
+        conn.close()
+      
+        if dom:
+        
+          if self.uuidStr != dom.UUIDString():
+            # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
+            self.state = VacState.zombie
+            return
+
+          if domState != libvirt.VIR_DOMAIN_RUNNING and domState != libvirt.VIR_DOMAIN_BLOCKED:
+            self.state = VacState.paused
+            vac.vacutils.logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
+
+          try:
+            # Overwrite with better estimate from hypervisor
+            self.cpuSeconds = int(dom.info()[4] / 1000000000.0)
+          except:
+            pass
+
+        elif self.state == VacState.running:
+          # Actually, we're shutdown since VM not really running
+          self.state == VacState.shutdown
+      
    def machinesDir(self):
       return '/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr
 
@@ -692,7 +693,7 @@ class VacVM:
 
         try:
           vac.vacutils.createFile('/var/lib/vac/finishes/' + self.machinetypeName,
-                                  finishedFilesList[-1].split('/')[-2],
+                                  finishedFilesList[-1].split('/')[-2].replace(':',' '),
                                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
         except:
           vac.vacutils.logLine('Failed creating /var/lib/vac/finishes/' + self.machinetypeName)
@@ -774,17 +775,17 @@ class VacVM:
           vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
           return
 
-   def destroy(self):
-       conn = libvirt.open(None)
-       if conn == None:
-         print 'Failed to open connection to the hypervisor'
-         return
-                                  
-       try:
-         dom = conn.lookupByUUIDString(self.uuidStr)
-         dom.destroy()
-       except:
-         pass
+#   def destroy(self):
+#       conn = libvirt.open(None)
+#       if conn == None:
+#         print 'Failed to open connection to the hypervisor'
+#         return
+#                                  
+#       try:
+#         dom = conn.lookupByUUIDString(self.uuidStr)
+#         dom.destroy()
+#       except:
+#         pass
    
    def makeOpenStackData(self):
    
@@ -962,6 +963,7 @@ class VacVM:
       try:
         dom = conn.lookupByName(self.name)
         dom.shutdown()
+        # 30s delay for any ACPI handler in the VM
         time.sleep(30.0)
         dom.destroy()
       except:
@@ -1835,81 +1837,12 @@ def makeMachineResponses(cookie, clientName = '-'):
 
    # Go through the machine slots, sending one message for each
    for ordinal in range(numVirtualmachines):
+   
+     vm = VacVM(ordinal, checkHypervisor = False)
+     
+     vac.vacutils.logLine(vm.name + ' is ' + str(vm.state) + ' (' + str(vm.machinetypeName) + ', started ' + str(vm.created) + ')')
 
-     name = nameFromOrdinal(ordinal)
-
-     try:
-       (createdStr, machinetypeName, uuidStr) = open('/var/lib/vac/slots/' + name,'r').read().split()
-       created = int(createdStr)
-
-     except:
-       uuidStr         = None
-       machinetypeName = None
-       created         = None
-
-     else:
-       machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
-# what if machinesDir doesn't exist? (eg has been cleaned up??)
-                
-       try:
-         startedStat = os.stat(machinesDir + '/started')
-         timeStarted = int(startedStat.st_ctime)
-       except:
-         timeStarted = None
-                             
-       try:
-         heartbeatStat = os.stat(machinesDir + '/heartbeat')
-         timeHeartbeat = int(heartbeatStat.st_ctime)
-       except:
-         timeHeartbeat = None
-
-       try:                  
-         f = open(machinesDir + '/machinefeatures/hs06', 'r')
-         hs06 = float(f.readline().strip())
-         f.close()
-       except:
-         hs06 = hs06PerMachine
-
-       try:
-         # this is written by Vac as it monitors the machine through libvirt
-         oneLine = open(machinesDir + '/heartbeat', 'r').readline()
-                                    
-         cpuSeconds = int(oneLine.split(' ')[0])
-         try:
-           cpuPercentage = float(oneLine.split(' ')[1])
-         except:
-           cpuPercentage = None
-                    
-       except:
-         cpuSeconds    = None
-         cpuPercentage = None
-
-       hasFinished = os.path.exists(machinesDir + '/finished')
-
-       shutdownMessage     = None
-       shutdownMessageTime = None
-
-       # some hardcoded timeouts in case old files are left lying around 
-       # this means that old files are ignored when working out the state
-       if (timeStarted and 
-           timeHeartbeat and 
-           (timeHeartbeat > int(time.time() - 3600)) and
-           not hasFinished):
-         vmState = VacState.running
-       elif not timeStarted and (created > int(time.time() - 3600)):
-         vmState = VacState.starting
-       else:
-         vmState = VacState.shutdown
-
-         try:
-           shutdownMessage = open(machinesDir + '/joboutputs/shutdown_message').readline().strip()
-           shutdownMessageTime = int(os.stat(machinesDir + '/joboutputs/shutdown_message').st_ctime)
-         except:
-           pass
-                                                                                                                         
-       vac.vacutils.logLine(name + ' is ' + str(vmState) + ' (' + str(machinetypeName) + ', started ' + str(created) + ')')
-
-       responseDict = {
+     responseDict = {
                 'method'		: 'machine', # will be deprecated
                 'message_type'		: 'machine_status',
                 'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
@@ -1920,29 +1853,29 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'num_machines'       	: numVirtualmachines,
                 'time_sent'		: int(time.time()),
 
-                'machine' 		: name,
-                'state'			: vmState,
-                'uuid'			: uuidStr,
-                'created_time'		: created,
-                'started_time'		: timeStarted,
-                'heartbeat_time'	: timeHeartbeat,
-                'cpu_seconds'		: cpuSeconds,
-                'cpu_percentage'	: cpuPercentage,
-                'hs06' 		       	: hs06,
-                'machinetype'		: machinetypeName,
-                'shutdown_message'  	: shutdownMessage,
-                'shutdown_time'     	: shutdownMessageTime
-                      }
+                'machine' 		: vm.name,
+                'state'			: vm.state,
+                'uuid'			: vm.uuidStr,
+                'created_time'		: vm.created,
+                'started_time'		: vm.started,
+                'heartbeat_time'	: vm.heartbeat,
+                'cpu_seconds'		: vm.cpuSeconds,
+                'cpu_percentage'	: vm.cpuPercentage,
+                'hs06' 		       	: vm.hs06PerMachine,
+                'machinetype'		: vm.machinetypeName,
+                'shutdown_message'  	: vm.shutdownMessage,
+                'shutdown_time'     	: vm.shutdownMessageTime
+                    }
 
-       if gocdbSitename:
+     if gocdbSitename:
          responseDict['site'] = gocdbSitename
-       else:
+     else:
          responseDict['site'] = spaceName
-       
-       responses.append(json.dumps(responseDict))                              
+
+     responses.append(json.dumps(responseDict))
 
    return responses
-   
+
 def makeMachinetypeResponses(cookie, clientName = '-'):
    # Send back machinetype messages to the querying factory or client
    responses = []
@@ -2016,7 +1949,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
 
      try:
        # Updated by createFinishedFile()
-       dir = open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip()
+       dir = open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().replace(' ',':')
      except:
        pass
      else:
