@@ -198,21 +198,26 @@ def vacOneCycle():
       # In case of unresolvable problems, we end this cycle
       return
 
-   vac.vacutils.logLine('At most ' + str(vac.shared.numVirtualmachines) + ' VMs can be created on this VM factory')
+   vac.vacutils.logLine('At most ' + str(vac.shared.numMachineSlots) + ' VMs can be created on this VM factory')
    vac.vacutils.logLine('Machine types configuration: ' + str(vac.shared.machinetypes))
    vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
    # These are updated at the END of each cycle of the for loop
    # --> So we do not use  continue  within this loop! <--
-   runningCpus   = 0
-   runningCount  = 0
-   startedOne    = False
+   runningCpus    = 0
+   runningCount   = 0
+   ableToStartOne = True
    
-   for ordinal in range(vac.shared.numVirtualmachines):
+   vacDiskStatFS = os.statvfs('/var/lib/vac')
+   if vacDiskStatFS.f_bavail * vacDiskStatFS.f_frsize < 1024 * 1024 * 1024:
+     vac.vacutils.logLine('Less than 1 GB space in /var/lib/vac - will not try creating new VMs')
+     ableToStartOne = False
+   
+   for ordinal in range(vac.shared.numMachineSlots):
    
      vmname = vac.shared.nameFromOrdinal(ordinal)   
      vm     = vac.shared.VacVM(ordinal)
-
+     
      if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
                            ') Minimum ' + str(vm.machinetypeName) + ' fizzle_seconds=' + str(vm.heartbeat - vm.started) + ' ?')
@@ -287,10 +292,12 @@ def vacOneCycle():
        # Something has gone wrong, so we clean up
        vm.destroyVM()
 
-     if vm.state == vac.shared.VacState.shutdown:
-       # Create the finished file for the responder if not already there
-
+     if vm.state == vac.shared.VacState.shutdown: 
+     
        if not vm.finished:
+       # Create the finished file for the responder if not already there
+         vm.destroyVM()
+       
          if vm.started:
                vm.writeApel()
                vac.vacutils.logLine('Create finished file for VM ' + vm.name)
@@ -301,13 +308,15 @@ def vacOneCycle():
                vm.createFinishedFile()
   
        # we will only start one VM per cycle
-       if startedOne:
-         vac.vacutils.logLine('VM not recreated because one already recreated this cycle')
-       else:
+       if ableToStartOne:
+         vac.vacutils.logLine('Start a VM recreation attempt (only one this cycle)')
+         # Remember we've tried to start one this cycle
+         ableToStartOne = False
+
          # count up the running VMs' CPUs on the this factory
          totalCpusForCount = 0
   
-         for ordinal in range(vac.shared.numVirtualmachines):
+         for ordinal in range(vac.shared.numMachineSlots):
          
            vmForCount = vac.shared.VacVM(ordinal)
 
@@ -336,9 +345,6 @@ def vacOneCycle():
                # We update heartbeat after creating a VM in case that took a while
                vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-               # Remember we've started one this cycle
-               startedOne = True
-
                # If no VM creation errors, then cleanup any old message   
                try:
                  os.remove('/var/lib/vac/factory-error')
@@ -355,7 +361,7 @@ def vacOneCycle():
        runningCount += 1
 
    # finished with all VMs, so output counts for Nagios etc
-   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d' % (runningCount,vac.shared.numVirtualmachines,runningCpus,vac.shared.numCpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d' % (runningCount,vac.shared.numMachineSlots,runningCpus,vac.shared.numCpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    if vac.shared.vacmons:
      # Send VacQuery machinetype and factory messages to listed VacMons

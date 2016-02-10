@@ -2,7 +2,7 @@
 #  shared.py - common functions, classes, and variables for Vac
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-5. All rights reserved.
+#  Copyright (c) 2013-6. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -82,7 +82,7 @@ fixNetworking = None
 forwardDev = None
 shutdownTime = None
 
-numVirtualmachines = None
+numMachineSlots = None
 numCpus = None
 cpuCount = None
 spaceName = None
@@ -101,7 +101,7 @@ machinefeaturesOptions = None
 def readConf():
       global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
-             numVirtualmachines, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
+             numMachineSlots, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, versionLogger, machinetypes, vacmons, \
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
@@ -117,7 +117,7 @@ def readConf():
       shutdownTime = None
 
       cpuCount = countProcProcessors()
-      numVirtualmachines = cpuCount
+      numMachineSlots = cpuCount
       numCpus = None
       spaceName = None
       udpTimeoutSeconds = 5.0
@@ -519,15 +519,18 @@ class VacState:
 
 class VacVM:
    def __init__(self, ordinal, checkHypervisor = True):
-      self.ordinal          = ordinal
-      self.name             = nameFromOrdinal(ordinal)
-      self.state            = VacState.unknown
-      self.started          = None
-      self.finished         = None
-      self.cpuSeconds       = 0
-      self.cpus             = cpuPerMachine
-      self.mbPerMachine     = None
-      self.hs06PerMachine   = None
+      self.ordinal             = ordinal
+      self.name                = nameFromOrdinal(ordinal)
+      self.state               = VacState.unknown
+      self.started             = None
+      self.finished            = None
+      self.cpuSeconds          = 0
+      self.cpuPercentage       = 0
+      self.cpus                = cpuPerMachine
+      self.mbPerMachine        = None
+      self.hs06PerMachine      = None
+      self.shutdownMessage     = None
+      self.shutdownMessageTime = None
 
       try:
         createdStr, self.machinetypeName, self.uuidStr = open('/var/lib/vac/slots/' + self.name,'r').read().split()
@@ -565,13 +568,6 @@ class VacVM:
         self.heartbeat = None
 
       try: 
-        self.shutdownMessage = open(self.machinesDir() + '/joboutputs/shutdown_message', 'r').read().strip()
-        self.shutdownMessageTime = int(os.stat(self.machinesDir() + '/joboutputs/shutdown_message').st_ctime)
-      except:
-        self.shutdownMessage = None
-        self.shutdownMessageTime = None
-                        
-      try: 
         self.shutdownTime = int(open(self.machinesDir() + '/machinefeatures/shutdowntime', 'r').read().strip())
       except:
         self.shutdownTime = None
@@ -583,7 +579,7 @@ class VacVM:
         self.joboutputsHeartbeat = None
 
       try: 
-        self.cpus = int(open(self.machinesDir() + '/jobfeatures/allocated_CPU', 'r').read().strip())
+        self.cpus = int(open(self.machinesDir() + '/jobfeatures/allocated_cpu', 'r').read().strip())
       except:
         pass
       
@@ -593,14 +589,13 @@ class VacVM:
         self.hs06 = hs06PerMachine
       
       try: 
-        # we use our mem_limit_bytes to avoid usage of 1000^2 for memory in MJF mem_limit_MB spec
-        self.mb = (int(open(self.machinesDir() + '/jobfeatures/mem_limit_bytes', 'r').read().strip()) / 1048576)
+        self.mb = (int(open(self.machinesDir() + '/jobfeatures/max_rss_bytes', 'r').read().strip()) / 1048576)
       except:
         self.mb = mbPerMachine
       
       try:
         # this is written by Vac as it monitors the machine through libvirt
-        oneLine = open(self.machinesDir + '/heartbeat', 'r').readline()
+        oneLine = open(self.machinesDir() + '/heartbeat', 'r').readline()
                                     
         self.cpuSeconds = int(oneLine.split(' ')[0])
         try:
@@ -628,15 +623,19 @@ class VacVM:
           domState = None
 
         conn.close()
-      
+                              
         if dom:
-        
+                
           if self.uuidStr != dom.UUIDString():
             # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
             self.state = VacState.zombie
             return
 
-          if domState != libvirt.VIR_DOMAIN_RUNNING and domState != libvirt.VIR_DOMAIN_BLOCKED:
+          if domState == libvirt.VIR_DOMAIN_RUNNING or domState == libvirt.VIR_DOMAIN_BLOCKED:
+            # Probably already set above, if self.started is set
+            self.state = VacState.running
+          else:
+            # If domain exists, but not Running/Blocked, then say Paused
             self.state = VacState.paused
             vac.vacutils.logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
 
@@ -646,9 +645,16 @@ class VacVM:
           except:
             pass
 
-        elif self.state == VacState.running:
+        else:
           # Actually, we're shutdown since VM not really running
-          self.state == VacState.shutdown
+          self.state = VacState.shutdown
+                  
+      if self.state == VacState.shutdown:
+        try:
+          self.shutdownMessage = open(self.machinesDir() + '/joboutputs/shutdown_message', 'r').read().strip()
+          self.shutdownMessageTime = int(os.stat(self.machinesDir() + '/joboutputs/shutdown_message').st_ctime)
+        except:
+          pass
       
    def machinesDir(self):
       return '/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr
@@ -840,21 +846,23 @@ class VacVM:
       os.makedirs(self.machinesDir() + '/jobfeatures',     stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
       os.makedirs(self.machinesDir() + '/joboutputs',      stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      # Standard machinefeatures
-
       # HEPSPEC06 per virtual machine
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/hs06',
                  str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # we don't know the physical vs logical cores distinction here so we just use cpu
+      # Easy in 2016 MJF
+      vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/total_cpu',
+                 str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # Deprecated. We don't know the physical vs logical cores distinction here so we just use cpu
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/phys_cores',
                  str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # again just use cpu
+      # Deprecated. Again just use cpu
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/log_cores',
                  str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # tell them they have the whole VM to themselves; they are in the only jobslot here
+      # Deprecated. Tell them they have the whole VM to themselves; they are in the only jobslot here
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/jobslots',
                 '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
@@ -881,47 +889,70 @@ class VacVM:
                                   oneValue,
                                   stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # Standard  jobfeatures
+      # Jobfeatures
       
-      # calculate the absolute shutdown time for the VM, as a job
+      # Calculate the absolute shutdown time for the VM, as a job
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/shutdowntime_job',
                  str(tmpShutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # we don't do this, so just say 1.0 for cpu factor
+      # Deprecated. We don't do this, so just say 1.0 for cpu factor
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpufactor_lrms',
                  '1.0', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # for the scaled and unscaled cpu limit, we use the wallclock seconds multiple by the cpu
+      # Deprecated. For the scaled cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpu_limit_secs_lrms',
                  str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+
+      # For the cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpu_limit_secs',
                  str(cpuLimitSecs * cpuPerMachine),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # for the scaled and unscaled wallclock limit, we use the wallclock seconds without factoring in cpu
+      # Deprecated. For the scaled wallclock limit, we use the wallclock seconds without factoring in cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/wall_limit_secs_lrms',
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # For the wallclock limit, we use the wallclock seconds without factoring in cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/wall_limit_secs',
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # we are about to start the VM now
+      # job_id = UUID
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
+                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # We are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
                  str(now), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 
+                 
 
-      # mbPerMachine is in units of 1024^2 bytes, whereas jobfeatures wants 1000^2!!!
+      # Job=VM so per-job HEPSPEC06 is same as hs06
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/hs06_job',
+                 str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # mbPerMachine is in units of 1024^2 bytes
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/max_rss_bytes',
+                 str(mbPerMachine * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # Deprecated. mbPerMachine is in units of 1024^2 bytes, whereas old jobfeatures wants 1000^2!!!
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/mem_limit_MB',
                  str((mbPerMachine * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/mem_limit_bytes',
-                 str(mbPerMachine * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-                        
+
+
       # cpuPerMachine again
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/allocated_cpu',
+                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # Deprecated. cpuPerMachine again
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/allocated_CPU',
                  str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
+      # We do not know max_swap_bytes or scratch_limit_bytes so ignore them
 
    def setupUserDataContents(self):
  
@@ -1590,7 +1621,7 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
    while timeCount <= int(udpTimeoutSeconds):
      timeCount += 1
 
-     requestsRequired = 0
+     requestsSent = 0
      for rawFactoryName in factoryList:
      
        factoryName = canonicalFQDN(rawFactoryName)
@@ -1604,7 +1635,7 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
        # Send out requests to all factories with insufficient replies so far
        if len(responses[factoryName]['machinetypes']) < numMachinetypes:
 
-         requestsRequired += 1
+         requestsSent += 1
          try:          
            sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion + ' ' + clientName,
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
@@ -1617,7 +1648,7 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
          except socket.error:
            pass
 
-     if requestsRequired == 0:
+     if requestsSent == 0:
        # We can stop early since we have received all the expected responses already
        break
 
@@ -1683,7 +1714,7 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
    while timeCount <= int(udpTimeoutSeconds):
      timeCount += 1
 
-     requestsRequired = 0
+     requestsSent = 0
      for rawFactoryName in factoryList:
 
        factoryName = canonicalFQDN(rawFactoryName)
@@ -1697,8 +1728,8 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
        # Send out requests to all factories with insufficient replies so far
        if len(responses[factoryName]['machines']) < numMachines:
 
-         requestsRequired += 1
-         try:          
+         requestsSent += 1
+         try:
            sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion + ' ' + clientName,
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
@@ -1710,7 +1741,7 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
          except socket.error:
            pass
 
-     if requestsRequired == 0:
+     if requestsSent == 0:
        # We can stop early since we have received all the expected responses already
        break
 
@@ -1778,7 +1809,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
    while timeCount <= int(udpTimeoutSeconds):
      timeCount += 1
 
-     requestsRequired = 0
+     requestsSent = 0
      for rawFactoryName in factoryList:
 
        factoryName = canonicalFQDN(rawFactoryName)
@@ -1786,7 +1817,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
        # Send out requests to all factories with insufficient replies so far
        if factoryName not in responses:
 
-         requestsRequired += 1
+         requestsSent += 1
          try:          
            sock.sendto(json.dumps({'vac_version'      : 'Vac ' + vacVersion,
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
@@ -1799,7 +1830,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
          except socket.error:
            pass
 
-     if requestsRequired == 0:
+     if requestsSent == 0:
        # We can stop early since we have received all the expected responses already
        break
 
@@ -1836,7 +1867,7 @@ def makeMachineResponses(cookie, clientName = '-'):
    responses = []
 
    # Go through the machine slots, sending one message for each
-   for ordinal in range(numVirtualmachines):
+   for ordinal in range(numMachineSlots):
    
      vm = VacVM(ordinal, checkHypervisor = False)
      
@@ -1850,7 +1881,7 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
                 'factory'       	: os.uname()[1],
-                'num_machines'       	: numVirtualmachines,
+                'num_machines'       	: numMachineSlots,
                 'time_sent'		: int(time.time()),
 
                 'machine' 		: vm.name,
@@ -1888,7 +1919,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
      totalMachines           = 0
 
      # Go through the VM slots, looking for starting/running instances of this machinetype
-     for ordinal in range(numVirtualmachines):
+     for ordinal in range(numMachineSlots):
 
        name = nameFromOrdinal(ordinal)
 
@@ -1949,15 +1980,15 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
 
      try:
        # Updated by createFinishedFile()
-       dir = open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().replace(' ',':')
+       dir = '/var/lib/vac/machines/' + open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().replace(' ',':')
      except:
        pass
      else:
        try:
-         shutdownMessage = open(dir + '/joboutputs/shutdown_message').readline().strip()
+         shutdownMessage = open(dir + '/joboutputs/shutdown_message','r').readline().strip()
          messageCode = int(shutdownMessage[0:3])
          shutdownMessageTime = int(os.stat(dir + '/joboutputs/shutdown_message').st_ctime)
-         shutdownMachineName = open(dir + '/name').readline().strip()
+         shutdownMachineName = open(dir + '/name','r').readline().strip()
        except:
          # No explicit shutdown message with a message code, so we make one up if necessary
          
@@ -1969,7 +2000,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          else:
            if (timeHeartbeat - timeStarted) < machinetypes[machinetypeName]['fizzle_seconds']:
              try:
-               shutdownMachineName = open(dir + '/name').readline().strip()
+               shutdownMachineName = open(dir + '/name','r').readline().strip()
              except:
                pass
              else:
@@ -2047,7 +2078,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
      metadataHeartbeatTime = 0
 
    try:
-     osIssue = open('/etc/issue.vac','r').readline()
+     osIssue = open('/etc/issue.vac','r').readline().strip()
    except:
      try:
        osIssue = open('/etc/issue','r').readline().strip()
