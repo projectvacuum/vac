@@ -1003,10 +1003,8 @@ class VacVM:
       self.state = VacState.shutdown
 
       conn.close()
-
-      if os.path.exists('/dev/' + volumeGroup + '/' + self.name):
-        vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
-        os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+      
+      self.removeLogicalVolume()
 
    def createVM(self, machinetypeName):
       self.model           = machinetypes[machinetypeName]['machine_model']
@@ -1252,12 +1250,15 @@ class VacVM:
       # Everything ok so return no error message
       return None
 
+   def removeLogicalVolume(self):
+      if os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
+        vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
+        os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+
    def createLogicalVolume(self):
 
      # Always remove any leftover volume of the same name
-     if os.path.exists('/dev/' + volumeGroup + '/' + self.name):
-       vac.vacutils.logLine('Remove leftover logical volume /dev/' + volumeGroup + '/' + self.name)
-       os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+     self.removeLogicalVolume()
 
      try:
        vgsResult = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()

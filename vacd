@@ -292,8 +292,10 @@ def vacOneCycle():
        # Something has gone wrong, so we clean up
        vm.destroyVM()
 
-     if vm.state == vac.shared.VacState.shutdown: 
-     
+     if vm.state == vac.shared.VacState.shutdown:      
+       # Delete logical volume if present
+       vm.removeLogicalVolume()
+
        if not vm.finished:
        # Create the finished file for the responder if not already there
          vm.destroyVM()
