@@ -147,12 +147,22 @@ def queryMachinetype(options, machinetypeName, factoryList):
         sys.stdout.write(json.dumps(responses[factoryName]['machinetypes'][machinetypeName]))
 
       else:
+        if responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time']:
+          shutdownTimeStr = time.strftime('%d %b %H:%M:%S', time.localtime(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time']))
+        else:
+          shutdownTimeStr = '-'
+          
+        if responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']:
+          shutdownMessageStr = responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']
+        else:
+          shutdownMessageStr = '-'
+    
         print (
                 factoryName.split('.')[0] + ' ' + 
                 str(responses[factoryName]['machinetypes'][machinetypeName]['total_hs06']) + ' ' +
                 str(responses[factoryName]['machinetypes'][machinetypeName]['num_before_fizzle']) + ' ' +
-                time.strftime('%d %b %H:%M:%S', time.localtime(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time'])) + ' "' +
-                str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']) + '"'
+                shutdownTimeStr + ' "' +
+                shutdownMessageStr + '"'
               )
       n += 1
 
