@@ -151,7 +151,7 @@ def queryMachinetype(options, machinetypeName, factoryList):
                 factoryName.split('.')[0] + ' ' + 
                 str(responses[factoryName]['machinetypes'][machinetypeName]['total_hs06']) + ' ' +
                 str(responses[factoryName]['machinetypes'][machinetypeName]['num_before_fizzle']) + ' ' +
-                str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time']) + ' "' +
+                time.strftime('%d %b %H:%M:%S', time.localtime(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_time'])) + ' "' +
                 str(responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']) + '"'
               )
       n += 1
