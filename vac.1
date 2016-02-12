@@ -63,12 +63,15 @@ until some VMs have at least started.
 Shows the most recent status of the given machinetype on the virtual machine
 slots of all factories that respond. This includes virtual machines which
 ran for this machinetype but have shut down, and will display their shutdown 
-messages if available. 
+times and messages if available. Also displayed are the number and total
+HS06 of running VMs.
 
 .HP
 .B "factories factory1 [factory2] [...]"
 .br
-Outputs the responses from one or more factory machines.
+Outputs the responses from one or more factory machines, running/total CPUs,
+running/total VM slots, free space on the disk(s) containing / and
+/var/lib/vac, the used/total memory, and the Vac version of the factory.
 
 .HP
 .B "proxy-init"
