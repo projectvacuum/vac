@@ -498,10 +498,21 @@ def setSockBufferSize(sock):
      pass
 
    try:
+     if int(open('/proc/sys/net/core/wmem_max', 'r').readline().strip()) < udpBufferSize:
+       open('/proc/sys/net/core/wmem_max', 'w').write(str(udpBufferSize) + '\n')
+   except:
+     pass
+
+   try:
      sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, udpBufferSize)
    except:
      vac.vacutils.logLine('Failed setting RCVBUF to %d' % udpBufferSize)
-   
+     
+   try:
+     sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, udpBufferSize)
+   except:
+     vac.vacutils.logLine('Failed setting SNDBUF to %d' % udpBufferSize)
+     
 def canonicalFQDN(hostName):
    if '.' in hostName:
      # Assume ok if already contains '.'
