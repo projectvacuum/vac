@@ -404,7 +404,7 @@ def getCernvmImageData(fileName):
    
    return data
 
-def getRemoteRootImage(url, imageCache, tmpDir):
+def getRemoteRootImage(url, imageCache, tmpDir, versionString):
 
    try:
      f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
@@ -414,6 +414,7 @@ def getRemoteRootImage(url, imageCache, tmpDir):
    ff = os.fdopen(f, 'wb')
    
    c = pycurl.Curl()
+   c.setopt(c.USERAGENT, versionString)
    c.setopt(c.URL, url)
    c.setopt(c.WRITEDATA, ff)
 
