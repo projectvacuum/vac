@@ -106,7 +106,7 @@ def readConf():
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
-      overloadPerCpu = 2.0
+      overloadPerCpu = 1.25
       gocdbSitename = None
 
       factories = []

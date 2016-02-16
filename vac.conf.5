@@ -54,7 +54,11 @@ this is also used when calculating how many virtual machines can be created.
 Defaults to 1.
 
 .B mb_per_cpu
-sets the memory allocated for each CPU in a VM in MiB (1024^2). Defaults to 2048.
+sets the memory allocated for each CPU in a VM in MiB (1024^2). If
+enough VMs will underuse memory or KSM is enabled, then it may be more
+efficient to increase this value and overcommit the factory's physical
+memory to prevent the VM kernels from believing they need to swap.
+Defaults to 2048.
 
 .B hs06_per_cpu
 gives the HEPSPEC06 power of each CPU in a virtual machine. This is used
@@ -103,11 +107,12 @@ cpu_total allows.
 
 .B overload_per_cpu
 sets the level of load per processor on the factory machine which will 
-prevent the creation of more VMs. The number of processors is counted
-using /proc/cpuinfo and the one minute load average is taken from 
+temporarily prevent the creation of more VMs. The number of processors is
+counted using /proc/cpuinfo and the one minute load average is taken from 
 /proc/loadavg. VMs typically generate high loads during their initial
 set up, and this mechanism throttles the VM creation rate in response
-to the current overall load figure. Default 2.0.
+to the current overall load figure. Values of around 2.0 are ok
+with well-behaved VMs, but the default is more cautious. Default 1.25.
 
 .B volume_group
 can be used to set the volume group to be searched for a logical volume
