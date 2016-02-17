@@ -186,7 +186,7 @@ def queryFactories(options, factoryList, clientName = 'vac-command'):
     
       sys.stdout.write(json.dumps(responses[factoryName]))
     else:
-      print '%s %d/%d %d/%d %.2f %9d %9d %8d/%8d "%s"' % ( 
+      print '%s %2d/%d %2d/%d %6.2f %9d %9d %8d/%8d "%s"' % ( 
                      factoryName.split('.')[0],                      
                      responses[factoryName]['running_cpus'], responses[factoryName]['total_cpus'],
                      responses[factoryName]['running_machines'], responses[factoryName]['total_machines'],
