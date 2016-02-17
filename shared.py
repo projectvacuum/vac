@@ -121,7 +121,7 @@ def readConf():
       numMachineSlots = cpuCount
       numCpus = None
       spaceName = None
-      udpTimeoutSeconds = 5.0
+      udpTimeoutSeconds = 10.0
       vacVersion = '0.0.0'
 
       cpuPerMachine = 1
