@@ -87,6 +87,7 @@ numCpus = None
 cpuCount = None
 spaceName = None
 udpTimeoutSeconds = None
+vacqueryTries = 5
 vacVersion = None
 
 cpuPerMachine = None
@@ -419,20 +420,21 @@ def nameFromOrdinal(ordinal):
 def ipFromOrdinal(ordinal):
       return natPrefix + str(ordinal)
 
-def loadAvg(which = 0):
-      # By default, use [0], the one minute load average
-      avg = 0.0
+def loadAvg(which = None):
+      # By default, use maximum load average
+      # which = 1, 2, or 3
       
       try:
-        f = open('/proc/loadavg')
-      except:
-        print 'Failed to open /proc/loadavg'
-        return avg
-        
-      avg = float(f.readline().split()[which])
-      
-      f.close()
-      return avg
+        load0,load1,load2 = open('/proc/loadavg').readline().split()[0:3]
+        loadList = [float(load0),float(load1),float(load2)]
+      except Exception as e:
+        print 'Failed to parse /proc/loadavg (' + str(e) + ')'
+        return None
+
+      if which is None:
+        return max(loadList)
+      else:
+        return loadList[which]
 
 def memInfo():
    # Get some interesting quantities out of /proc/meminfo
@@ -1615,7 +1617,7 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(1.0)
+   sock.settimeout(udpTimeoutSeconds / vacqueryTries)
    setSockBufferSize(sock)
 
    # Initialise dictionary of per-factory, per-machinetype responses
@@ -1627,11 +1629,11 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
    for rawFactoryName in factoryList:
      responses[canonicalFQDN(rawFactoryName)] = { 'machinetypes' : {} }
 
-   timeCount = 0
+   queryCount = 0
    
    # We just use integer second counting for now, despite the config file
-   while timeCount <= int(udpTimeoutSeconds):
-     timeCount += 1
+   while queryCount <= vacqueryTries:
+     queryCount += 1
 
      requestsSent = 0
      for rawFactoryName in factoryList:
@@ -1708,7 +1710,7 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(1.0)
+   sock.settimeout(udpTimeoutSeconds / vacqueryTries)
    setSockBufferSize(sock)
 
    # Initialise dictionary of per-factory, per-machine responses
@@ -1720,11 +1722,11 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
    for rawFactoryName in factoryList:   
      responses[vac.shared.canonicalFQDN(rawFactoryName)] = { 'machines' : {} }
 
-   timeCount = 0
+   queryCount = 0
    
    # We just use integer second counting for now, despite the config file
-   while timeCount <= int(udpTimeoutSeconds):
-     timeCount += 1
+   while queryCount <= vacqueryTries:
+     queryCount += 1
 
      requestsSent = 0
      for rawFactoryName in factoryList:
@@ -1806,7 +1808,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
 
    salt = base64.b64encode(os.urandom(32))
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-   sock.settimeout(1.0)
+   sock.settimeout(udpTimeoutSeconds / vacqueryTries)
    setSockBufferSize(sock)
 
    # Initialise dictionary of per-factory responses
@@ -1815,11 +1817,11 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
    if factoryList is None:
      factoryList = factories
 
-   timeCount = 0
+   queryCount = 0
    
    # We just use integer second counting for now, despite the config file
-   while timeCount <= int(udpTimeoutSeconds):
-     timeCount += 1
+   while queryCount <= vacqueryTries:
+     queryCount += 1
 
      requestsSent = 0
      for rawFactoryName in factoryList:
