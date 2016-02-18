@@ -173,10 +173,10 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
 
      try:
        if ('legacy_proxy' in options) and options['legacy_proxy']:
-         userDataContents = userDataContents.replace('##user_data_x509_proxy##',
+         userDataContents = userDataContents.replace('##user_data_option_x509_proxy##',
                               makeX509Proxy(certPath, keyPath, shutdownTime, isLegacyProxy=True))
        else:
-         userDataContents = userDataContents.replace('##user_data_x509_proxy##',
+         userDataContents = userDataContents.replace('##user_data_option_x509_proxy##',
                               makeX509Proxy(certPath, keyPath, shutdownTime, isLegacyProxy=False))
      except Exception as e:
        raise NameError('Faled to make proxy (' + str(e) + ')')
