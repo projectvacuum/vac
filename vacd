@@ -263,7 +263,7 @@ def vacOneCycle():
             vac.vacutils.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
                         str(vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
                         vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file'] + ') has been created - destroying!')
-            vm.destroyVM()
+            vm.destroyVM('700 Heartbeat file not created')
           else:
             # if heartbeat_seconds is set, we check the file is recent
             if (vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'] > 0) and \
@@ -272,7 +272,7 @@ def vacOneCycle():
               vac.vacutils.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - vm.joboutputsHeartbeat) + 
                           ' seconds without updating heartbeat file (' + 
                           vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file'] + ') - destroying!')
-              vm.destroyVM()
+              vm.destroyVM('700 Heartbeat file not updated')
 
      elif vm.state == vac.shared.VacState.zombie:
        # VM running but no corresponding vac directory structure

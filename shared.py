@@ -997,8 +997,8 @@ class VacVM:
         o.close()
       except:
         raise NameError('Failed writing to ' + self.machinesDir() + '/user_data')
-      
-   def destroyVM(self):
+
+   def destroyVM(self, shutdownMessage = None):
       conn = libvirt.open(None)
       if conn == None:
           vac.vacutils.logLine('Failed to open connection to the hypervisor')
@@ -1016,8 +1016,14 @@ class VacVM:
       self.state = VacState.shutdown
 
       conn.close()
-      
+
       self.removeLogicalVolume()
+
+      if shutdownMessage and not os.path.exists(self.machinesDir() + '/joboutputs/shutdown_message'):
+        try:
+          open(self.machinesDir() + '/joboutputs/shutdown_message', 'w').write(shutdownMessage)
+        except:
+          pass
 
    def createVM(self, machinetypeName):
       self.model           = machinetypes[machinetypeName]['machine_model']
