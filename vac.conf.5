@@ -86,14 +86,14 @@ files.
 
 .B version_logger
 can be set to 0 to disable the logging of the version in use. Normally
-Vac sends one UDP packet per day to vac-version-logger.gridpp.ac.uk
-on port 8884 containing the factory and space names, and the Vac
-version number. This will be used to target patches for security
-and bugs at the versions currently in use. Defaults to 1.
+Vac sends one UDP factory_status message per day to 
+vac-version-logger.gridpp.ac.uk on port 8884 to report the Vac
+version number. This is used by the Vac developers to target patches for
+security and bugs at the versions currently in use. Defaults to 1.
 
 .B vacmon_hostport
 If set, this option gives a space-separated list of HOST:PORT to send 
-VacQuery UDP packets to. This can be used to monitor the ongoing status
+VacQuery UDP messages to. This can be used to monitor the ongoing status
 of factories and VMs via site or central VacMon services.
 
 .B cpu_total 
@@ -303,8 +303,8 @@ the files given to user_data_file_XXX options also replace patterns of the
 form ##user_data_option_XXX##. In both cases XXX are arbitrary strings 
 consisting of letters, numbers, and underscores.
 
-The pattern ##user_data_x509_proxy## is replaced by the proxy created if the
-user_data_proxy_cert and user_data_proxy_key options are given.
+The pattern ##user_data_option_x509_proxy## is replaced by the proxy created
+if the user_data_proxy_cert and user_data_proxy_key options are given.
 
 In addition, the following substitutions are performed automatically by
 Vac using data it holds internally:
