@@ -315,45 +315,44 @@ def vacOneCycle():
          # Remember we've tried to start one this cycle
          ableToStartOne = False
 
-         # count up the running VMs' CPUs on the this factory
-         totalCpusForCount = 0
-  
-         for ordinal in range(vac.shared.numMachineSlots):
-         
-           vmForCount = vac.shared.VacVM(ordinal)
-
-           if vmForCount.state == vac.shared.VacState.running:
-              totalCpusForCount += vmForCount.cpus
-              
          # as VM is shutdown, we see if we can restart it
          if vac.shared.loadAvg() > (vac.shared.overloadPerCpu * vac.shared.cpuCount):
            vac.vacutils.logLine('VM not recreated as load average is > overload_per_cpu(' + str(vac.shared.overloadPerCpu) + ') * cpu count(' + str(vac.shared.cpuCount) + ')')
-         elif (totalCpusForCount + vac.shared.cpuPerMachine) > vac.shared.numCpus:
-           vac.vacutils.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
          elif vac.shared.shutdownTime and (vac.shared.shutdownTime < int(time.time())):
            vac.vacutils.logLine('VM not recreated as shutdown_time = ' + str(vac.shared.shutdownTime) + ' has already passed')
          else:
-           vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
-           preferredMachinetypeName = pollFactories()
-       
-           if preferredMachinetypeName:
-             vac.vacutils.logLine('Creating ' + vm.name + ' with machinetype ' + preferredMachinetypeName)
-             createError = vm.createVM(preferredMachinetypeName)
+           # count up the running VMs' CPUs on the this factory
+           totalCpusForCount = 0
+  
+           for ordinal in range(vac.shared.numMachineSlots):
+             vmForCount = vac.shared.VacVM(ordinal)
+             if vmForCount.state == vac.shared.VacState.running:
+                totalCpusForCount += vmForCount.cpus
 
-             if createError:
-               vac.vacutils.logLine('VM creation fails with: ' + createError)
-               vac.vacutils.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-             else:
-               # We update heartbeat after creating a VM in case that took a while
-               vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-               # If no VM creation errors, then cleanup any old message   
-               try:
-                 os.remove('/var/lib/vac/factory-error')
-               except OSError:
-                 pass
+           if (totalCpusForCount + vac.shared.cpuPerMachine) > vac.shared.numCpus:
+             vac.vacutils.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
            else:
-             vac.vacutils.logLine('No machinetype suitable for creation in this cycle')
+             vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
+             preferredMachinetypeName = pollFactories()
+
+             if preferredMachinetypeName:
+               vac.vacutils.logLine('Creating ' + vm.name + ' with machinetype ' + preferredMachinetypeName)
+               createError = vm.createVM(preferredMachinetypeName)
+
+               if createError:
+                 vac.vacutils.logLine('VM creation fails with: ' + createError)
+                 vac.vacutils.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+               else:
+                 # We update heartbeat after creating a VM in case that took a while
+                 vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+                 # If no VM creation errors, then cleanup any old message   
+                 try:
+                   os.remove('/var/lib/vac/factory-error')
+                 except OSError:
+                   pass
+             else:
+               vac.vacutils.logLine('No machinetype suitable for creation in this cycle')
 
      if vm.state == vac.shared.VacState.running:
        runningCpus += vm.cpus

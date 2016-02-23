@@ -537,10 +537,12 @@ class VacVM:
       self.state               = VacState.unknown
       self.started             = None
       self.finished            = None
+      self.heartbeat           = None
+      self.joboutputsHeartbeat = None
       self.cpuSeconds          = 0
       self.cpuPercentage       = 0
       self.cpus                = cpuPerMachine
-      self.mbPerMachine        = None
+      self.mb                  = mbPerMachine
       self.hs06PerMachine      = None
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
