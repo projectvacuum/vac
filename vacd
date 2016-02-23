@@ -626,9 +626,17 @@ def vacHttpd(idStr):
    vac.vacutils.setProcessName('vacd-' + idStr)
  
    if idStr == 'mjf':
-     httpd = ForkingHTTPServer((vac.shared.mjfAddress, 80), mjfHttpdHandler)
+     try:
+       httpd = ForkingHTTPServer((vac.shared.mjfAddress, 80), mjfHttpdHandler)
+     except Exception as e:
+       print str(e)
+       return
    elif idStr == 'metadata':
-     httpd = ForkingHTTPServer((vac.shared.factoryAddress, 80), metadataHttpdHandler)
+     try:
+       httpd = ForkingHTTPServer((vac.shared.factoryAddress, 80), metadataHttpdHandler)
+     except Exception as e:
+       print str(e)
+       return
    else:
      vac.vacutils.logLine('vacHttpd(only metadata or mjf) !!')
      sys.exit(0)
@@ -658,11 +666,11 @@ def vacHttpd(idStr):
        
        if pid != os.getpid():
          vac.vacutils.logLine('os.getpid ' + os.getpid() + ' does not match ' + idStr + '.pid ' + pid + ' - exiting')
-         break
+         sys.exit(0)
 
      except:
        vac.vacutils.logLine('no ' + idStr + '.pid - exiting')
-       break
+       sys.exit(0)
 
      # so log file is updated before we start waiting        
      sys.stdout.flush()
@@ -672,8 +680,6 @@ def vacHttpd(idStr):
      vac.vacutils.createFile('/var/lib/vac/' + idStr + '-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
      httpd.handle_request()
-
-   sys.exit(0) # if we break out of while loop then we exit
 
 def vacFactory():
         
@@ -772,7 +778,7 @@ if __name__ == '__main__':
           # If server fails (eg can't bind) then keep trying
           while True:
             vacHttpd('mjf')
-            time.sleep(60)
+            time.sleep(10)
 
         elif os.fork() == 0:
 
@@ -780,7 +786,7 @@ if __name__ == '__main__':
           # If server fails (eg can't bind) then keep trying
           while True:
             vacHttpd('metadata')
-            time.sleep(60)
+            time.sleep(10)
 
         else:
         
