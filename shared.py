@@ -1086,7 +1086,7 @@ class VacVM:
                            </disk>"""
 
         # For vm-raw, maybe we have logical volume to use as scratch too?
-        if volumeGroup and os.path.exists('/dev/' + volumeGroup):
+        if volumeGroup and self.measureVolumeGroup():
           try:
             self.createLogicalVolume()
           except Exception as e:
@@ -1128,7 +1128,7 @@ class VacVM:
                             
         # Now the disk file or logical volume to provide the virtual hard drives
 
-        if volumeGroup and os.path.exists('/dev/' + volumeGroup):
+        if volumeGroup and self.measureVolumeGroup():
           # Create logical volume for CernVM: fail if not able to do this
 
           try:
@@ -1276,17 +1276,23 @@ class VacVM:
         vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
         os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
 
+   def measureVolumeGroup(self):
+     try:
+       return os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()
+     except Exception as e:
+       return None
+
    def createLogicalVolume(self):
 
      # Always remove any leftover volume of the same name
      self.removeLogicalVolume()
 
      try:
-       vgsResult = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()
+       vgsResult = self.measureVolumeGroup()
        vgTotalBytes = int(vgsResult[0])
        vgExtentBytes = int(vgsResult[1])
      except Exception as e:
-       raise NameError('Measuring size of volume group ' + volumeGroup + ' fails with ' + str(e))
+       raise NameError('Failed to measure size of volume group ' + volumeGroup + ' - missing?')
 
      try:
        f = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvs --noheadings --units B --nosuffix --options lv_name,lv_size ' + volumeGroup, 'r')
