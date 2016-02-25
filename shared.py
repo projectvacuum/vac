@@ -186,7 +186,7 @@ def readConf():
           numCpus = cpuCount
 
       if parser.has_option('settings', 'total_machines'):
-          print 'total_machines is deprecated. Please use cpu_total and cpu_per_machine to control number of VMs'
+          print 'total_machines is deprecated. Please use cpu_total and cpu_per_machine in [settings] to control number of VMs'
                                                  
       if parser.has_option('settings', 'overload_per_cpu'):
           # Multiplier to calculate overload veto against creating more VMs
@@ -199,6 +199,7 @@ def readConf():
       if parser.has_option('settings', 'scratch_gb'):
           # Deprecated
           gbDiskPerCpu = int(parser.get('settings','scratch_gb').strip())
+          print 'scratch_gb is deprecated. Please use disk_gb_per_cpu in [settings] instead'
       elif parser.has_option('settings', 'disk_gb_per_cpu'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
           gbDiskPerCpu = int(parser.get('settings','disk_gb_per_cpu').strip())
@@ -219,8 +220,10 @@ def readConf():
       if parser.has_option('settings', 'version_logger'):
         # deprecated true/false then integer messages per day
         if parser.get('settings','version_logger').strip().lower() == 'true':
+           print 'version_logger in [settings] now takes an integer rather true/false'
            versionLogger = 1
         elif parser.get('settings','version_logger').strip().lower() == 'false':
+           print 'version_logger in [settings] now takes an integer rather true/false'
            versionLogger = 0
         else:
            try:
@@ -251,8 +254,7 @@ def readConf():
              
       if parser.has_option('settings', 'mb_per_machine'):          
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
-# Start warning about this deprecation in the next release
-#          print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
+          print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
       elif parser.has_option('settings', 'mb_per_cpu'):
           # If this isn't set, then we use default (2048 MiB)
           mbPerMachine = cpuPerMachine * int(parser.get('settings','mb_per_cpu'))
@@ -298,6 +300,9 @@ def readConf():
              if string.translate(sectionNameSplit[1], None, '0123456789abcdefghijklmnopqrstuvwxyz-') != '':
                  return 'Name of machinetype section [machinetype ' + sectionNameSplit[1] + '] can only contain a-z 0-9 or -'
          
+             if sectionNameSplit[0] == 'vmtype':
+               print '[vmtype ...] is deprecated. Please use [machinetype ' + sectionNameSplit[1] + '] instead'
+         
              machinetype = {}
              machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
@@ -307,15 +312,15 @@ def readConf():
              if parser.has_option(sectionName, 'target_share'):
                  machinetype['share'] = float(parser.get(sectionName, 'target_share'))
              elif parser.has_option('targetshares', sectionNameSplit[1]):
-                 return "Please use a target_shares option within [machinetype " + sectionNameSplit[1] + "] rather than a separate [targetshares] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
+                 return "Please use a target_shares option within [" + sectionName + "] rather than a separate [targetshares] section. You can still group target shares together or put them in a separate file: see the Admin Guide for details."
              else:
                  machinetype['share'] = 0.0
                                             
-             if parser.has_option(sectionName, 'machine_model'):
-                 machinetype['machine_model'] = parser.get(sectionName, 'machine_model')
-             elif parser.has_option(sectionName, 'vm_model'):
-                 # Deprecation warnings next time!
+             if parser.has_option(sectionName, 'vm_model'):
+                 print 'vm_model is deprecated. Please use machine_model in [' + sectionName + '] instead'
                  machinetype['machine_model'] = parser.get(sectionName, 'vm_model')
+             elif parser.has_option(sectionName, 'machine_model'):
+                 machinetype['machine_model'] = parser.get(sectionName, 'machine_model')
              else:
                  machinetype['machine_model'] = 'cernvm3'
              
@@ -343,11 +348,11 @@ def readConf():
              if parser.has_option(sectionName, 'log_machineoutputs'):
                  print 'log_machineoutputs has been deprecated: please use machines_dir_days to control this'
              
-             if parser.has_option(sectionName, 'machines_dir_days'):
-                 machinetype['machines_dir_days'] = float(parser.get(sectionName, 'machines_dir_days'))
-             elif parser.has_option(sectionName, 'machineoutputs_days'):
-                 # Deprecated; warn in next release
+             if parser.has_option(sectionName, 'machineoutputs_days'):
+                 print 'machineoutputs_days is deprecated. Please use machines_dir_days in [' + sectionName + '] instead'
                  machinetype['machines_dir_days'] = float(parser.get(sectionName, 'machineoutputs_days'))
+             elif parser.has_option(sectionName, 'machines_dir_days'):
+                 machinetype['machines_dir_days'] = float(parser.get(sectionName, 'machines_dir_days'))
              else:
                  machinetype['machines_dir_days'] = 3.0
              
