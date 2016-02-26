@@ -1,30 +1,35 @@
 We are pleased to announce the release of Vac 00.21.00
 
-RPMs for SL6 and the 00.20 Admin Guide are available from the 00.21
+RPMs for SL6 and the 00.21 Admin Guide are available from the 00.21
 subdirectory of
 
 https://repo.gridpp.ac.uk/vacproject/vac/
 
 There are no backwards incompatible changes in the Vac configuration
-files, but some significant simplifications in Vac's dependencies.
+files, but some further simplifications and consequent deprecations
+of configuration options.
 
-- Vac no longer uses an NFS server on each factory (an internal HTTP
-  server is used instead.)
-- The vac RPM installs a vac-ssmsend cron job which runs APEL ssmsend
-  automatically if ssmsend is installed and its cert/key pair exist.
-- The vacd SysV service runs ssmsend when shutting down to ensure that
-  unsent job usage records are sent when factories are shutting down.
-- Vac now refers to types of virtual machine as "machinetypes" rather
-  than "vmtypes" (in preparation for container support) and this
-  word can now be used in the Vac configuration instead of "vmtype".
-- CernVM image signing can be checked.
-- A vac-command RPM is provided, which installs the vac command
-  and dependencies, without the vacd daemon itself.
+- Vac now provides a single disk device to each VM: either a logical
+  volume (preferred) or a file-backed disk image. In logical volume
+  mode, file-backed disks for the root partitions are no longer 
+  created. You may wish to increase the size of the vac_volume_group
+  and decrease the size of the partition containing /var/lib/vac on
+  the factories to reflect this.
+- Logical volumes are now created/destroyed on the fly for each VM,
+  with their default size based on the space available in the 
+  vac_volume_group.
+- Machine/Job Features supplied to VMs now include the key/value
+  pairs defined in the HSF-TN-2016-02 Technical Note.
+- Vac will refuse to create VMs if there is less than 1 GB free in the 
+  partition containing /var/lib/vac
+- The default for overload_per_cpu is reduced to 1.5
+- The handling of VacQuery query messages has been streamlined to 
+  cope better on highly overloaded factories.
 
 The man pages and Admin Guide have been updated to reflect these changes.
 
 Upgrades from 0.17.x onwards only require the RPM itself upgrading. To 
-upgrade from versions before 0.17.0, please install the 00.21.00 RPM and 
+upgrade from versions before 0.17.0, please install the 00.21.00 RPM and
 reboot, as Vac's internal NAT network changed style from transient to 
 persistent in version 0.17.0.
 
