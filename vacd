@@ -187,9 +187,11 @@ def vacOneCycle():
 
            try:
              factoryMessage = vac.shared.makeFactoryResponse('0', clientName = 'vacd-factory')
-             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-             sock.sendto(factoryMessage, ('vac-version-logger.gridpp.ac.uk',8884))
-             sock.close()       
+             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+             for i in range(0,5):
+               sock.sendto(factoryMessage, ('vac-version-logger.gridpp.ac.uk',8884))
+               time.sleep(1.0)
+             sock.close()
            except:
              pass
 
