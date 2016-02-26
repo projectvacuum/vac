@@ -684,7 +684,7 @@ def vacHttpd(idStr):
 def vacFactory():
         
     try:
-      os.remove('/var/lib/vac/factory-daily')
+      os.remove('/var/lib/vac/factory-version-logged')
     except:
       pass
 
