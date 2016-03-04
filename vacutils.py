@@ -252,7 +252,7 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False):
    # Create the public/private keypair for the new proxy
    
    newKey = M2Crypto.EVP.PKey()
-   newKey.assign_rsa(M2Crypto.RSA.gen_key(512, 65537, emptyCallback2))
+   newKey.assign_rsa(M2Crypto.RSA.gen_key(1024, 65537, emptyCallback2))
 
    # Start filling in the new certificate object
 
