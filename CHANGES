@@ -1,3 +1,5 @@
+==================== Changes in Vac version 00.22.00 =================== 
+- Create 1024 bit GSI proxies
 ==================== Changes in Vac version 00.21.00 =================== 
 - Fix bug preventing scratch partitions being used properly
 - user_data_file_xxxx now also replaces ##user_data_option_xxxx##
