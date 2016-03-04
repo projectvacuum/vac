@@ -1,4 +1,4 @@
-We are pleased to announce the release of Vac 00.21.00
+We are pleased to announce the release of Vac 00.21
 
 RPMs for SL6 and the 00.21 Admin Guide are available from the 00.21
 subdirectory of
@@ -25,11 +25,12 @@ of configuration options.
 - The default for overload_per_cpu is reduced to 1.5
 - The handling of VacQuery query messages has been streamlined to 
   cope better on highly overloaded factories.
+- Vac now generates 1024 rather than 512 bit GSI proxies
 
 The man pages and Admin Guide have been updated to reflect these changes.
 
-Upgrades from 0.17.x onwards only require the RPM itself upgrading. To 
-upgrade from versions before 0.17.0, please install the 00.21.00 RPM and
+Upgrades from 0.17 onwards only require the RPM itself upgrading. To 
+upgrade from versions before 0.17, please install the 00.21 RPM and
 reboot, as Vac's internal NAT network changed style from transient to 
 persistent in version 0.17.0.
 
