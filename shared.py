@@ -131,6 +131,9 @@ def readConf():
       
       volumeGroup = 'vac_volume_group'
       machinefeaturesOptions = {}
+      
+      # Temporary dictionary of common user_data_option_XXX 
+      machinetypeCommon = {}
 
       try:
         f = open('/var/lib/vac/VERSION', 'r')
@@ -289,6 +292,14 @@ def readConf():
            else:
              machinefeaturesOptions[oneOption[23:]] = parser.get('settings', oneOption)
 
+      # set up commmon user_data_option_XXX subsitutions for all machinetypes
+      for (oneOption,oneValue) in parser.items('settings'):
+        if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):
+          if string.translate(oneOption, None, '0123456789abcdefghijklmnopqrstuvwxyz_') != '':
+            return 'Name of user_data_option_xxx (' + oneOption + ') in [settings] must only contain a-z 0-9 and _'
+          else:              
+            machinetypeCommon[oneOption] = parser.get('settings', oneOption)
+
       # all other sections are machinetypes (other types of section are ignored)
       for sectionName in parser.sections():
 
@@ -303,7 +314,8 @@ def readConf():
              if sectionNameSplit[0] == 'vmtype':
                print '[vmtype ...] is deprecated. Please use [machinetype ' + sectionNameSplit[1] + '] instead'
          
-             machinetype = {}
+             # Start from any factory-wide common values defined in [settings]
+             machinetype = machinetypeCommon.copy()
              machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
              if parser.has_option(sectionName, 'cernvm_signing_dn'):
