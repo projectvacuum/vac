@@ -1,3 +1,5 @@
+==================== Changes in Vac version 00.21.02 =================== 
+- Fix over-sending of vac-version-logger messages
 ==================== Changes in Vac version 00.21.01 =================== 
 - Create 1024 bit GSI proxies
 ==================== Changes in Vac version 00.21.00 =================== 
