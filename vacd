@@ -183,7 +183,7 @@ def vacOneCycle():
      if not os.path.exists('/var/lib/vac/factory-version-logged') or \
         time.time() > (os.stat('/var/lib/vac/factory-version-logged').st_ctime + 86400.0 / vac.shared.versionLogger):
 
-           vac.vacutils.createFile('/var/lib/vac/version-logged', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+           vac.vacutils.createFile('/var/lib/vac/factory-version-logged', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
            try:
              factoryMessage = vac.shared.makeFactoryResponse('0', clientName = 'vacd-factory')
@@ -635,7 +635,7 @@ def vacHttpd(idStr):
        return
    elif idStr == 'metadata':
      try:
-       httpd = ForkingHTTPServer((vac.shared.factoryAddress, 80), metadataHttpdHandler)
+       httpd = ForkingHTTPServer((vac.shared.metaAddress, 80), metadataHttpdHandler)
      except Exception as e:
        print str(e)
        return

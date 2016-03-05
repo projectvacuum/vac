@@ -3,6 +3,7 @@
 - user_data_option_XXX and user_data_file_XXX options may be given
   in [settings] to set default substitutions for all machinetypes
 - GSI proxies given to VMs have machinetype name as final CN
+- Fix bug in over-sending vac-version-logger messages
 ==================== Changes in Vac version 00.21.00 =================== 
 - Fix bug preventing scratch partitions being used properly
 - user_data_file_xxxx now also replaces ##user_data_option_xxxx##

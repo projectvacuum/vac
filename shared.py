@@ -67,8 +67,9 @@ vacQueryVersion = '0.3'
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
 natPrefix           = '169.254.169.'
-factoryAddress      = '169.254.169.254'
-mjfAddress          = '169.254.169.253'
+factoryAddress      = '169.254.169.253'
+metaAddress         = '169.254.169.254'
+mjfAddress          = factoryAddress
 udpBufferSize       = 16777216
 gbDiskPerCpuDefault = 40
 
@@ -1436,8 +1437,8 @@ def checkNetwork():
 
       # Make sure that the dummy0 interface exists
       # Should still return 0 even if dummy0 already exists, with any IP
-      if os.system('/sbin/ifconfig dummy0 ' + mjfAddress) != 0:
-        vac.vacutils.logLine('(Re)run of ifconfig dummy0 ' + mjfAddress + ' fails!')
+      if os.system('/sbin/ifconfig dummy0 ' + metaAddress) != 0:
+        vac.vacutils.logLine('(Re)run of ifconfig dummy0 ' + metaAddress + ' fails!')
         return False
         
       return True
