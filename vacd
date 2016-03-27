@@ -368,7 +368,7 @@ def vacOneCycle():
 
    if vac.shared.vacmons:
      # Send VacQuery machinetype and factory messages to listed VacMons
-     machinetypeMessages = vac.shared.makeMachinetypeResponses('0')
+     machinetypeMessages = vac.shared.makeMachinetypeResponses('0', clientName = 'vacd-factory')
      factoryMessage = vac.shared.makeFactoryResponse('0', clientName = 'vacd-factory')
      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
