@@ -303,15 +303,15 @@ class vac ($space              = "vac01.${domain}",
       service { 'squid':
                 enable  => true,
                 ensure  => "running",
-                require => Package['squid'],
+                require => Package['squid','vac'],
               }
 
-      exec    { "vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid/conf":
-                subscribe => File["/etc/squid/squid.conf.vac"],
+      exec    { "/usr/sbin/vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid.conf":
+                require => Package['squid','vac'],
               }
 
-      file { "/etc/squid/squid.conf":
-             notify  => Service['squid'],
-           }
+      file    { "/etc/squid/squid.conf":
+                notify => Service['squid'],
+              }
     }
 }
