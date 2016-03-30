@@ -214,6 +214,59 @@ def makeSyncRecords(args):
 
   return 0
 
+
+def makeSquidConf(inputFile, outputFile):
+
+  try:
+    newConfigStr = open(inputFile,'r').read()
+  except Exception as e:
+    print 'Failed to open input config (' + str(e) + ')'
+  
+  try:
+    currentConfigStr = open(outputFile,'r').read()
+  except:
+    currentConfigStr = ''
+    
+  for factory in sorted(vac.shared.factories):
+  
+    try:
+      ip = socket.gethostbyname_ex(factory)[2][0]
+    except:
+      continue
+  
+    newConfigStr += 'acl localnet ' + ip + '/32\n'
+    
+    if factory != os.uname()[1]:
+      newConfigStr += 'cache_peer ' + ip + ' sibling 3128 3130 default\n'
+
+  if newConfigStr == currentConfigStr:
+    # Nothing to change
+    return 0
+    
+  try:
+    open(outputFile + '.tmp', 'w').write(newConfigStr)
+  except Exception as e:
+    print 'Failed writing ' + outputFile + '.tmp' 
+    try:
+      os.remove(outputFile + '.tmp')
+    except:
+      return 2
+ 
+    return 1
+    
+  try:
+    os.rename(outputFile + '.tmp', outputFile)
+  except Exception as e:
+    print 'Failed moving ' + outputFile + '.tmp to ' + outputFile
+    try:
+      os.remove(outputFile + '.tmp')
+    except:
+      return 2
+ 
+    return 1
+    
+  return 0
+
 #
 # PROGRAM MAIN !!!
 # 
@@ -336,6 +389,13 @@ if __name__ == '__main__':
 
         if args[0] == 'apel-sync':
             sys.exit(makeSyncRecords(args))
+
+        if args[0] == 'squid-conf':
+            if len(args) == 3:              
+              sys.exit(makeSquidConf(args[1], args[2]))                
+            else:
+              print 'squid-conf command requires input and output filename arguments!'
+              sys.exit(2)
 
     print 'Must give command argument to vac!'
     sys.exit(1)
