@@ -96,6 +96,15 @@ apel-sync can be run every day from cron to publish sync summaries of
 the current month's progress, with a final whole-month summary being
 published during the first day of the next month.
 
+.HP
+.B "squid-conf inputfile outputfile
+.br
+Creates a configuration file for a per-factory Squid cache using 
+inputfile as a template, appending acl and cache_peer lines for
+the factory FQDNs listed in the Vac configuration. The result is
+only written to outputfile if the contents differ from the current
+outputfile. 
+
 .SH CONFIGURATION FILES
 
 The vac command uses the settings of the

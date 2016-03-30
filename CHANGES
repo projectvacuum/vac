@@ -5,6 +5,7 @@
 - GSI proxies given to VMs have machinetype name as final CN
 - Fix bug in over-sending vac-version-logger messages
 - Add squid-conf to vac command for Puppet etc
+- Add per-factory squid cache to Puppet init.pp
 ==================== Changes in Vac version 00.21.00 =================== 
 - Fix bug preventing scratch partitions being used properly
 - user_data_file_xxxx now also replaces ##user_data_option_xxxx##

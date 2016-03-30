@@ -89,6 +89,11 @@
 # fileserver (without the leading puppet:///). 
 # YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
 #
+# SQUID:
+# If you set local_squid to true, Puppet will install and configure a Squid cache
+# for cvmfs on the factory, using the /etc/squid/squid.conf.vac template installed
+# by the vac RPM. The proxy is visible from within the VMs at 169.254.169.254:3128
+#
 # Andrew.McNab@cern.ch  March  2016  http://www.gridpp.ac.uk/vac/
 #
 
