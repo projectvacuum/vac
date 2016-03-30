@@ -1,6 +1,6 @@
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-5. All rights reserved.
+#  Copyright (c) 2013-6. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -36,7 +36,7 @@ include VERSION
 INSTALL_FILES=vacd vac \
           __init__.py shared.py vacutils.py \
           vacd.init check-vacd VERSION \
-          vacd.logrotate \
+          vacd.logrotate squid.conf.template \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           RELEASE example.vac.conf example.user_data \
           admin-guide.html vac-ssmsend-prod.cfg \
@@ -80,7 +80,7 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
-	   testkvm.xml RELEASE \
+	   testkvm.xml RELEASE squid.conf.template \
 	   $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)
 	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
 	 > $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)/admin-guide.html
