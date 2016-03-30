@@ -36,7 +36,7 @@ include VERSION
 INSTALL_FILES=vacd vac \
           __init__.py shared.py vacutils.py \
           vacd.init check-vacd VERSION \
-          vacd.logrotate squid.conf.template \
+          vacd.logrotate squid.conf.vac \
           vacd.8 vac.conf.5 check-vacd.8 vac.1 CHANGES \
           RELEASE example.vac.conf example.user_data \
           admin-guide.html vac-ssmsend-prod.cfg \
@@ -71,7 +71,8 @@ install: $(INSTALL_FILES)
 	         $(RPM_BUILD_ROOT)/etc/rc.d/init.d \
 	         $(RPM_BUILD_ROOT)/etc/logrotate.d \
 	         $(RPM_BUILD_ROOT)/etc/vac.d \
-	         $(RPM_BUILD_ROOT)/etc/apel
+	         $(RPM_BUILD_ROOT)/etc/squid \
+	         $(RPM_BUILD_ROOT)/etc/apel	         
 	cp vac vacd check-vacd \
 	   $(RPM_BUILD_ROOT)/usr/sbin
 	cp __init__.py shared.py vacutils.py \
@@ -80,7 +81,7 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/var/lib/vac
 	cp VERSION vac.conf.5 vacd.8 CHANGES init.pp \
 	   check-vacd.8 vac.1 example.vac.conf \
-	   testkvm.xml RELEASE squid.conf.template \
+	   testkvm.xml RELEASE \
 	   $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)
 	sed "s/<\!-- version -->/ $(VERSION)/" admin-guide.html \
 	 > $(RPM_BUILD_ROOT)/usr/share/doc/vac-$(VERSION)/admin-guide.html
@@ -96,6 +97,8 @@ install: $(INSTALL_FILES)
 	   $(RPM_BUILD_ROOT)/etc/logrotate.d/vacd
 	cp vac-ssmsend-prod.cfg \
 	   $(RPM_BUILD_ROOT)/etc/apel
+	cp squid.conf.vac \
+	   $(RPM_BUILD_ROOT)/etc/squid
 	
 rpm: vac.tgz
 	rm -Rf RPMTMP

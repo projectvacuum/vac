@@ -62,6 +62,7 @@ echo '0 12 * * * root /usr/sbin/vac apel-sync >>/var/log/vac-ssmsend 2>&1' >>/et
 /etc/logrotate.d/vacd
 /etc/vac.d
 /etc/apel/vac-ssmsend-prod.cfg
+/etc/squid/squid.conf.vac
 
 %files -n vac-command
 /usr/sbin/vac
