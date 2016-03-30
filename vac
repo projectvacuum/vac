@@ -234,7 +234,7 @@ def makeSquidConf(inputFile, outputFile):
     except:
       continue
   
-    newConfigStr += 'acl localnet ' + ip + '/32\n'
+    newConfigStr += 'acl localnet src ' + ip + '/32\n'
     
     if factory != os.uname()[1]:
       newConfigStr += 'cache_peer ' + ip + ' sibling 3128 3130 default\n'
