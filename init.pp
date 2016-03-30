@@ -89,7 +89,7 @@
 # fileserver (without the leading puppet:///). 
 # YOU MUST AGREE USE OF APEL WITH THE APEL TEAM BEFORE STARTING TO USE APEL
 #
-# Andrew.McNab@cern.ch  January  2016  http://www.gridpp.ac.uk/vac/
+# Andrew.McNab@cern.ch  March  2016  http://www.gridpp.ac.uk/vac/
 #
 
 #
@@ -109,7 +109,8 @@ class vac ($space              = "vac01.${domain}",
            $nagios_nrpe        = false,
            $apel_bdii_hostport = '',
            $apel_cert_path     = '',
-           $apel_key_path      = '')
+           $apel_key_path      = '',
+           $local_squid        = false)
 {
   #
   # Install site-wide or increasingly specific configuration files in /etc/vac.d
@@ -287,6 +288,30 @@ class vac ($space              = "vac01.${domain}",
              owner   => 'root',
              group   => 'root',
              mode    => '0600',
+           }
+    }
+
+  #
+  # Configure files used by the local squid on this factory
+  #
+  if $local_squid
+    {
+      package { 'squid':
+                ensure  => 'installed',
+              }
+
+      service { 'squid':
+                enable  => true,
+                ensure  => "running",
+                require => Package['squid'],
+              }
+
+      exec    { "vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid/conf":
+                subscribe => File["/etc/squid/squid.conf.vac"],
+              }
+
+      file { "/etc/squid/squid.conf":
+             notify  => Service['squid'],
            }
     }
 }
