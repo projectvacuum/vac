@@ -165,7 +165,7 @@ def queryMachinetype(options, machinetypeName, factoryList):
                   shutdownTimeStr + ' "' +
                   shutdownMessageStr + '"'
                 )
-        else: # legacy
+        else: # legacy for VacQuery 0.3
           print (
                   factoryName.split('.')[0] + ' ' + 
                   '%2d ' % responses[factoryName]['machinetypes'][machinetypeName]['total_machines'] +
