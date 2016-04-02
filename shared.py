@@ -1995,7 +1995,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          timeHeartbeat = None
 
        try:                  
-         hs06 = float(open(machinesDir + '/machinefeatures/hs06', 'r').readline())
+         hs06 = float(open(machinesDir + '/jobfeatures/hs06_job', 'r').readline())
        except:
          hs06 = hs06PerMachine
 
@@ -2111,10 +2111,11 @@ def makeFactoryResponse(cookie, clientName = '-'):
      counts = open('/var/lib/vac/counts','r').readline().split()
      runningMachines = int(counts[0])
      runningCpus     = int(counts[2])
-     runningHS06     = int(counts[4])
+     runningHS06     = float(counts[4])
    except:
      runningCpus     = 0
      runningMachines = 0
+     runningHS06     = 0
 
    try:
      factoryHeartbeatTime = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)

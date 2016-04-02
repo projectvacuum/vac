@@ -159,8 +159,8 @@ def queryMachinetype(options, machinetypeName, factoryList):
     
         print (
                 factoryName.split('.')[0] + ' ' + 
-                '%2d ' % responses[factoryName]['machinetypes'][machinetypeName]['max_machines'] +
-                '%5.1f ' % responses[factoryName]['machinetypes'][machinetypeName]['max_hs06'] +
+                '%2d ' % responses[factoryName]['machinetypes'][machinetypeName]['running_machines'] +
+                '%5.1f ' % responses[factoryName]['machinetypes'][machinetypeName]['running_hs06'] +
                 shutdownTimeStr + ' "' +
                 shutdownMessageStr + '"'
               )
