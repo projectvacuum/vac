@@ -208,6 +208,7 @@ def vacOneCycle():
    # --> So we do not use  continue  within this loop! <--
    runningCpus    = 0
    runningCount   = 0
+   runningHS06    = 0.0
    ableToStartOne = True
    
    vacDiskStatFS = os.statvfs('/var/lib/vac')
@@ -356,13 +357,14 @@ def vacOneCycle():
 
      if vm.state == vac.shared.VacState.running:
        runningCpus += vm.cpus
+       runningHS06 += vm.hs06
 
      # the createVM and destroyVM methods update VacVM.state
      if vm.state == vac.shared.VacState.running:
        runningCount += 1
 
    # finished with all VMs, so output counts for Nagios etc
-   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d' % (runningCount,vac.shared.numMachineSlots,runningCpus,vac.shared.numCpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+   vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d %.2f' % (runningCount,vac.shared.numMachineSlots,runningCpus,vac.shared.numCpus,runningHS06), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    if vac.shared.vacmons:
      # Send VacQuery machinetype and factory messages to listed VacMons

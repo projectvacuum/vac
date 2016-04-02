@@ -62,7 +62,7 @@ import vac
 
 # All VacQuery requests and responses are in this file
 # so we can define the VacQuery protocol version here
-vacQueryVersion = '0.3'
+vacQueryVersion = '0.4'
 
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
@@ -70,6 +70,7 @@ natPrefix           = '169.254.169.'
 metaAddress         = '169.254.169.254'
 mjfAddress          = '169.254.169.253'
 factoryAddress      = metaAddress
+dummyAddress        = mjfAddress
 udpBufferSize       = 16777216
 gbDiskPerCpuDefault = 40
 
@@ -561,7 +562,7 @@ class VacVM:
       self.cpuPercentage       = 0
       self.cpus                = cpuPerMachine
       self.mb                  = mbPerMachine
-      self.hs06PerMachine      = None
+      self.hs06                = None
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
 
@@ -1437,8 +1438,8 @@ def checkNetwork():
 
       # Make sure that the dummy0 interface exists
       # Should still return 0 even if dummy0 already exists, with any IP
-      if os.system('/sbin/ifconfig dummy0 ' + mjfAddress) != 0:
-        vac.vacutils.logLine('(Re)run of ifconfig dummy0 ' + mjfAddress + ' fails!')
+      if os.system('/sbin/ifconfig dummy0 ' + dummyAddress) != 0:
+        vac.vacutils.logLine('(Re)run of ifconfig dummy0 ' + dummyAddress + ' fails!')
         return False
         
       return True
@@ -1938,7 +1939,7 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'heartbeat_time'	: vm.heartbeat,
                 'cpu_seconds'		: vm.cpuSeconds,
                 'cpu_percentage'	: vm.cpuPercentage,
-                'hs06' 		       	: vm.hs06PerMachine,
+                'hs06' 		       	: vm.hs06,
                 'machinetype'		: vm.machinetypeName,
                 'shutdown_message'  	: vm.shutdownMessage,
                 'shutdown_time'     	: vm.shutdownMessageTime
@@ -1963,6 +1964,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
      totalHS06               = 0.0
      numBeforeFizzle         = 0
      totalMachines           = 0
+     totalCpu                = 0
 
      # Go through the VM slots, looking for starting/running instances of this machinetype
      for ordinal in range(numMachineSlots):
@@ -1997,6 +1999,11 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        except:
          hs06 = hs06PerMachine
 
+       try:                  
+         numCpu = float(open(machinesDir + '/jobfeatures/allocated_cpu', 'r').readline())
+       except:
+         numCpu = cpuPerMachine
+
        hasFinished = os.path.exists(machinesDir + '/finished')
 
        # some hardcoded timeouts here in case old files are left lying around 
@@ -2008,6 +2015,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          # Running
          totalHS06     += hs06
          totalMachines += 1
+         totalCpu      += numCpu
 
          if int(time.time()) < timeStarted + machinetypes[machinetypeName]['fizzle_seconds']:
            numBeforeFizzle += 1
@@ -2016,7 +2024,8 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          # Starting
          totalHS06       += hs06
          totalMachines   += 1
-         numBeforeFizzle += 1
+         totalCpu        += 1
+         numBeforeFizzle += 1         
 
      # Outcome of the most recently created instance of this machinetype that has already finished
 
@@ -2065,8 +2074,11 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
                 'time_sent'		: int(time.time()),
 
                 'machinetype'		: machinetypeName,
-                'total_hs06'        	: totalHS06,
-                'total_machines'        : totalMachines,
+                'total_hs06'        	: totalHS06, # deprecated
+                'total_machines'        : totalMachines, #deprecated
+                'running_hs06'        	: totalHS06,
+                'running_machines'      : totalMachines,
+                'running_cpus'          : totalCpu,
                 'num_before_fizzle' 	: numBeforeFizzle,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime,
@@ -2099,6 +2111,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
      counts = open('/var/lib/vac/counts','r').readline().split()
      runningMachines = int(counts[0])
      runningCpus     = int(counts[2])
+     runningHS06     = int(counts[4])
    except:
      runningCpus     = 0
      runningMachines = 0
@@ -2146,11 +2159,15 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),
 
-                'total_cpus'		   : numCpus,
+                'total_cpus'		   : numCpus, # deprecated
+                'max_cpus'		   : numCpus,
                 'running_cpus'             : runningCpus,
                 'running_machines'         : runningMachines,
-                'total_machines'           : numCpus / cpuPerMachine,
-                'total_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine,
+                'running_hs06'             : runningHS06,
+                'total_machines'           : numCpus / cpuPerMachine, # deprecated
+                'total_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine, # deprecated
+                'max_machines'             : numCpus / cpuPerMachine,
+                'max_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
