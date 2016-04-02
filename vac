@@ -156,14 +156,23 @@ def queryMachinetype(options, machinetypeName, factoryList):
           shutdownMessageStr = responses[factoryName]['machinetypes'][machinetypeName]['shutdown_message']
         else:
           shutdownMessageStr = '-'
-    
-        print (
-                factoryName.split('.')[0] + ' ' + 
-                '%2d ' % responses[factoryName]['machinetypes'][machinetypeName]['running_machines'] +
-                '%5.1f ' % responses[factoryName]['machinetypes'][machinetypeName]['running_hs06'] +
-                shutdownTimeStr + ' "' +
-                shutdownMessageStr + '"'
-              )
+
+        if 'running_machines' in responses[factoryName]['machinetypes'][machinetypeName]:
+          print (
+                  factoryName.split('.')[0] + ' ' + 
+                  '%2d ' % responses[factoryName]['machinetypes'][machinetypeName]['running_machines'] +
+                  '%5.1f ' % responses[factoryName]['machinetypes'][machinetypeName]['running_hs06'] +
+                  shutdownTimeStr + ' "' +
+                  shutdownMessageStr + '"'
+                )
+        else: # legacy
+          print (
+                  factoryName.split('.')[0] + ' ' + 
+                  '%2d ' % responses[factoryName]['machinetypes'][machinetypeName]['total_machines'] +
+                  '%5.1f ' % responses[factoryName]['machinetypes'][machinetypeName]['total_hs06'] +
+                  shutdownTimeStr + ' "' +
+                  shutdownMessageStr + '"'
+                )
       n += 1
 
   if options.returnJSON:

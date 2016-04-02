@@ -1,6 +1,6 @@
 We are pleased to announce the release of Vac 00.22.00
 
-RPMs for SL6 and the 00.21 Admin Guide are available from the 00.22
+RPMs for SL6 and the Admin Guide are available from the 00.22
 subdirectory of
 
 https://repo.gridpp.ac.uk/vacproject/vac/
@@ -19,9 +19,6 @@ files. The improvements listed in CHANGES are:
 
 The man pages and Admin Guide have been updated to reflect these changes.
 
-Upgrades from 0.17.x onwards only require the RPM itself upgrading. To 
-upgrade from versions before 0.17.0, please install the 00.22.00 RPM and
-reboot, as Vac's internal NAT network changed style from transient to 
-persistent in version 0.17.0.
+Upgrades from 0.17.x onwards only require the RPM itself upgrading.
 
 For more information about Vac please see https://www.gridpp.ac.uk/vac/
