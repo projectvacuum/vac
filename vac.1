@@ -103,7 +103,8 @@ Creates a configuration file for a per-factory Squid cache using
 inputfile as a template, appending acl and cache_peer lines for
 the factory FQDNs listed in the Vac configuration. The result is
 only written to outputfile if the contents differ from the current
-outputfile. 
+outputfile, which means the timestamp of outputfile can be checked
+to see whether Squid needs to reload its configuration.
 
 .SH CONFIGURATION FILES
 
