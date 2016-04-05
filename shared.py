@@ -69,8 +69,8 @@ natNetmask          = '255.255.0.0'
 natPrefix           = '169.254.169.'
 metaAddress         = '169.254.169.254'
 mjfAddress          = '169.254.169.253'
-factoryAddress      = metaAddress
-dummyAddress        = mjfAddress
+factoryAddress      = mjfAddress
+dummyAddress        = metaAddress
 udpBufferSize       = 16777216
 gbDiskPerCpuDefault = 40
 
@@ -1364,10 +1364,33 @@ def checkNetwork():
       conn = libvirt.open(None)
       
       try:
-           # Find the network is already defined
-           vacNetwork = conn.networkLookupByName('vac_' + natNetwork)
+           # Find the network if already defined
+           vacNetwork = conn.networkLookupByName('vac_' + natNetwork)           
       except:
-           # Doesn't exist so we define and start it
+           vacNetwork = None
+      else:
+           if not re.search("<ip[^>]*address='" + factoryAddress + "'", vacNetwork.XMLDesc(1)):
+             # The network does not have the right IP address!
+             vac.vacutils.logLine('vac_' + natNetwork + ' defined with wrong IP address - removing!')
+
+             try:
+               vacNetwork.destroy()
+             except:
+               pass
+            
+             try:
+               vacNetwork.undefine()
+             except:
+               pass
+
+             # Probably need to do this too:                            
+             fixNetworkingCommands()
+             
+             # Remember we removed it
+             vacNetwork = None
+           
+      if not vacNetwork:
+           # Doesn't exist so we define it
            vac.vacutils.logLine('No libvirt network vac_' + natNetwork + ' defined for NAT') 
            
            nameParts = os.uname()[1].split('.',1)
@@ -1500,6 +1523,13 @@ def fixNetworkingCommands():
 
       try:
         cmd = '/usr/sbin/brctl delbr virbr1'
+        vac.vacutils.logLine('Trying  ' + cmd)
+        os.system(cmd)
+      except:
+        pass
+       
+      try:
+        cmd = '/sbin/ifconfig dummy0 down'
         vac.vacutils.logLine('Trying  ' + cmd)
         os.system(cmd)
       except:

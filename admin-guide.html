@@ -194,13 +194,14 @@ Using libvirt NAT machinery means this network is
 hidden from the rest of the LAN and only visible from the factory and its
 VMs. libvirt configures the dnsmasq server to run dedicated DNS and DHCP
 servers on this private network. The factory's address in this private
-network is 169.254.169.254, which is the so-called Magic IP used by some
-Cloud systems for a local configuration service which VMs look for.
+network is 169.254.169.253. An EC2/Openstack metadata service is also
+provided on 169.254.169.254, which is the so-called Magic IP used by 
+some Cloud systems for a local configuration service.
 
 <p>
 To use IP addresses in the 169.254.0.0 network, <b>you must ensure you are
 using a recent
-version of dnsmasq.</b> For SL6, dnsmasq-2.48-13.el6.x86_64.rpm avaiable as part
+version of dnsmasq.</b> For SL6, dnsmasq-2.48-14.el6.x86_64.rpm avaiable as part
 of SL6 updates, is suitable.
 
 <p>
@@ -231,7 +232,7 @@ Network problems are usually caused by:
 <li>Still needing to upgrade dnsmasq to an RPM >= 2.48-13
 <li>Not disabling Zeroconf
 <li>An old dnsmasq process running with argument &quot;--listen-address 
-    169.254.169.254&quot; (Use &quot;service dnsmasq stop&quot;)
+    169.254.169.253&quot; (Use &quot;service dnsmasq stop&quot;)
 <li>virbr1 already existing (remove with &quot;ifconfig virbr1 down&quot; and
     &quot;brctl delbr virbr1&quot;, using brctl from the RPM bridge-utils.)
 </ul>
