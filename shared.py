@@ -562,7 +562,7 @@ class VacVM:
       self.cpuPercentage       = 0
       self.cpus                = cpuPerMachine
       self.mb                  = mbPerMachine
-      self.hs06                = None
+      self.hs06                = 0.0
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
 
