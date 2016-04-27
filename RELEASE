@@ -1,13 +1,13 @@
-We are pleased to announce the release of Vac 00.22.00
+We are pleased to announce the release of Vac 01.00.00
 
-RPMs for SL6 and the Admin Guide are available from the 00.22
+RPMs for SL6 and the Admin Guide are available from the 01.00
 subdirectory of
 
 https://repo.gridpp.ac.uk/vacproject/vac/
 
 There are no backwards incompatible changes in the Vac configuration
-files, but VM factories must be drained of all VMs before upgrading
-to this version as the network configuration has changed.
+files, but VM factories should be drained of VMs and rebooted before
+upgrading to this version as the network configuration has changed.
  
 The improvements listed in CHANGES are:
 
