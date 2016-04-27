@@ -519,9 +519,10 @@ These accounting messages are designed to be published to the central
 APEL service using the
 standard APEL ssmsend command, which can be run on each factory machine
 from cron. Please see the <a href="https://wiki.egi.eu/wiki/APEL">APEL 
-SSM client documentation for details</a>. One you have agreed use of APEL
-with the APEL team, had your certificate authorized, and done any requested
-tests, it should be sufficient that: you install the apel-ssm RPM on each 
+SSM client documentation for details</a>. To submit records you should agree 
+use of APEL with the APEL team, have your certificate authorized, set up the 
+correct APEL entries in GOCDB, and do any requested tests.
+On each factory it should be sufficient that: you install the apel-ssm RPM on each 
 machine, install a host certificate (vac-apel-cert.pem) and key 
 (vac-apel-key.pem) authorized to talk to APEL in /etc/grid-security, and make
 sure gocdb_sitename is set. 
@@ -532,9 +533,9 @@ The Vac RPM installs suitable cron entries in
 files are installed in /etc/grid-security.
 The ssmsend command can safely be run multiple times per day as it does
 not connect to APEL if there are no new messages or if the PEM files are not
-in place, and deletes messages once they are sent. By default, the Vac RPM 
-creates cron entries to run ssmsend at a randomly chosen minute each hour, 
-chosen at install time. 
+in place, and deletes the copies in /var/lib/vac/apel-outgoing once they are sent. 
+By default, the Vac RPM creates cron entries to run ssmsend at a randomly chosen 
+minute each hour, chosen at install time. 
 
 <p>
 APEL has consistency checking which expects APEL Sync summary records to be 
@@ -545,6 +546,11 @@ month during the first day of the next month. These summaries are based on
 the contents of /var/lib/vac/apel-archive.
 
 <p>
+The records can then be republished at any time by copying the record
+files from /var/lib/vac/apel-archive to /var/lib/vac/apel-outgoing . In
+case of problems with APEL, you may wish to keep backups of apel-archive.
+
+<p>
 If you forget to
 give gocdb_sitename at some point, you can make copies of the records in
 /var/lib/vac/apel-archive with the &quot;Site:&quot; fields corrected
@@ -553,8 +559,9 @@ publishing when ssmsend is next run automatically from cron.
 
 <p>
 ssmsend is also run from /etc/rc.d/init.d/vacd when the vacd service is
-stopped. This should ensure that any unsent accounting messages are
-sent to the central APEL service as long as the factory is shutdown cleanly.
+stopped. This should ensure that any accounting messages waiting to be sent
+are passed to the central APEL service as long as the factory is shutdown 
+cleanly.
 
 <h2 style="border-bottom: 1px solid">Puppet</h2>
 
