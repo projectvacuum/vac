@@ -1,4 +1,4 @@
-We are pleased to announce the release of Vac 01.00.00
+We are pleased to announce the release of Vac 01.00.01
 
 RPMs for SL6 and the Admin Guide are available from the 01.00
 subdirectory of
@@ -7,21 +7,11 @@ https://repo.gridpp.ac.uk/vacproject/vac/
 
 There are no backwards incompatible changes in the Vac configuration
 files, but VM factories should be drained of VMs before upgrading 
-to this version, and then the factories must be rebooted, as the 
-network configuration has changed.
+to this version from 00.xx.xx releases, and then the factories must 
+be rebooted, as the network configuration has changed.
  
 The improvements listed in CHANGES are:
 
-- user_data_option_XXX and user_data_file_XXX options may be given
-  in [settings] to set default substitutions for all machinetypes
-- Any GSI proxies given to VMs have machinetype name as final CN
-- Create 1024 bit GSI proxies
-- Fix bug in over-sending vac-version-logger messages
-- Add squid-conf to vac command for Puppet etc
-- Add per-factory squid cache to Puppet init.pp
-- total_*** becomes max_*** in VacQuery 0.4
-- Use 169.254.169.253 as default route and MJF HTTP server in case VMs
-  block 169.254.169.254 completely to stop user access to EC2 metadata
 
 The man pages and Admin Guide have been updated to reflect these changes.
 
