@@ -6,15 +6,16 @@ subdirectory of
 https://repo.gridpp.ac.uk/vacproject/vac/
 
 There are no backwards incompatible changes in the Vac configuration
-files, but VM factories should be drained of VMs and rebooted before
-upgrading to this version as the network configuration has changed.
+files, but VM factories should be drained of VMs before upgrading 
+to this version, and then the factories must be rebooted, as the 
+network configuration has changed.
  
 The improvements listed in CHANGES are:
 
-- Create 1024 bit GSI proxies
 - user_data_option_XXX and user_data_file_XXX options may be given
   in [settings] to set default substitutions for all machinetypes
-- GSI proxies given to VMs have machinetype name as final CN
+- Any GSI proxies given to VMs have machinetype name as final CN
+- Create 1024 bit GSI proxies
 - Fix bug in over-sending vac-version-logger messages
 - Add squid-conf to vac command for Puppet etc
 - Add per-factory squid cache to Puppet init.pp
