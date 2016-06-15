@@ -1548,26 +1548,29 @@ def cleanupOldMachines():
 
    for machineDir in machinesList:
    
-      try:
-        createdStr, machinetypeName, uuidStr = machineDir.split('/')[-1]
+      try:   
+        createdStr, machinetypeName, uuidStr = machineDir.split(':')
       except:
         continue
 
-      if machinetypeName not in machinetypes:
+      if machinetypeName not in machinetypes: 
         # use 3 days for machinetypes that have been removed
         machines_dir_days = 3.0
-
-      elif machinetypes[machinetypeName]['machines_dir_days'] == 0.0:
-        # if zero then we do not expire these directories at all
-        continue
-
-      else:
+      else: 
         # use the per-machinetype value
         machines_dir_days = machinetypes[machinetypeName]['machines_dir_days']
 
-        if (os.stat(machineDir + '/heartbeat').st_mtime < int(time.time() - machines_dir_days * 86400)):
+      if machines_dir_days <= 0.0:
+        # if zero then we do not expire these directories at all
+        continue
+
+      try:
+        if (os.stat('/var/lib/vac/machines/' + machineDir + '/heartbeat').st_mtime < int(time.time() - machines_dir_days * 86400)):
           vac.vacutils.logLine('Deleting expired ' + machineDir)
-          shutil.rmtree(machineDir)
+          shutil.rmtree('/var/lib/vac/machines/' + machineDir)
+      except:
+        # Skip if no heartbeat yet
+        pass
 
 def makeMjfBody(created, machinetypeName, uuidStr, path):
 
