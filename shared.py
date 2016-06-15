@@ -93,6 +93,7 @@ vacqueryTries = 5
 vacVersion = None
 
 cpuPerMachine = None
+cpuPerSuperslot = None
 versionLogger = None
 machinetypes = None
 vacmons = None
@@ -105,7 +106,7 @@ def readConf():
       global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, versionLogger, machinetypes, vacmons, \
+             cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, vacmons, \
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -127,6 +128,7 @@ def readConf():
       vacVersion = '0.0.0'
 
       cpuPerMachine = 1
+      cpuPerSuperslot = 1
       versionLogger = 1
       machinetypes = {}
       vacmons = []
@@ -257,6 +259,10 @@ def readConf():
           # If this isn't set, then we allocate one cpu per VM
           cpuPerMachine = int(parser.get('settings','cpu_per_machine'))
              
+      if parser.has_option('settings', 'cpu_per_superslot'):
+          # If this isn't set, then we allocate one cpu per superslot
+          cpuPerSuperslot = int(parser.get('settings','cpu_per_superslot'))
+             
       if parser.has_option('settings', 'mb_per_machine'):          
           mbPerMachine = int(parser.get('settings','mb_per_machine'))
           print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
@@ -358,6 +364,19 @@ def readConf():
                  machinetype['user_data'] = parser.get(sectionName, 'user_data')
              else:
                  return 'user_data is now required in each machinetype section!'
+
+             if parser.has_option(sectionName, 'min_cpu'):
+                 machinetype['min_cpu'] = int(parser.get(sectionName, 'min_cpu'))
+             else:
+                 machinetype['min_cpu'] = 1
+
+             if parser.has_option(sectionName, 'max_cpu'):
+                 machinetype['max_cpu'] = int(parser.get(sectionName, 'max_cpu'))
+             else:             
+                 machinetype['max_cpu'] = 1               
+
+             if machinetype['max_cpu'] < machinetype['min_cpu']:
+                 return 'max_cpu cannot be less than min_cpu!'
 
              if parser.has_option(sectionName, 'log_machineoutputs'):
                  print 'log_machineoutputs has been deprecated: please use machines_dir_days to control this'
@@ -1548,26 +1567,29 @@ def cleanupOldMachines():
 
    for machineDir in machinesList:
    
-      try:
-        createdStr, machinetypeName, uuidStr = machineDir.split('/')[-1]
+      try:   
+        createdStr, machinetypeName, uuidStr = machineDir.split(':')
       except:
         continue
 
-      if machinetypeName not in machinetypes:
+      if machinetypeName not in machinetypes: 
         # use 3 days for machinetypes that have been removed
         machines_dir_days = 3.0
-
-      elif machinetypes[machinetypeName]['machines_dir_days'] == 0.0:
-        # if zero then we do not expire these directories at all
-        continue
-
-      else:
+      else: 
         # use the per-machinetype value
         machines_dir_days = machinetypes[machinetypeName]['machines_dir_days']
 
-        if (os.stat(machineDir + '/heartbeat').st_mtime < int(time.time() - machines_dir_days * 86400)):
+      if machines_dir_days <= 0.0:
+        # if zero then we do not expire these directories at all
+        continue
+
+      try:
+        if (os.stat('/var/lib/vac/machines/' + machineDir + '/heartbeat').st_mtime < int(time.time() - machines_dir_days * 86400)):
           vac.vacutils.logLine('Deleting expired ' + machineDir)
-          shutil.rmtree(machineDir)
+          shutil.rmtree('/var/lib/vac/machines/' + machineDir)
+      except:
+        # Skip if no heartbeat yet
+        continue
 
 def makeMjfBody(created, machinetypeName, uuidStr, path):
 

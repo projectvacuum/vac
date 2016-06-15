@@ -65,6 +65,11 @@ gives the HEPSPEC06 power of each CPU in a virtual machine. This is used
 to calculate the total value /etc/machinefeatures/hs06 inside the VM and 
 when writing APEL accounting records. Defaults to 1.
 
+.B cpu_per_superslot
+sets size of the superslots, as the number of virtual CPUs which can be 
+allocated from each superslot.
+Defaults to 1 (effectively disabling the superslot mechanism.)
+
 .B shutdown_time
 can be set to apply a limit on the shutdown time for all VMs. This value is 
 used if it is ever earlier than the shutdown time calculated from the 

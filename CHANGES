@@ -1,4 +1,7 @@
-==================== Changes in Vac version 00.22.00 =================== 
+==================== Changes in Vac version 01.01.00 =================== 
+- Add cpu_per_superslot to [settings]
+- Add max_cpu, min_cpu to [machinetype ...]
+==================== Changes in Vac version 01.00.00 =================== 
 - Create 1024 bit GSI proxies
 - user_data_option_XXX and user_data_file_XXX options may be given
   in [settings] to set default substitutions for all machinetypes
