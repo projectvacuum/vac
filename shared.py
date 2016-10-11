@@ -96,6 +96,7 @@ cpuPerMachine = None
 cpuPerSuperslot = None
 versionLogger = None
 machinetypes = None
+machinegroups = None
 vacmons = None
 
 volumeGroup = None
@@ -106,7 +107,7 @@ def readConf():
       global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, vacmons, \
+             cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, machinegroups, vacmons, \
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -131,6 +132,7 @@ def readConf():
       cpuPerSuperslot = 1
       versionLogger = 1
       machinetypes = {}
+      machinegroups = {}
       vacmons = []
       
       volumeGroup = 'vac_volume_group'
@@ -420,6 +422,18 @@ def readConf():
              if parser.has_option(sectionName, 'accounting_fqan'):
                  machinetype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
              
+             if parser.has_option(sectionName, 'machine_group'):
+                 machinetype['machine_group'] = parser.get(sectionName, 'machine_group')
+             elif 'accounting_fqan' in machinetype:
+                 machinetype['machine_group'] = machinetype['accounting_fqan']
+             else:
+                 machinetype['machine_group'] = sectionNameSplit[1]
+                           
+             if machinetype['machine_group'] not in machinegroups:
+               machinegroups[machinetype['machine_group']] = { 'share' : 0.0 }
+            
+             machinegroups[machinetype['machine_group']]['share'] += machinetype['share']
+            
              for (oneOption,oneValue) in parser.items(sectionName):
 
                  if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):

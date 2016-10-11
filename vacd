@@ -202,6 +202,7 @@ def vacOneCycle():
 
    vac.vacutils.logLine('At most ' + str(vac.shared.numMachineSlots) + ' VMs can be created on this VM factory')
    vac.vacutils.logLine('Machine types configuration: ' + str(vac.shared.machinetypes))
+   vac.vacutils.logLine('Machine groups configuration: ' + str(vac.shared.machinegroups))
    vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
    # These are updated at the END of each cycle of the for loop
