@@ -88,6 +88,7 @@ numMachineSlots = None
 numCpus = None
 cpuCount = None
 spaceName = None
+spaceDesc = None
 udpTimeoutSeconds = None
 vacqueryTries = 5
 vacVersion = None
@@ -106,7 +107,7 @@ machinefeaturesOptions = None
 def readConf():
       global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
-             numMachineSlots, numCpus, cpuCount, spaceName, udpTimeoutSeconds, vacVersion, \
+             numMachineSlots, numCpus, cpuCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
              cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, machinegroups, vacmons, \
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
@@ -125,6 +126,7 @@ def readConf():
       numMachineSlots = cpuCount
       numCpus = None
       spaceName = None
+      spaceDesc = None
       udpTimeoutSeconds = 10.0
       vacVersion = '0.0.0'
 
@@ -177,6 +179,9 @@ def readConf():
         
       spaceName = parser.get('settings','vac_space').strip()
 
+      if parser.has_option('settings', 'description'):
+        spaceDesc = parser.get('settings','description').strip()
+        
       if parser.has_option('settings', 'gocdb_sitename'):
         gocdbSitename = parser.get('settings','gocdb_sitename').strip()
         
