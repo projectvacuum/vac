@@ -7,7 +7,35 @@
 
 <p align=center><b>Andrew McNab &lt;Andrew.McNab&nbsp;AT&nbsp;cern.ch&gt;</b>
 
-<h2 style="border-bottom: 1px solid">Quick start</h2>
+<p>
+Vac implements the Vacuum Platform described in 
+<a href="http://hepsoftwarefoundation.org/notes/HSF-TN-2016-04.pdf">HSF-TN-2016-02</a>,
+on one or more autonomous hypervisors or &quot;VM Factories&quot;.
+
+<h2>Contents</h2>
+
+<ul>
+<li><a href="#quickstart">Quick start</a>
+<li><a href="#stepbystep">Configuration step-by-step</a>
+<ul>
+<li><a href="#cernvm">CernVM images</a>
+<li><a href="#dnsipmac">DNS, IP, MAC</a>
+<li><a href="#logicalvolumes">Logical volumes</a>
+<li><a href="#installation">Installation of Vac: tar vs RPM</a>
+<li><a href="#settings">Configuration of the Vac space</a>
+<li><a href="#gocdbggus">GOCDB and GGUS</a>
+<li><a href="#machinetypes">Setting up machinetypes</a>
+</ul>
+<li><a href="#startingstopping">Starting and stopping vacd</a>
+<li><a href="#stoppingvms">Stopping VMs</a>
+<li><a href="#vaccommand">Using the vac command</a>
+<li><a href="#nagios">Setting up Nagios</a>
+<li><a href="#apel">APEL accounting</a>
+<li><a href="#puppet">Puppet</a>
+<li><a href="#fizzlebackoff">Setting fizzle_seconds and backoff_seconds</a>
+</ul>
+
+<h2 style="border-bottom: 1px solid"><a name="quickstart">Quick start</a></h2>
 
 <p>
 By following this quick start recipe you can verify that your installation 
@@ -119,7 +147,7 @@ You should also be able to see the state of the VM using the
 command <b>vac machines</b>, where vac is a command line tool that the
 RPM installs in /usr/sbin.
 
-<h2 style="border-bottom: 1px solid">Configuration step-by-step</h2>
+<h2 style="border-bottom: 1px solid"><a name="stepbystep">Configuration step-by-step</a></h2>
 
 <p>
 This part of the guide covers the same ground as the quick start
@@ -157,7 +185,7 @@ and the total number of VMs to create, can be given in /etc/vac.d
 files which are specific to particular subsets of machines. Vac 
 will merge all of this information as outlined above.
 
-<h3>CernVM images</h3>
+<h3><a name="cernvm">CernVM images</a></h3>
 
 <p>
 Vac currently requires the use of CernVM images with HEPiX 
@@ -175,7 +203,7 @@ However, most experiments will supply you with their own
 URL from which Vac can automatically fetch their current
 designated image version, which Vac caches in /var/lib/vac/imagecache .
 
-<h3>DNS, IP, MAC</h3>
+<h3><a name="dnsipmac">DNS, IP, MAC</a></h3>
 
 <p>
 The factory machines must have fully qualified domain names (FDQN) as
@@ -292,7 +320,7 @@ Have the NAT rules been removed?&quot; lines will be included in
 checks may produce false warnings, and they are not an exhaustive check that
 the rules you have are sufficient for Vac.
 
-<h3>Logical volumes</h3>
+<h3><a name="logicalvolumes">Logical volumes</a></h3>
 
 <p>
 Vac virtual machines can use logical volumes on the factory machine
@@ -329,7 +357,7 @@ then multiplied by cpu_per_machine to give the size of logical volume
 to create for each VM at the same time as the VM itself is created. You
 will need about 40GB of space per processor for most machinetypes.
 
-<h3>Installation of Vac: tar vs RPM</h3>
+<h3><a name="installation">Installation of Vac: tar vs RPM</a></h3>
 
 <p>
 RPM is the recommended installation procedure, and RPMs are available
@@ -340,7 +368,7 @@ area</a>.
 It is also possible to install Vac from a tar file, using the install Makefile
 target. 
 
-<h3>Configuration of the Vac space</h3>
+<h3><a name="settings">Configuration of the Vac space</a></h3>
 
 <p>
 The [settings] section must include a vac_space name, which is also used
@@ -361,7 +389,7 @@ For ease of management, the factories option can be placed in its own
 configuration file in /etc/vac.d which can be automatically generated 
 and maintained from another source, such as the site's assets database.
 
-<h3>GOCDB and GGUS</h3>
+<h3><a name="gocdbggus">GOCDB and GGUS</a></h3>
 
 <p>
 Vac is designed to work within the WLCG/EGI grid model of sites composed
@@ -384,7 +412,7 @@ name given by gocdb_sitename in [settings] is included in these records.
 To avoid the risk of polluting the central APEL database with incorrect
 site names, please use your real GOCDB sitename for this option. 
 
-<h3>Setting up machinetypes</h3>
+<h3><a name="machinetypes">Setting up machinetypes</a></h3>
 
 <p>
 One [machinetype ...] section must exist for each machinetype in the system, with
@@ -423,7 +451,7 @@ section and how to create the files to be placed in its subdirectory
 of /var/lib/vac/machinetypes (likely to be a hostcert.pem and hostkey.pem
 pair to give to the VM.)
 
-<h2 style="border-bottom: 1px solid">Starting and stopping vacd</h2>
+<h2 style="border-bottom: 1px solid"><a name="startingstopping">Starting and stopping vacd</a></h2>
 
 <p>
 The Vac daemon, vacd, is started and stopped by /etc/rc.d/init.d/vacd 
@@ -447,7 +475,7 @@ Furthermore, since Vac factory machines are autonomous, it is
 straightforward to upgrade one factory in a production Vac space
 to check the consequences.
 
-<h2 style="border-bottom: 1px solid">Stopping VMs</h2>
+<h2 style="border-bottom: 1px solid"><a name="stoppingvms">Stopping VMs</a></h2>
 
 <p>
 It is possible to use libvirt's virsh command to list and kill 
@@ -469,14 +497,14 @@ to set a shutdown_time that gives a suitable grace period, typically
 allowing at least max_wallclock_seconds to elapse before the
 time of your deadline.
 
-<h2 style="border-bottom: 1px solid">Using the vac command</h2>
+<h2 style="border-bottom: 1px solid"><a name="vaccommand">Using the vac command</a></h2>
 
 <p>
 The vac(1) man page explains how the vac command can be used to
 scan the current Vac space and display the VMs running, along with
 statistics about their CPU load and wall clock time.
 
-<h2 style="border-bottom: 1px solid">Setting up Nagios</h2>
+<h2 style="border-bottom: 1px solid"><a name="nagios">Setting up Nagios</a></h2>
 
 <p>
 The check-vacd script installed in /usr/sbin can be used with
@@ -493,7 +521,7 @@ command[check-vacd]=/usr/sbin/check-vacd 600
 which raises an alarm if the vacd heartbeat wasn't updated in the
 last 600 seconds.
 
-<h2 style="border-bottom: 1px solid">APEL accounting</h2>
+<h2 style="border-bottom: 1px solid"><a name="apel">APEL accounting</a></h2>
 
 <p>
 When Vac detects that a VM has run for at least fizzle_seconds and
@@ -563,15 +591,14 @@ stopped. This should ensure that any accounting messages waiting to be sent
 are passed to the central APEL service as long as the factory is shutdown 
 cleanly.
 
-<h2 style="border-bottom: 1px solid">Puppet</h2>
+<h2 style="border-bottom: 1px solid"><a name="puppet">Puppet</a></h2>
 
 <p>
 A simple Puppet module for Vac exists as the file init.pp which is installed
 in the /usr/share/doc/vac-VERSION directory. There are extensive comments at the 
 start of the file which outline how to use it.
 
-<h2 style="border-bottom: 1px solid">Setting fizzle_seconds and
-backoff_seconds</h2>
+<h2 style="border-bottom: 1px solid"><a name="fizzlebackoff">Setting fizzle_seconds and backoff_seconds</a></h2>
 
 <p>
 For each machinetype you can set values of fizzle_seconds and backoff_seconds
