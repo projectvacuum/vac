@@ -799,7 +799,7 @@ class VacVM:
               'ServiceLevel: ' + str(self.hs06) + '\n' +
               '%%\n')
                           
-      fileName = time.strftime('%H%M%S', nowTime) + str(time.time() % 1)[2:][:8]
+      fileName = time.strftime('%H%M%S', nowTime) + (str(time.time() % 1) + '00000000')[2:10]
                           
       try:
         vac.vacutils.createFile(time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')

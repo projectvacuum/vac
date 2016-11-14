@@ -628,7 +628,7 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
    except:
      pass
 
-   syncFileName = time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d/%H%M%S', gmtime) + str(time.time() % 1)[2:][:8]
+   syncFileName = time.strftime(dirPrefix + '/apel-outgoing/%Y%m%d/%H%M%S', gmtime) + (str(time.time() % 1) + '00000000')[2:10]
 
    if createFile(syncFileName, syncRecord, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, tmpDir):
       print 'Created ' + syncFileName
