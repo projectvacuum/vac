@@ -2,6 +2,7 @@
 - Add cpu_per_superslot to [settings]
 - Add max_cpu, min_cpu to [machinetype ...]
 - Add description to [settings]
+- Add #user_data_url## with URL of the remote user_data file
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

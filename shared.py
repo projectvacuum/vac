@@ -97,7 +97,6 @@ cpuPerMachine = None
 cpuPerSuperslot = None
 versionLogger = None
 machinetypes = None
-machinegroups = None
 vacmons = None
 
 volumeGroup = None
@@ -108,7 +107,7 @@ def readConf():
       global gocdbSitename, \
              factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numCpus, cpuCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, machinegroups, vacmons, \
+             cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, vacmons, \
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -134,7 +133,6 @@ def readConf():
       cpuPerSuperslot = 1
       versionLogger = 1
       machinetypes = {}
-      machinegroups = {}
       vacmons = []
       
       volumeGroup = 'vac_volume_group'
@@ -427,18 +425,13 @@ def readConf():
              if parser.has_option(sectionName, 'accounting_fqan'):
                  machinetype['accounting_fqan'] = parser.get(sectionName, 'accounting_fqan')
              
-             if parser.has_option(sectionName, 'machine_group'):
-                 machinetype['machine_group'] = parser.get(sectionName, 'machine_group')
+             if parser.has_option(sectionName, 'machinegroup'):
+                 machinetype['machinegroup'] = parser.get(sectionName, 'machinegroup')
              elif 'accounting_fqan' in machinetype:
-                 machinetype['machine_group'] = machinetype['accounting_fqan']
+                 machinetype['machinegroup'] = machinetype['accounting_fqan']
              else:
-                 machinetype['machine_group'] = sectionNameSplit[1]
-                           
-             if machinetype['machine_group'] not in machinegroups:
-               machinegroups[machinetype['machine_group']] = { 'share' : 0.0 }
-            
-             machinegroups[machinetype['machine_group']]['share'] += machinetype['share']
-            
+                 machinetype['machinegroup'] = sectionNameSplit[1]
+                                       
              for (oneOption,oneValue) in parser.items(sectionName):
 
                  if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):
@@ -1794,7 +1787,7 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
               response['cookie'] == hashlib.sha256(salt + response['factory']).hexdigest() and \
               'num_machinetypes'	in response and \
               'machinetype'		in response and \
-              'total_hs06'		in response and \
+              'running_hs06'		in response and \
               'num_before_fizzle'	in response and \
               'shutdown_message'	in response and \
               'shutdown_time'		in response and \

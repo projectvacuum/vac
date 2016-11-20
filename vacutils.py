@@ -117,7 +117,9 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
        raise NameError('Failed to read ' + userDataPath + ' (' + str(e) + ')')
 
      c.close()
-     userDataContents = buffer.getvalue()
+
+     # We only do this substitution if it was an HTTP(S) URL
+     userDataContents = buffer.getvalue().replace('##user_data_url##', userDataPath)
 
    # ... or from filesystem
    else:
@@ -133,7 +135,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      except:
        raise NameError('Failed to read ' + userDataFile)
 
-   # Default substitutions
+   # Default substitutions (plus ##user_data_url## possibly done already)
    userDataContents = userDataContents.replace('##user_data_space##',            spaceName)
    userDataContents = userDataContents.replace('##user_data_machinetype##',      machinetypeName)
    userDataContents = userDataContents.replace('##user_data_machine_hostname##', hostName)

@@ -48,6 +48,7 @@ import tempfile
 import hashlib
 import base64
 import multiprocessing
+import operator
 import stat
 import random
 import BaseHTTPServer
@@ -66,25 +67,24 @@ def vacLibvirtErrorHandler(ctxt, err):
 def pollFactories():
 
    responses = vac.shared.sendMachinetypesRequests(clientName = 'vacd-factory')
-
-   # Total HS06 of running/starting VMs per machinetype
-   factoryMachinetypeTotals             = {}
    
-   # Time in Unix seconds of the most recent abort, for each machinetype
-   factoryMachinetypeLastAborts         = {}
+   machinetypesList   = []
+   machinetypeResults = {}
+   machinegroupScores = {}
    
-   # Number of VMs starting or not yet running for at least fizzle_seconds, for each machinetype
-   factoryMachinetypeNumberBeforeFizzle = {}
+   for machinegroup in vac.shared.machinegroups:
+     if vac.shared.machinegroups[machinegroup]['share'] > 0.0:
+       machinegroupScores[machinegroup] = 0.0
 
    # Go through the machinetypes and their responses from the factories
    for machinetypeName in vac.shared.machinetypes:
      if vac.shared.machinetypes[machinetypeName]['share'] <= 0.0:
        continue
-
-     factoryMachinetypeTotals[machinetypeName]             = 0.0
-     factoryMachinetypeLastAborts[machinetypeName]         = 0
-     factoryMachinetypeNumberBeforeFizzle[machinetypeName] = 0
-
+       
+     machinetypeResults[machinetypeName] = { 'score'           : 0.0,
+                                             'lastAbort'       : 0,
+                                             'numBeforeFizzle' : 0  }
+     
      for factoryName in responses:
        try:
          response = responses[factoryName]['machinetypes'][machinetypeName]
@@ -92,11 +92,14 @@ def pollFactories():
          continue
 
        # we only have to add hs06/share for this machinetype to get normalisation at the end automatically
-       factoryMachinetypeTotals[machinetypeName] += response['total_hs06'] / vac.shared.machinetypes[machinetypeName]['share']
+       machinetypeResults[machinetypeName]['score'] += response['running_hs06'] / vac.shared.machinetypes[machinetypeName]['share']
+
+       machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] += response['running_hs06'] / vac.shared.machinetypes[machinetypeName]['share']
+
        vac.vacutils.logLine(factoryName + ' responds, running total for ' + machinetypeName +
-                            ' now ' + str(factoryMachinetypeTotals[machinetypeName]))
+                            ' now ' + str(machinetypeResults[machinetypeName]))
                                
-       factoryMachinetypeNumberBeforeFizzle[machinetypeName] += response['num_before_fizzle']
+       machinetypeResults[machinetypeName]['numBeforeFizzle'] += response['num_before_fizzle']
 
        try:
          # if message with code provided, then we always use it for decisions
@@ -112,14 +115,12 @@ def pollFactories():
            # (VMs can return 700 for transient problems within the VM)
            
            # If this is the most recent abort of this machinetype anywhere in this space
-           if response['shutdown_time'] > factoryMachinetypeLastAborts[machinetypeName]:
-             factoryMachinetypeLastAborts[machinetypeName] = response['shutdown_time']
-                      
-   vac.vacutils.logLine('Final totals ' + str(factoryMachinetypeTotals) + ' HS06')
+           if response['shutdown_time'] > machinetypeResults[machinetypeName]['lastAbort']:
+             machinetypeResults[machinetypeName]['lastAbort'] = response['shutdown_time']
+                           
+   vac.vacutils.logLine('Final totals ' + str(machinetypeResults))
 
-   preferredMachinetypeName = None
-
-   # Go through the machinetypes, trying to pick the best one to start:
+   # Go through the machinetypes, trying to pick ones eligible to start:
    # - Target share must be > 0.0
    # - If there has been an abort, it must be at least backoff_second ago
    # - We extend this backoff by fizzle_seconds if any other VMs of this
@@ -131,30 +132,37 @@ def pollFactories():
    # than one may win the race to be the "first" to try, but this should
    # still be a manageable number for the experiment's Matcher/Task Queue. 
       
-   for machinetypeName, machinetype in vac.shared.machinetypes.iteritems():
-      if machinetype['share'] > 0.0:
+   for machinetypeName in vac.shared.machinetypes:
+      # Say what is happening with all enabled machinetypes
+      if vac.shared.machinetypes[machinetype]['share'] > 0.0:
            vac.vacutils.logLine('For ' + machinetypeName + ', ' +
-                                str(factoryMachinetypeNumberBeforeFizzle[machinetypeName]) + ' are before fizzle_time. ' +
-                                'LastAbort was ' + time.strftime('%b %d %H:%M:%S', time.localtime(factoryMachinetypeLastAborts[machinetypeName])) +
-                                '. VM creation restart at ' +
+                                str(machinetypeResults[machinetypeName]['numBeforeFizzle']) + ' are before fizzle_time. ' +
+                                'LastAbort was ' + time.strftime('%b %d %H:%M:%S', time.localtime(machinetypeResults[machinetypeName]['lastAbort'])) +
+                                '. Machine creation restart at ' +
                                 time.strftime('%b %d %H:%M:%S',
-                                              time.localtime(factoryMachinetypeLastAborts[machinetypeName] +
-                                                             machinetype['backoff_seconds'] +
-                                                             vac.shared.machinetypes[machinetypeName]['fizzle_seconds'] * (factoryMachinetypeNumberBeforeFizzle[machinetypeName] > 0))) + 
+                                              time.localtime(machinetypeResults[machinetypeName]['lastAbort'] +
+                                                             vac.shared.machinetypes[machinetypeName]['backoff_seconds'] +
+                                                             vac.shared.machinetypes[machinetypeName]['fizzle_seconds'] * (machinetypeResults[machinetypeName]['numBeforeFizzle'] > 0))) + 
                                 '.')
 
-      if ((machinetype['share'] > 0.0) and 
+      # But only eligible ones are added to the list we sort and return
+      if ((vac.shared.machinetypes[machinetype]['share'] > 0.0) and 
           ((vac.shared.shutdownTime is None) or (time.time() + vac.shared.machinetypes[machinetypeName]['min_wallclock_seconds'] < vac.shared.shutdownTime)) and
-          (factoryMachinetypeLastAborts[machinetypeName] 
+          (machinetypeResults[machinetypeName]['lastAbort']
               < (int(time.time()) 
-                 - machinetype['backoff_seconds'] 
-                 - vac.shared.machinetypes[machinetypeName]['fizzle_seconds'] * (factoryMachinetypeNumberBeforeFizzle[machinetypeName] > 0)))):
-                      if not preferredMachinetypeName:
-                        preferredMachinetypeName = machinetypeName
-                      elif factoryMachinetypeTotals[machinetypeName] < factoryMachinetypeTotals[preferredMachinetypeName]:
-                        preferredMachinetypeName = machinetypeName
+                 - vac.shared.machinetypes[machinetypeName]['backoff_seconds'] 
+                 - vac.shared.machinetypes[machinetypeName]['fizzle_seconds'] * (machinetypeResults[machinetypeName]['numBeforeFizzle'] > 0)))):
+        machinetypesList.append( { 'machinetypeName'   : machinetypeName, 
+                                   'machinetypeScore'  : machinetypeResults[machinetypeName]['score'],
+                                   'machinegroupScore' : machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] } )
 
-   return preferredMachinetypeName
+   # Sort by machinegroup then machinetype scores, lowest score (ie starving) types at the start of the list
+   machinetypesList.sort(key=operator.attrgetter('machinegroupScore', 'machinetypeScore', 'machinetypeName'))
+
+   vac.vacutils.logLine('Sorted machinegroup/machinetype scores: ' + str(machinetypeLists))
+
+   # Only return a plain list of machinetype names, not the dictionaries with scores
+   return [ machinetype['machinetypeName'] for machinetype in machinetypesList ]
 
 def vacOneCycle():
 
@@ -283,15 +291,13 @@ def vacOneCycle():
        vm.destroyVM()
        
      elif vm.state == vac.shared.VacState.paused:
-       # suspended internally somehow? kill it to be safe
+       # Suspended internally somehow? kill it to be safe
        vac.vacutils.logLine('VM ' + vm.name + ' paused without shutting down - destroying!')
        vm.destroyVM()
 
      if vm.state == vac.shared.VacState.starting and vm.machinetypeName:
+       # If VM is still starting and we've come round again, then starting failed! So we clean up
        vac.vacutils.logLine('VM ' + vm.name + ' still in starting state in a new cycle - cleaning up!')
-       # If VM is still starting and we've come round again, then starting failed!
-       vm.state = vac.shared.VacState.shutdown
-       # Something has gone wrong, so we clean up
        vm.destroyVM()
 
      if vm.state == vac.shared.VacState.shutdown:      
@@ -335,9 +341,12 @@ def vacOneCycle():
              vac.vacutils.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
            else:
              vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
-             preferredMachinetypeName = pollFactories()
+             
+             preferredMachinetypeNames = pollFactories()
 
-             if preferredMachinetypeName:
+             if preferredMachinetypeNames:
+               preferredMachinetypeName = preferredMachinetypeNames[0]:
+             
                vac.vacutils.logLine('Creating ' + vm.name + ' with machinetype ' + preferredMachinetypeName)
                createError = vm.createVM(preferredMachinetypeName)
 
