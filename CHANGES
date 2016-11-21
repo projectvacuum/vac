@@ -1,8 +1,11 @@
-==================== Changes in Vac version 01.01.00 =================== 
+==================== Changes in Vac version 02.00.00 =================== 
 - Add cpu_per_superslot to [settings]
-- Add max_cpu, min_cpu to [machinetype ...]
+- Add max_cpu, min_cpu, machinegroup to [machinetype ...]
 - Add description to [settings]
 - Add #user_data_url## with URL of the remote user_data file
+- Sort eligible machines by machinegroup,machinetype share scores
+- Try to build superslots to handle single and multiprocessor VMs
+- Replace cpu(s) with processor(s) in configuration options
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

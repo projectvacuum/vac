@@ -78,8 +78,8 @@ overloadPerCpu = None
 gocdbSitename = None
 
 factories = None
-hs06PerMachine = None
-mbPerMachine = None
+hs06PerCpu = None
+mbPerCpu = None
 fixNetworking = None
 forwardDev = None
 shutdownTime = None
@@ -93,8 +93,7 @@ udpTimeoutSeconds = None
 vacqueryTries = 5
 vacVersion = None
 
-cpuPerMachine = None
-cpuPerSuperslot = None
+processorsPerSuperslot = None
 versionLogger = None
 machinetypes = None
 vacmons = None
@@ -105,9 +104,9 @@ machinefeaturesOptions = None
 
 def readConf():
       global gocdbSitename, \
-             factories, hs06PerMachine, mbPerMachine, fixNetworking, forwardDev, shutdownTime, \
+             factories, hs06PerCpu, mbPerCpu, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numCpus, cpuCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
-             cpuPerMachine, cpuPerSuperslot, versionLogger, machinetypes, vacmons, \
+             processorsPerSuperslot, versionLogger, machinetypes, vacmons, \
              volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -115,8 +114,8 @@ def readConf():
       gocdbSitename = None
 
       factories = []
-      hs06PerMachine = None
-      mbPerMachine = 2048
+      hs06PerCpu = None
+      mbPerCpu = 2048
       fixNetworking = True
       forwardDev = None
       shutdownTime = None
@@ -129,8 +128,7 @@ def readConf():
       udpTimeoutSeconds = 10.0
       vacVersion = '0.0.0'
 
-      cpuPerMachine = 1
-      cpuPerSuperslot = 1
+      processorsPerSuperslot = 1
       versionLogger = 1
       machinetypes = {}
       vacmons = []
@@ -189,20 +187,32 @@ def readConf():
       if parser.has_option('settings', 'cpu_total'):
           # Option limit on number of processors Vac can allocate.
           numCpus = int(parser.get('settings','cpu_total').strip())
+          print 'cpu_total is deprecated - please use total_processors instead!'
 
           # Check setting against counted number
           if numCpus > cpuCount:
            return 'cpu_total cannot be greater than number of processors!'
+      elif parser.has_option('settings', 'total_processors'):
+          # Option limit on number of processors Vac can allocate.
+          numCpus = int(parser.get('settings','total_processors').strip())
+
+          # Check setting against counted number
+          if numCpus > cpuCount:
+           return 'total_processors cannot be greater than number of processors!'
       else:
           # Defaults to count from /proc/cpuinfo
           numCpus = cpuCount
 
       if parser.has_option('settings', 'total_machines'):
-          print 'total_machines is deprecated. Please use cpu_total and cpu_per_machine in [settings] to control number of VMs'
+          print 'total_machines is deprecated. Please use total_processors in [settings] to control number of VMs'
                                                  
       if parser.has_option('settings', 'overload_per_cpu'):
           # Multiplier to calculate overload veto against creating more VMs
+          print 'overload_per_cpu is deprecated - please use overload_per_processor!'
           overloadPerCpu = float(parser.get('settings','overload_per_cpu'))
+      elif parser.has_option('settings', 'overload_per_processor'):
+          # Multiplier to calculate overload veto against creating more VMs
+          overloadPerCpu = float(parser.get('settings','overload_per_processor'))
              
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
@@ -215,6 +225,10 @@ def readConf():
       elif parser.has_option('settings', 'disk_gb_per_cpu'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
           gbDiskPerCpu = int(parser.get('settings','disk_gb_per_cpu').strip())
+          print 'disk_gb_per_cpu is deprecated - please use disk_gb_per_processor!'
+      elif parser.has_option('settings', 'disk_gb_per_processor'):
+          # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
+          gbDiskPerCpu = int(parser.get('settings','disk_gb_per_processor').strip())
 
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
@@ -258,22 +272,23 @@ def readConf():
              
       if parser.has_option('settings', 'vcpu_per_machine'):
           # Warn that this deprecated
-          cpuPerMachine = int(parser.get('settings','vcpu_per_machine'))
-          print 'vcpu_per_machine is deprecated: please use cpu_per_machine in [settings]'
+          processorsPerSuperslot = int(parser.get('settings','vcpu_per_machine'))
+          print 'vcpu_per_machine is deprecated: please use processors_per_superslot in [settings]'
       elif parser.has_option('settings', 'cpu_per_machine'):
-          # If this isn't set, then we allocate one cpu per VM
-          cpuPerMachine = int(parser.get('settings','cpu_per_machine'))
-             
-      if parser.has_option('settings', 'cpu_per_superslot'):
+          processorsPerSuperslot = int(parser.get('settings','cpu_per_machine'))
+          print 'cpu_per_machine is deprecated: please use processors_per_superslot in [settings]'
+
+      if parser.has_option('settings', 'processors_per_superslot'):
           # If this isn't set, then we allocate one cpu per superslot
-          cpuPerSuperslot = int(parser.get('settings','cpu_per_superslot'))
-             
-      if parser.has_option('settings', 'mb_per_machine'):          
-          mbPerMachine = int(parser.get('settings','mb_per_machine'))
-          print 'mb_per_machine is deprecated: please use mb_per cpu in [settings]'
-      elif parser.has_option('settings', 'mb_per_cpu'):
+          processorsPerSuperslot = int(parser.get('settings','processors_per_superslot'))
+                        
+      if parser.has_option('settings', 'mb_per_cpu'):
           # If this isn't set, then we use default (2048 MiB)
-          mbPerMachine = cpuPerMachine * int(parser.get('settings','mb_per_cpu'))
+          mbPerCpu = int(parser.get('settings','mb_per_cpu'))
+          print 'mb_per_cpu is deprecated - please use mb_per_processor!'
+      elif parser.has_option('settings', 'mb_per_processor'):
+          # If this isn't set, then we use default (2048 MiB)
+          mbPerCpu = int(parser.get('settings','mb_per_processor'))
 
       if parser.has_option('settings', 'shutdown_time'):
         try:
@@ -281,14 +296,14 @@ def readConf():
         except:
           return 'Failed to parse shutdown_time (must be a Unix time seconds date/time)'
 
-      if parser.has_option('settings', 'hs06_per_machine'):
-          hs06PerMachine = float(parser.get('settings','hs06_per_machine'))
-          print 'hs06_per_machine is deprecated: please use hs06_per_cpu in [settings]'
-      elif parser.has_option('settings', 'hs06_per_cpu'):
-          hs06PerMachine = cpuPerMachine * float(parser.get('settings','hs06_per_cpu'))
+      if parser.has_option('settings', 'hs06_per_cpu'):
+          hs06PerCpu = float(parser.get('settings','hs06_per_cpu'))
+          print 'hs06_per_cpu is deprecated - please use hs06_per_processor!'
+      elif parser.has_option('settings', 'hs06_per_processor'):
+          hs06PerCpu = float(parser.get('settings','hs06_per_processor'))
       else:
-          # If this isn't set, then we use the default 1.0 * cpuPerMachine
-          hs06PerMachine = float(cpuPerMachine)
+          # If this isn't set, then we use the default 1.0 per virtual cpu
+          hs06PerCpu = 1.0
 
       try:
           # Get list of factory machines to query via UDP. Leave an empty list if none.
@@ -370,18 +385,18 @@ def readConf():
              else:
                  return 'user_data is now required in each machinetype section!'
 
-             if parser.has_option(sectionName, 'min_cpu'):
-                 machinetype['min_cpu'] = int(parser.get(sectionName, 'min_cpu'))
+             if parser.has_option(sectionName, 'min_processors'):
+                 machinetype['min_processors'] = int(parser.get(sectionName, 'min_processors'))
              else:
-                 machinetype['min_cpu'] = 1
+                 machinetype['min_processors'] = 1
 
-             if parser.has_option(sectionName, 'max_cpu'):
-                 machinetype['max_cpu'] = int(parser.get(sectionName, 'max_cpu'))
+             if parser.has_option(sectionName, 'max_processors'):
+                 machinetype['max_processors'] = int(parser.get(sectionName, 'max_processors'))
              else:             
-                 machinetype['max_cpu'] = 1               
+                 machinetype['max_processors'] = 1               
 
-             if machinetype['max_cpu'] < machinetype['min_cpu']:
-                 return 'max_cpu cannot be less than min_cpu!'
+             if machinetype['max_processors'] < machinetype['min_processors']:
+                 return 'max_processors cannot be less than min_processors!'
 
              if parser.has_option(sectionName, 'log_machineoutputs'):
                  print 'log_machineoutputs has been deprecated: please use machines_dir_days to control this'
@@ -591,29 +606,56 @@ class VacVM:
       self.joboutputsHeartbeat = None
       self.cpuSeconds          = 0
       self.cpuPercentage       = 0
-      self.cpus                = cpuPerMachine
-      self.mb                  = mbPerMachine
+      self.cpus                = 0
+      self.mb                  = 0
       self.hs06                = 0.0
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
+      
+      dom      = None
+      domState = None
 
+      if checkHypervisor:
+        # By default we check the hypervisor, but can set False to disable this in the responder
+        conn = libvirt.open(None)
+        if conn == None:
+          vac.vacutils.logLine('Failed to open connection to the hypervisor')
+          raise
+
+        try:
+          dom = conn.lookupByName(self.name)
+          domState = dom.info()[0]
+        except:
+          pass
+
+        conn.close()
+                                      
       try:
         createdStr, self.machinetypeName, self.uuidStr = open('/var/lib/vac/slots/' + self.name,'r').read().split()
         self.created = int(createdStr)
       except:
+        self.created = None
+
+      if not self.created or not os.path.isdir(self.machinesDir()):
+        # if slot not properly set up or if machines directory is missing then stop now
+        
+        if dom:
+          # if we know a VM is running for this slot, then its a zombie
+          self.state = VacState.zombie
+        else:
+          # just say shutdown (including never created)
+          self.state = VacState.shutdown
+
         self.uuidStr         = None
         self.machinetypeName = None
         self.created         = None
-
-      if not self.created or not self.uuidStr or not self.machinetypeName:
-        # if value of created, UUID, and machinetype not (never?) properly set then stop now
-        self.state = VacState.shutdown
         return
 
       try:
         self.started = int(os.stat(self.machinesDir() + '/started').st_ctime)
-        # state must be running or shutdown
+        # if created and started, state must be running or shutdown
       except:
+        # if created but not yet started, then state is starting
         self.started = None
         self.state = VacState.starting
 
@@ -651,12 +693,12 @@ class VacVM:
       try: 
         self.hs06 = float(open(self.machinesDir() + '/machinefeatures/hs06', 'r').read().strip())
       except:
-        self.hs06 = hs06PerMachine
+        self.hs06 = hs06PerCpu * self.cpus
       
       try: 
         self.mb = (int(open(self.machinesDir() + '/jobfeatures/max_rss_bytes', 'r').read().strip()) / 1048576)
       except:
-        self.mb = mbPerMachine
+        self.mb = mbPerCpu * self.cpus
       
       try:
         # this is written by Vac as it monitors the machine through libvirt
@@ -673,33 +715,14 @@ class VacVM:
         self.cpuPercentage = 0
 
       if checkHypervisor:
-        # By default we check the hypervisor too, but can set False to disable this in the responder
-
-        conn = libvirt.open(None)
-        if conn == None:
-          vac.vacutils.logLine('Failed to open connection to the hypervisor')
-          raise
-
-        try:
-          dom = conn.lookupByName(self.name)
-          domState = dom.info()[0]
-        except:
-          dom = None
-          domState = None
-
-        conn.close()
-                              
-        if dom:
-                
+        # If we checked the hypervisor, then act on what we found
+        if dom:                
           if self.uuidStr != dom.UUIDString():
             # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
             self.state = VacState.zombie
             return
 
-          if domState == libvirt.VIR_DOMAIN_RUNNING or domState == libvirt.VIR_DOMAIN_BLOCKED:
-            # Probably already set above, if self.started is set
-            self.state = VacState.running
-          else:
+          if domState != libvirt.VIR_DOMAIN_RUNNING and domState != libvirt.VIR_DOMAIN_BLOCKED:
             # If domain exists, but not Running/Blocked, then say Paused
             self.state = VacState.paused
             vac.vacutils.logLine('!!! libvirt state is ' + str(domState) + ', setting VacState.paused !!!')
@@ -713,7 +736,7 @@ class VacVM:
         else:
           # Actually, we're shutdown since VM not really running
           self.state = VacState.shutdown
-                  
+
       if self.state == VacState.shutdown:
         try:
           self.shutdownMessage = open(self.machinesDir() + '/joboutputs/shutdown_message', 'r').read().strip()
@@ -747,13 +770,15 @@ class VacVM:
         pass
                                   
    def createFinishedFile(self):
-      try:
-        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished',
+   
+      if os.path.isdir(self.machinesDir()):
+        try:
+          vac.vacutils.createFile(self.machinesDir() + '/finished',
                                 '',
                                 stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      except:
-        vac.vacutils.logLine('Failed creating /var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/finished')
+        except:
+          vac.vacutils.logLine('Faied creating ' + self.machinesDir() + '/finished')
 
       # Update the file for this machinetype in the finishes directory, about the most recently created but already finished machine
 
@@ -913,38 +938,31 @@ class VacVM:
 
       # HEPSPEC06 per virtual machine
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/hs06',
-                 str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(hs06PerCpu * self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Easy in 2016 MJF
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/total_cpu',
-                 str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. We don't know the physical vs logical cores distinction here so we just use cpu
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/phys_cores',
-                 str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. Again just use cpu
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/log_cores',
-                 str(cpuPerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. Tell them they have the whole VM to themselves; they are in the only jobslot here
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/jobslots',
                 '1', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-      # Use earlier shutdown time if given in config
-      now = int(time.time())
-      tmpShutdownTime = int(now + machinetypes[self.machinetypeName]['max_wallclock_seconds'])
       
-      if shutdownTime and (shutdownTime < tmpShutdownTime):
-        tmpShutdownTime = shutdownTime
-      
-      cpuLimitSecs = tmpShutdownTime - now
+      cpuLimitSecs = self.shutdownTime - int(time.time())
       if (cpuLimitSecs < 0):
         cpuLimitSecs = 0
 
       # calculate the absolute shutdown time for the VM, as a machine
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/shutdowntime',
-                 str(tmpShutdownTime),
+                 str(self.shutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # additional machinefeatures options defined in configuration
@@ -958,7 +976,7 @@ class VacVM:
       
       # Calculate the absolute shutdown time for the VM, as a job
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/shutdowntime_job',
-                 str(tmpShutdownTime),
+                 str(self.shutdownTime),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. We don't do this, so just say 1.0 for cpu factor
@@ -967,13 +985,13 @@ class VacVM:
 
       # Deprecated. For the scaled cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpu_limit_secs_lrms',
-                 str(cpuLimitSecs * cpuPerMachine),
+                 str(cpuLimitSecs * self.cpus),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
 
       # For the cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpu_limit_secs',
-                 str(cpuLimitSecs * cpuPerMachine),
+                 str(cpuLimitSecs * self.cpus),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. For the scaled wallclock limit, we use the wallclock seconds without factoring in cpu
@@ -992,43 +1010,38 @@ class VacVM:
 
       # We are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
-                 str(now), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(int(time.time())), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
                  
                  
 
       # Job=VM so per-job HEPSPEC06 is same as hs06
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/hs06_job',
-                 str(hs06PerMachine), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(hs06PerCpu * self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # mbPerMachine is in units of 1024^2 bytes
+      # mbPerCpu is in units of 1024^2 bytes
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/max_rss_bytes',
-                 str(mbPerMachine * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(mbPerCpu * self.cpus * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # Deprecated. mbPerMachine is in units of 1024^2 bytes, whereas old jobfeatures wants 1000^2!!!
+      # Deprecated. mbPerCpu is in units of 1024^2 bytes, whereas old jobfeatures wants 1000^2!!!
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/mem_limit_MB',
-                 str((mbPerMachine * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str((mbPerCpu * self.cpus * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
 
       # cpuPerMachine again
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/allocated_cpu',
-                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.cpus) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. cpuPerMachine again
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/allocated_CPU',
-                 str(cpuPerMachine) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.cpus) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # We do not know max_swap_bytes or scratch_limit_bytes so ignore them
 
    def setupUserDataContents(self):
  
-      tmpShutdownTime = int(time.time() + machinetypes[self.machinetypeName]['max_wallclock_seconds'])
-      
-      if shutdownTime and (shutdownTime < tmpShutdownTime):
-        tmpShutdownTime = shutdownTime
-        
       try:
         userDataContents = vac.vacutils.createUserData(
-                                               shutdownTime       = tmpShutdownTime,
+                                               shutdownTime       = self.shutdownTime,
                                                machinetypePath	  = '/var/lib/vac/machinetypes/' + self.machinetypeName,
                                                options		  = machinetypes[self.machinetypeName],
                                                versionString	  = 'Vac ' + vacVersion,
@@ -1077,9 +1090,11 @@ class VacVM:
         except:
           pass
 
-   def createVM(self, machinetypeName):
+   def createVM(self, machinetypeName, cpus, shutdownTime):
       self.model           = machinetypes[machinetypeName]['machine_model']
+      self.cpus            = cpus
       self.created         = int(time.time())
+      self.shutdownTime    = shutdownTime
       self.machinetypeName = machinetypeName
       self.uuidStr         = str(uuid.uuid4())
       scratch_disk_xml     = ""
@@ -1199,7 +1214,7 @@ class VacVM:
           # Create big empty disk file for CernVM
 
           try:
-            gbDisk = (gbDiskPerCpu if gbDiskPerCpu else gbDiskPerCpuDefault) * cpuPerMachine
+            gbDisk = (gbDiskPerCpu if gbDiskPerCpu else gbDiskPerCpuDefault) * self.cpus
           
             fTmp, rootDiskFileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
             vac.vacutils.logLine('Make ' + str(gbDisk) + ' GB sparse file ' + rootDiskFileName)
@@ -1248,9 +1263,9 @@ class VacVM:
       xmldesc=( """<domain type='kvm'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
-  <memory unit='MiB'>""" + str(mbPerMachine) + """</memory>
-  <currentMemory unit='MiB'>"""  + str(mbPerMachine) + """</currentMemory>
-  <vcpu>""" + str(cpuPerMachine) + """</vcpu>
+  <memory unit='MiB'>""" + str(mbPerCpu * self.cpus) + """</memory>
+  <currentMemory unit='MiB'>"""  + str(mbPerCpu * self.cpus) + """</currentMemory>
+  <vcpu>""" + str(self.cpus) + """</vcpu>
   <os>
     <type arch='x86_64' machine='pc'>hvm</type>
     <boot dev='cdrom'/>
@@ -1376,10 +1391,10 @@ class VacVM:
 
      if gbDiskPerCpu:
        # Fixed size has been given in configuration. Round down to match extent size.
-       sizeToCreate = ((gbDiskPerCpu * cpuPerMachine * 1000000000) / vgExtentBytes) * vgExtentBytes
+       sizeToCreate = ((gbDiskPerCpu * self.cpus * 1000000000) / vgExtentBytes) * vgExtentBytes
      else:
        # Not given, so calculate. Round down to match extent size.
-       sizeToCreate = ((cpuPerMachine * (vgTotalBytes - vgNonVacBytes) / numCpus) / vgExtentBytes) * vgExtentBytes
+       sizeToCreate = ((self.cpus * (vgTotalBytes - vgNonVacBytes) / numCpus) / vgExtentBytes) * vgExtentBytes
      
      os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
 
@@ -2038,7 +2053,6 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        try:
          (createdStr, machinetypeNameTmp, uuidStr) = open('/var/lib/vac/slots/' + name,'r').read().split()
          created = int(createdStr)
-
        except:
          continue
 
@@ -2046,7 +2060,9 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          continue
 
        machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
-# what if machinesDir doesn't exist? (eg has been cleaned up??)
+       if not os.path.isdir(machinesDir):
+         # machines directory has been cleaned up?
+         continue
 
        try:
          timeStarted = int(os.stat(machinesDir + '/started').st_ctime)
@@ -2059,14 +2075,14 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          timeHeartbeat = None
 
        try:                  
-         hs06 = float(open(machinesDir + '/jobfeatures/hs06_job', 'r').readline())
-       except:
-         hs06 = hs06PerMachine
-
-       try:                  
          numCpu = float(open(machinesDir + '/jobfeatures/allocated_cpu', 'r').readline())
        except:
-         numCpu = cpuPerMachine
+         numCpu = 1
+
+       try:                  
+         hs06 = float(open(machinesDir + '/jobfeatures/hs06_job', 'r').readline())
+       except:
+         hs06 = hs06PerCpu * numCpu
 
        hasFinished = os.path.exists(machinesDir + '/finished')
 
@@ -2229,10 +2245,10 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'running_cpus'             : runningCpus,
                 'running_machines'         : runningMachines,
                 'running_hs06'             : runningHS06,
-                'total_machines'           : numCpus / cpuPerMachine, # deprecated
-                'total_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine, # deprecated
-                'max_machines'             : numCpus / cpuPerMachine,
-                'max_hs06'		   : numCpus * hs06PerMachine / cpuPerMachine,
+                'total_machines'           : numCpus, # deprecated
+                'total_hs06'		   : numCpus * hs06PerCpu, # deprecated
+                'max_machines'             : numCpus,
+                'max_hs06'		   : numCpus * hs06PerCpu,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
@@ -2258,125 +2274,4 @@ def makeFactoryResponse(cookie, clientName = '-'):
    
 
    return json.dumps(responseDict)
-
-def publishGlueStatus():
-# Gather data about this space and its machinetypes
-#  responses = vac.shared.sendMachinesRequests(factoryList)
-#  responses = vac.shared.sendMachinetypesRequests(factoryList)
-#  responses = vac.shared.sendFactoriesRequests(factoryList)
-# Count up the required totals
-# Create and publish 2.0 JSON
-# Create and publish 2.1 JSON
-     
-    responses = vac.shared.sendMachinesRequests(factoryList)
-    responses = vac.shared.sendMachinetypesRequests(factoryList)
-    responses = vac.shared.sendFactoriesRequests(factoryList)
-
-def createGlueStatus(glueVersion = '2.0', runningMachines = 0, totalMachines = 0):
-    """Return a GLUE 2.0/2.1 JSON string describing this space's status"""
-
-    if glueVersion == '2.0':
-      attributePrefix          = ''
-      jobsOrVM                 = 'Jobs'
-    elif glueVersion == '2.1':
-      attributePrefix          = 'Cloud'
-      jobsOrVM                 = 'VM'
-    else:
-      return
-
-    glue2 = { attributePrefix + 'ComputingService' : [ {
-                     'CreationTime'       : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                     'ID'                 : 'urn:glue2:' + attributePrefix + 'ComputingService:' + spaceName,
-                     'Name'               : 'Vac',
-                     'Type'               : 'uk.ac.gridpp.vac',
-                     'QualityLevel'       : 'production',
-                     'Running' + jobsOrVM : self.runningMachines,
-                     'Total' + jobsOrVM   : self.totalMachines
-                                                       } ]
-            }
-                 
-    computingShares           = []
-    mappingPolicies           = []
-    executionEnvironments     = []
-    cloudComputeInstanceTypes = []
-
-    for machinetypeName in self.machinetypes:
-
-      # (Cloud)ComputingShare
-      
-      tmpDict = {
-                    'Associations'   : { 'ServiceID' : 'urn:glue2:' + attributePrefix + 'ComputingService:' + self.spaceName },
-                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                    'ID'             : 'urn:glue2:' + attributePrefix + 'ComputingShare:' + self.spaceName + ':' + machinetypeName,
-                    'Name'           : machinetypeName,
-                    'Running' + jobsOrVM : self.machinetypes[machinetypeName].runningMachines,
-                    'ServingState'   : 'production'
-                }
-
-      if glueVersion == '2.0':
-        tmpDict['MaxWallTime']    = self.machinetypes[machinetypeName].max_wallclock_seconds
-        tmpDict['MaxCPUTime']     = self.machinetypes[machinetypeName].max_wallclock_seconds
-        tmpDict['MaxTotalJobs']   = self.machinetypes[machinetypeName].max_machines
-        tmpDict['MaxRunningJobs'] = self.machinetypes[machinetypeName].max_machines
-        tmpDict['TotalJobs']      = self.machinetypes[machinetypeName].totalMachines
-      elif glueVersion == '2.1':
-        tmpDict['MaxVM']          = self.machinetypes[machinetypeName].max_machines
-        tmpDict['TotalVM']        = self.machinetypes[machinetypeName].totalMachines
-
-      computingShares.append(tmpDict)
-
-      # Mapping policy
-
-      try:
-        vo = self.machinetypes[machinetypeName].accounting_fqan.split('/')[1]
-      except:
-        pass
-      else:                
-        mappingPolicies.append({
-                    'Associations'   : { 'ShareID' : 'urn:glue2:' + attributePrefix + 'ComputingShare:' + self.spaceName + ':' + machinetypeName },
-                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                    'ID'             : 'urn:glue2:MappingPolicy:' + self.spaceName + ':' + machinetypeName,
-                    'Name'           : machinetypeName,
-                    'Rule'           : [ 'VO:' + vo, 'VOMS:' + self.machinetypes[machinetypeName].accounting_fqan ],
-                    'Scheme'         : 'org.glite.standard'
-                               })
-
-      # ExecutionEnvironment or CloudComputeInstanceType
-
-      if glueVersion == '2.0':
-        executionEnvironments.append({
-                    'Associations'   : { 'ShareID' : 'urn:glue2:ComputingShare:' + self.spaceName + ':' + machinetypeName },
-                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                    'ID'             : 'urn:glue2:ExecutionEnvironment:' + self.spaceName + ':' + machinetypeName,
-                    'Name'           : machinetypeName,
-                    'Platform'       : 'x86_64',
-                    'OSFamily'       : 'linux',
-                    'OSName'         : 'CernVM 3'
-                                     })
-      elif glueVersion == '2.1':
-        cloudComputeInstanceTypes.append({
-                    'Associations'   : { 'ShareID' : 'urn:glue2:CloudComputingShare:' + self.spaceName + ':' + machinetypeName },
-                    'CreationTime'   : time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                    'ID'             : 'urn:glue2:CloudComputeInstanceType:' + self.spaceName + ':' + machinetypeName,
-                    'Name'           : machinetypeName,
-                    'Platform'       : 'x86_64'
-                                         })
-
-    if len(computingShares) > 0:
-      glue2[attributePrefix + 'ComputingShare'] = computingShares
-
-      if len(mappingPolicies) > 0:
-        glue2['MappingPolicy'] = mappingPolicies
-        
-      if len(executionEnvironments) > 0:
-        glue2['ExecutionEnvironment'] = executionEnvironments
-
-      if len(cloudComputeInstanceTypes) > 0:
-        glue2['CloudComputeInstanceType'] = cloudComputeInstanceTypes
-
-    try:
-      vac.vacutils.createFile('/var/lib/vcycle/spaces/' + self.spaceName + '/glue-' + glueVersion + '.json', json.dumps(self.glue2), 
-                                 0644, '/var/lib/vcycle/tmp')
-    except:
-      vacvacutils.logLine('Failed writing GLUE ' + glueVersion + ' JSON to /var/lib/vcycle/spaces/' + self.spaceName + '/glue-' + glueVersion + '.json')
 

@@ -48,32 +48,29 @@ machinetype.
 is how long to wait before giving up on more UDP replies. Defaults to 10.0
 seconds.
 
-.B cpu_per_machine
-sets the number of virtual CPUs to assign to each VM. Along with cpu_total,
-this is also used when calculating how many virtual machines can be created.
-Defaults to 1.
-
-.B mb_per_cpu
-sets the memory allocated for each CPU in a VM in MiB (1024^2). If
-enough VMs will underuse memory or KSM is enabled, then it may be more
+.B mb_per_processor
+sets the memory allocated for each processor in a VM in MiB (1024^2).
+If enough VMs will underuse memory or KSM is enabled, then it may be more
 efficient to increase this value and overcommit the factory's physical
 memory to prevent the VM kernels from believing they need to swap.
 Defaults to 2048.
 
-.B hs06_per_cpu
-gives the HEPSPEC06 power of each CPU in a virtual machine. This is used
+.B hs06_per_processor
+gives the HEPSPEC06 power of each processor in a virtual machine. This is used
 to calculate the total value /etc/machinefeatures/hs06 inside the VM and 
 when writing APEL accounting records. Defaults to 1.
 
-.B cpu_per_superslot
-sets size of the superslots, as the number of virtual CPUs which can be 
-allocated from each superslot.
-Defaults to 1 (effectively disabling the superslot mechanism.)
+.B processors_per_superslot
+sets size of the superslots, as the total number of logical processors which
+can be allocated to single or multiprocessor VMs in each superslot. See 
+.B SUPERSLOTS AND MULTIPROCESSOR VMs
+for more details. Defaults to 1, 
+disabling the superslot mechanism and multiprocessor VMs.
 
 .B shutdown_time
 can be set to apply a limit on the shutdown time for all VMs. This value is 
 used if it is ever earlier than the shutdown time calculated from the 
-machinetype's max_wallclock_seconds. In this case $MACHINEFEATURES/shutdowntime 
+machinetype's max_wallclock_seconds. In this case $MACHINEFEATURES/shutdowntime
 is updated for the VM and Vac will kill the VM if that shutdown time is
 reached. As shutdown_time is approached, VMs will be created with shorter
 and shorter lifetimes if their min_wallclock_seconds settings permit.
@@ -105,16 +102,15 @@ If set, this option gives a space-separated list of HOST:PORT to send
 VacQuery UDP messages to. This can be used to monitor the ongoing status
 of factories and VMs via site or central VacMon services.
 
-.B cpu_total 
+.B total_processors
 is derived from /proc/cpuinfo by default and does not usually need to be 
 set explicitly. If set, then it provides an additional limit on the number 
-of virtual machines that will be created, calculated as cpu_total divided
-by cpu_per_machine. This allows you to reduce the number
-of running VMs on a factory machine without having to kill running VMs.
-Instead, they are allowed to finish one by one and are only recreated if 
-cpu_total allows. 
+of virtual machines that will be created. This allows you to reduce the 
+number of running VMs on a factory machine without having to kill running 
+VMs. Instead, they are allowed to finish one by one and are only recreated
+if total_processors allows.
 
-.B overload_per_cpu
+.B overload_per_processor
 sets the level of load per processor on the factory machine which will 
 temporarily prevent the creation of more VMs. The number of processors is
 counted using /proc/cpuinfo and the one minute load average is taken from 
@@ -124,18 +120,19 @@ to the current overall load figure. Values of around 2.0 are ok
 with well-behaved VMs, but the default is more cautious. Default 1.25.
 
 .B volume_group
-can be used to set the volume group to be searched for a logical volume
-which can be used by a particular VM. The logical volumes must have the
+can be used to set the volume group in which a logical volume will
+be created for each VM. The logical volumes will have the
 VMs' fully qualified domain names as their names. For example, 
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
-.B disk_gb_per_cpu
+.B disk_gb_per_processor
 explicitly sets the size of disks to create for VMs in GB (1000^3). For
-logical volumes, Vac normally creates the disk size using the space 
-available to Vac in volume_group, cpu_total, and cpu_per_machine. For
-file-backed virtual disks, the default value of 40 GB is used unless
-overriden by disk_gb_per_cpu.
+logical volumes, Vac normally calculates the disk size using the space 
+available to Vac in volume_group, total_processors, and the number of 
+processors allocated to the virtual machine. For file-backed virtual 
+disks, the default value of 40 GB is used unless overriden by 
+disk_gb_per_processor.
 
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking
@@ -235,7 +232,14 @@ running after this amount of time. Default 86400.
 .B min_wallclock_seconds
 gives the minimum remaining time required when creating a VM. This
 can be used to stop Vac creating VMs with short lifetimes when
-shutdown_time has been set. Default max_wallclock_seconds.
+shutdown_time has been set or when building superslots. Default 
+max_wallclock_seconds.
+
+.B min_processors
+and
+.B max_processors
+give the minimum and maximum number of logical processors which can be 
+allocated to VMs of this type when they are created.
 
 .B root_device
 is the device name exposed to the VM that is associated with the root
@@ -357,6 +361,18 @@ and
 .B ##user_data_vmlm_hostname##
 (deprecated) 
 are the hostname of the Vac factory machine.
+
+.SH SUPERSLOTS AND MULTIPROCESSOR VMs
+
+By setting processors_per_superslot in [settings] to a value greater than
+one, Vac will attempt to create VMs in groups with the same finishing time.
+This causes groups of processors to become available at the same time
+which enables the creation of VMs which require multiple virtual 
+CPUs. When creating these VMs, the max_processors and min_processors values
+from the relevant machinetype section determines the VM's requirements.
+The max_wallclock_seconds and min_wallclock_seconds values are used
+to determine whether there is suffcient time to create a VM of that
+machinetype.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>

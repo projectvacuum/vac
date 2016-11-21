@@ -72,12 +72,10 @@ def pollFactories():
    machinetypeResults = {}
    machinegroupScores = {}
    
-   for machinegroup in vac.shared.machinegroups:
-     if vac.shared.machinegroups[machinegroup]['share'] > 0.0:
-       machinegroupScores[machinegroup] = 0.0
-
    # Go through the machinetypes and their responses from the factories
    for machinetypeName in vac.shared.machinetypes:
+     machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] = 0.0
+   
      if vac.shared.machinetypes[machinetypeName]['share'] <= 0.0:
        continue
        
@@ -93,7 +91,6 @@ def pollFactories():
 
        # we only have to add hs06/share for this machinetype to get normalisation at the end automatically
        machinetypeResults[machinetypeName]['score'] += response['running_hs06'] / vac.shared.machinetypes[machinetypeName]['share']
-
        machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] += response['running_hs06'] / vac.shared.machinetypes[machinetypeName]['share']
 
        vac.vacutils.logLine(factoryName + ' responds, running total for ' + machinetypeName +
@@ -134,7 +131,7 @@ def pollFactories():
       
    for machinetypeName in vac.shared.machinetypes:
       # Say what is happening with all enabled machinetypes
-      if vac.shared.machinetypes[machinetype]['share'] > 0.0:
+      if vac.shared.machinetypes[machinetypeName]['share'] > 0.0:
            vac.vacutils.logLine('For ' + machinetypeName + ', ' +
                                 str(machinetypeResults[machinetypeName]['numBeforeFizzle']) + ' are before fizzle_time. ' +
                                 'LastAbort was ' + time.strftime('%b %d %H:%M:%S', time.localtime(machinetypeResults[machinetypeName]['lastAbort'])) +
@@ -146,7 +143,7 @@ def pollFactories():
                                 '.')
 
       # But only eligible ones are added to the list we sort and return
-      if ((vac.shared.machinetypes[machinetype]['share'] > 0.0) and 
+      if ((vac.shared.machinetypes[machinetypeName]['share'] > 0.0) and 
           ((vac.shared.shutdownTime is None) or (time.time() + vac.shared.machinetypes[machinetypeName]['min_wallclock_seconds'] < vac.shared.shutdownTime)) and
           (machinetypeResults[machinetypeName]['lastAbort']
               < (int(time.time()) 
@@ -157,9 +154,9 @@ def pollFactories():
                                    'machinegroupScore' : machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] } )
 
    # Sort by machinegroup then machinetype scores, lowest score (ie starving) types at the start of the list
-   machinetypesList.sort(key=operator.attrgetter('machinegroupScore', 'machinetypeScore', 'machinetypeName'))
+   machinetypesList.sort(key=operator.itemgetter('machinegroupScore', 'machinetypeScore', 'machinetypeName'))
 
-   vac.vacutils.logLine('Sorted machinegroup/machinetype scores: ' + str(machinetypeLists))
+   vac.vacutils.logLine('Sorted machinegroup/machinetype scores: ' + str(machinetypesList))
 
    # Only return a plain list of machinetype names, not the dictionaries with scores
    return [ machinetype['machinetypeName'] for machinetype in machinetypesList ]
@@ -210,7 +207,6 @@ def vacOneCycle():
 
    vac.vacutils.logLine('At most ' + str(vac.shared.numMachineSlots) + ' VMs can be created on this VM factory')
    vac.vacutils.logLine('Machine types configuration: ' + str(vac.shared.machinetypes))
-   vac.vacutils.logLine('Machine groups configuration: ' + str(vac.shared.machinegroups))
    vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
    # These are updated at the END of each cycle of the for loop
@@ -218,39 +214,43 @@ def vacOneCycle():
    runningCpus    = 0
    runningCount   = 0
    runningHS06    = 0.0
-   ableToStartOne = True
+   superslots     = {}
    
    vacDiskStatFS = os.statvfs('/var/lib/vac')
    if vacDiskStatFS.f_bavail * vacDiskStatFS.f_frsize < 1024 * 1024 * 1024:
      vac.vacutils.logLine('Less than 1 GB space in /var/lib/vac - will not try creating new VMs')
      ableToStartOne = False
    
+   lowestFreeSlot = None
+   
    for ordinal in range(vac.shared.numMachineSlots):
    
      vmname = vac.shared.nameFromOrdinal(ordinal)   
      vm     = vac.shared.VacVM(ordinal)
      
-     if hasattr(vm, 'shutdownMessage') and vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
-      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
+     if vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
+      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.cpus) + ' ' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
                            ') Minimum ' + str(vm.machinetypeName) + ' fizzle_seconds=' + str(vm.heartbeat - vm.started) + ' ?')
-     elif hasattr(vm, 'shutdownMessage') and vm.shutdownMessage:
-      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
+     elif vm.shutdownMessage:
+      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.cpus) + ' ' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + ')')
      else:
-      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.machinetypeName) + ' "" ' + str(vm.uuidStr) + ')')
+      vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.cpus) + ' ' + str(vm.machinetypeName) + ' "" ' + str(vm.uuidStr) + ')')
      
      if vm.state == vac.shared.VacState.running:
        # VM is happily running so we redo the machine's heartbeat file
        vm.createHeartbeatFile()
        
-       if vac.shared.shutdownTime and (not self.shutdownTime or (vac.shared.shutdownTime < self.shutdownTime)):
+       if vac.shared.shutdownTime and (not vm.shutdownTime or (vac.shared.shutdownTime < vm.shutdownTime)):       
+         vm.shutdownTime = vac.shared.shutdownTime
+
          # need to reduce shutdowntime in the VM
          try:
-           vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/shutdowntime',
-                                    str(vac.shared.shutdownTime),
+           vac.vacutils.createFile(vm.machinesDir() + '/machinefeatures/shutdowntime',
+                                    str(vm.shutdownTime),
                                     stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-           vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/shutdowntime_job',
-                                    str(vac.shared.shutdownTime),
+           vac.vacutils.createFile(vm.machinesDir() + '/jobfeatures/shutdowntime_job',
+                                    str(vm.shutdownTime),
                                     stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
          except:
            pass
@@ -301,80 +301,128 @@ def vacOneCycle():
        vm.destroyVM()
 
      if vm.state == vac.shared.VacState.shutdown:      
-       # Delete logical volume if present
-       vm.removeLogicalVolume()
-
-       if not vm.finished:
-       # Create the finished file for the responder if not already there
+       if vm.created and not vm.finished:
+         # destroyVM() makes the finished file so we don't keep doing this
          vm.destroyVM()
        
          if vm.started:
-               vm.writeApel()
-               vac.vacutils.logLine('Create finished file for VM ' + vm.name)
-               vm.createFinishedFile()
+           vm.writeApel()
+           vac.vacutils.logLine('Create finished file for VM ' + vm.name)
+           vm.createFinishedFile()
 
-         elif vm.created:
-               vac.vacutils.logLine('Create finished file for only-starting VM ' + vm.name)
-               vm.createFinishedFile()
-  
-       # we will only start one VM per cycle
-       if ableToStartOne:
-         vac.vacutils.logLine('Start a VM recreation attempt (only one this cycle)')
-         # Remember we've tried to start one this cycle
-         ableToStartOne = False
-
-         # as VM is shutdown, we see if we can restart it
-         if vac.shared.loadAvg() > (vac.shared.overloadPerCpu * vac.shared.cpuCount):
-           vac.vacutils.logLine('VM not recreated as load average is > overload_per_cpu(' + str(vac.shared.overloadPerCpu) + ') * cpu count(' + str(vac.shared.cpuCount) + ')')
-         elif vac.shared.shutdownTime and (vac.shared.shutdownTime < int(time.time())):
-           vac.vacutils.logLine('VM not recreated as shutdown_time = ' + str(vac.shared.shutdownTime) + ' has already passed')
          else:
-           # count up the running VMs' CPUs on the this factory
-           totalCpusForCount = 0
+           vac.vacutils.logLine('Create finished file for only-starting VM ' + vm.name)
+           vm.createFinishedFile()
   
-           for ordinal in range(vac.shared.numMachineSlots):
-             vmForCount = vac.shared.VacVM(ordinal)
-             if vmForCount.state == vac.shared.VacState.running:
-                totalCpusForCount += vmForCount.cpus
-
-           if (totalCpusForCount + vac.shared.cpuPerMachine) > vac.shared.numCpus:
-             vac.vacutils.logLine('VM not recreated due to cpu_total or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
-           else:
-             vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
-             
-             preferredMachinetypeNames = pollFactories()
-
-             if preferredMachinetypeNames:
-               preferredMachinetypeName = preferredMachinetypeNames[0]:
-             
-               vac.vacutils.logLine('Creating ' + vm.name + ' with machinetype ' + preferredMachinetypeName)
-               createError = vm.createVM(preferredMachinetypeName)
-
-               if createError:
-                 vac.vacutils.logLine('VM creation fails with: ' + createError)
-                 vac.vacutils.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-               else:
-                 # We update heartbeat after creating a VM in case that took a while
-                 vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-                 # If no VM creation errors, then cleanup any old message   
-                 try:
-                   os.remove('/var/lib/vac/factory-error')
-                 except OSError:
-                   pass
-             else:
-               vac.vacutils.logLine('No machinetype suitable for creation in this cycle')
+       if lowestFreeSlot is None:
+         lowestFreeSlot = ordinal
 
      if vm.state == vac.shared.VacState.running:
        runningCpus += vm.cpus
        runningHS06 += vm.hs06
+       
+       if vm.shutdownTime in superslots:
+         superslots[vm.shutdownTime] += vm.cpus
+       else:
+         superslots[vm.shutdownTime]  = vm.cpus
 
-     # the createVM and destroyVM methods update VacVM.state
+     # the destroyVM method updates VacVM.state
      if vm.state == vac.shared.VacState.running:
        runningCount += 1
-
+  
    # finished with all VMs, so output counts for Nagios etc
    vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d %.2f' % (runningCount,vac.shared.numMachineSlots,runningCpus,vac.shared.numCpus,runningHS06), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+   # Try to create new VM
+   vac.vacutils.logLine('Start a VM creation attempt (only one this cycle)')
+   
+   vac.vacutils.logLine('Superslots: ' + str(superslots))
+
+   # See if we can start a VM 
+   if vac.shared.loadAvg() > (vac.shared.overloadPerCpu * vac.shared.cpuCount):
+     # cpuCount is all logical processors on this factory
+     vac.vacutils.logLine('VM not created as load average is > overload_per_cpu(' + str(vac.shared.overloadPerCpu) + ') * cpu count(' + str(vac.shared.cpuCount) + ')')
+   elif vac.shared.shutdownTime and (vac.shared.shutdownTime < int(time.time())):
+     vac.vacutils.logLine('VM not created as shutdown_time = ' + str(vac.shared.shutdownTime) + ' has already passed')
+   elif runningCpus >= vac.shared.numCpus:
+     # numCpus is the number of logical processors which can be allocated to VMs
+     vac.vacutils.logLine('VM not created due to total_processors or /proc/cpuinfo limit (' + str(vac.shared.numCpus) + ')')
+   else:  
+     vac.vacutils.logLine('Query factories and try to recreate ' + vm.name)
+                          
+     eligibleMachinetypeNames = pollFactories()
+
+     if eligibleMachinetypeNames:
+       chosenMachinetypeName = None
+     
+       # Running total of available CPUs: decreases as we allocate them to existing Super Slots
+       freeCpus = vac.shared.numCpus - runningCpus
+     
+       for superslotTime in sorted(superslots):
+         if superslots[superslotTime] % vac.shared.processorsPerSuperslot == 0:
+           # This superslot is already complete (modulo in case > 1 identical superslots)
+           continue
+       
+         # How many CPUs would be needed to complete superslot (modulo processorsPerSuperslot in case of > 1 identical superslots
+         # and limited by the number of free CPUs overall)
+         freeSuperslotCpus = min(freeCpus, vac.shared.processorsPerSuperslot - superslots[superslotTime] % vac.shared.processorsPerSuperslot)
+                  
+         # Reduce the total of available CPUs by the same amount: they belong to this superslot now
+         freeCpus -= freeSuperslotCpus
+
+         for machinetypeName in eligibleMachinetypeNames:
+           # Check CPU and time limits
+           
+           if freeSuperslotCpus >= vac.shared.machinetypes[machinetypeName]['min_processors'] and \
+              superslotTime - time.time() >= vac.shared.machinetypes[machinetypeName]['min_wallclock_seconds'] and \
+              superslotTime - time.time() <= vac.shared.machinetypes[machinetypeName]['max_wallclock_seconds']:
+             # Found a match, so record this              
+             chosenMachinetypeName = machinetypeName
+             chosenCpus            = min(freeSuperslotCpus, vac.shared.machinetypes[machinetypeName]['max_processors'])
+             chosenShutdownTime    = superslotTime
+             vac.vacutils.logLine('Creating VM in existing superslot finishing at %d with %d/%d CPUs' % (chosenShutdownTime, superslots[superslotTime], vac.shared.processorsPerSuperslot))
+             break
+
+         if chosenMachinetypeName:
+           break          
+
+       # If can't add to an existing superslot, try to create a new one out of freeCpus
+       if not chosenMachinetypeName and freeCpus > 0:
+         for machinetypeName in eligibleMachinetypeNames:
+           # Check CPU and time limits
+           if freeCpus >= vac.shared.machinetypes[machinetypeName]['min_processors']:
+             # Found a match, so record this
+             chosenMachinetypeName = machinetypeName
+             chosenCpus            = min(freeCpus, vac.shared.machinetypes[machinetypeName]['max_processors'])
+             chosenShutdownTime    = int(time.time()) + vac.shared.machinetypes[machinetypeName]['max_wallclock_seconds']
+             vac.vacutils.logLine('Creating VM in a new superslot finishing at ' + str(chosenShutdownTime))
+             break
+
+       if chosenMachinetypeName:
+         vmname = vac.shared.nameFromOrdinal(lowestFreeSlot)
+         vm     = vac.shared.VacVM(lowestFreeSlot)
+
+         vac.vacutils.logLine('Create ' + vm.name + ' with machinetype ' + chosenMachinetypeName + ' and ' + str(chosenCpus) + ' CPU(s)')
+         createError = vm.createVM(chosenMachinetypeName, chosenCpus, chosenShutdownTime)
+
+         if createError:
+           vac.vacutils.logLine('VM creation fails with: ' + createError)
+           vac.vacutils.createFile('/var/lib/vac/factory-error', 'VM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+         else:
+           # We update factory heartbeat after creating a VM in case that took a while
+           vac.vacutils.logLine('VM ' + vm.name + ' created')
+           vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+           # If no VM creation errors, then cleanup any old message   
+           try:
+             os.remove('/var/lib/vac/factory-error')
+           except OSError:
+            pass
+       else:
+         vac.vacutils.logLine('No machinetype suitable for creation in this cycle')
+
+     else:
+       vac.vacutils.logLine('No machinetype eligible for creation in this cycle')
 
    if vac.shared.vacmons:
      # Send VacQuery machinetype and factory messages to listed VacMons
