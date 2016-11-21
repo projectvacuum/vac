@@ -346,14 +346,15 @@ setting. Vac will create the logical volumes when it creates VMs.
 <p>
 During the creation of each virtual machine instance, Vac will attempt to
 create the logical volume in volume_group with lvcreate. The setting 
-disk_gb_per_cpu can be used to set its size explicitly, but by default
+disk_gb_per_processor can be used to set its size explicitly, but by default
 Vac will calculate the size based on the available space which is not 
 occupied by Vac logical volumes. The calculation takes into 
 account the space occupied by logical volumes created for other purposes
 so you can safely create volumes for partitions used by the hypervisor
 machine if necessary. The available space will nominally
-be shared between the allocatable processors given by cpu_total and
-then multiplied by cpu_per_machine to give the size of logical volume
+be shared between the allocatable processors given by total_processors and
+then multiplied by the number of logical processors per machine to give the 
+size of logical volume
 to create for each VM at the same time as the VM itself is created. You
 will need about 40GB of space per processor for most machinetypes.
 

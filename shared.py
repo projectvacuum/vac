@@ -1883,7 +1883,7 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
              continue
 
 # should check types as well as presence!
-           if 'message_type' in response and response['message_type'] == 'machine_status') and \
+           if 'message_type' in response and response['message_type'] == 'machine_status' and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
