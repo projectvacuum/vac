@@ -72,21 +72,21 @@ mjfAddress          = '169.254.169.253'
 factoryAddress      = mjfAddress
 dummyAddress        = metaAddress
 udpBufferSize       = 16777216
-gbDiskPerCpuDefault = 40
+gbDiskPerProcessorDefault = 40
 
-overloadPerCpu = None
+overloadPerProcessor = None
 gocdbSitename = None
 
 factories = None
-hs06PerCpu = None
-mbPerCpu = None
+hs06PerProcessor = None
+mbPerProcessor = None
 fixNetworking = None
 forwardDev = None
 shutdownTime = None
 
 numMachineSlots = None
-numCpus = None
-cpuCount = None
+numProcessors = None
+processorCount = None
 spaceName = None
 spaceDesc = None
 udpTimeoutSeconds = None
@@ -99,30 +99,30 @@ machinetypes = None
 vacmons = None
 
 volumeGroup = None
-gbDiskPerCpu = None
+gbDiskPerProcessor = None
 machinefeaturesOptions = None
 
 def readConf():
       global gocdbSitename, \
-             factories, hs06PerCpu, mbPerCpu, fixNetworking, forwardDev, shutdownTime, \
-             numMachineSlots, numCpus, cpuCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
+             factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
+             numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
              processorsPerSuperslot, versionLogger, machinetypes, vacmons, \
-             volumeGroup, gbDiskPerCpu, overloadPerCpu, fixNetworking, machinefeaturesOptions
+             volumeGroup, gbDiskPerProcessor, overloadPerProcessor, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
-      overloadPerCpu = 1.5
+      overloadPerProcessor = 1.5
       gocdbSitename = None
 
       factories = []
-      hs06PerCpu = None
-      mbPerCpu = 2048
+      hs06PerProcessor = None
+      mbPerProcessor = 2048
       fixNetworking = True
       forwardDev = None
       shutdownTime = None
 
-      cpuCount = countProcProcessors()
-      numMachineSlots = cpuCount
-      numCpus = None
+      processorCount = countProcProcessors()
+      numMachineSlots = processorCount
+      numProcessors = None
       spaceName = None
       spaceDesc = None
       udpTimeoutSeconds = 10.0
@@ -186,22 +186,22 @@ def readConf():
           
       if parser.has_option('settings', 'cpu_total'):
           # Option limit on number of processors Vac can allocate.
-          numCpus = int(parser.get('settings','cpu_total').strip())
+          numProcessors = int(parser.get('settings','cpu_total').strip())
           print 'cpu_total is deprecated - please use total_processors instead!'
 
           # Check setting against counted number
-          if numCpus > cpuCount:
+          if numProcessors > processorCount:
            return 'cpu_total cannot be greater than number of processors!'
       elif parser.has_option('settings', 'total_processors'):
           # Option limit on number of processors Vac can allocate.
-          numCpus = int(parser.get('settings','total_processors').strip())
+          numProcessors = int(parser.get('settings','total_processors').strip())
 
           # Check setting against counted number
-          if numCpus > cpuCount:
+          if numProcessors > processorCount:
            return 'total_processors cannot be greater than number of processors!'
       else:
           # Defaults to count from /proc/cpuinfo
-          numCpus = cpuCount
+          numProcessors = processorCount
 
       if parser.has_option('settings', 'total_machines'):
           print 'total_machines is deprecated. Please use total_processors in [settings] to control number of VMs'
@@ -209,10 +209,10 @@ def readConf():
       if parser.has_option('settings', 'overload_per_cpu'):
           # Multiplier to calculate overload veto against creating more VMs
           print 'overload_per_cpu is deprecated - please use overload_per_processor!'
-          overloadPerCpu = float(parser.get('settings','overload_per_cpu'))
+          overloadPerProcessor = float(parser.get('settings','overload_per_cpu'))
       elif parser.has_option('settings', 'overload_per_processor'):
           # Multiplier to calculate overload veto against creating more VMs
-          overloadPerCpu = float(parser.get('settings','overload_per_processor'))
+          overloadPerProcessor = float(parser.get('settings','overload_per_processor'))
              
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
@@ -220,15 +220,15 @@ def readConf():
              
       if parser.has_option('settings', 'scratch_gb'):
           # Deprecated
-          gbDiskPerCpu = int(parser.get('settings','scratch_gb').strip())
+          gbDiskPerProcessor = int(parser.get('settings','scratch_gb').strip())
           print 'scratch_gb is deprecated. Please use disk_gb_per_cpu in [settings] instead'
       elif parser.has_option('settings', 'disk_gb_per_cpu'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
-          gbDiskPerCpu = int(parser.get('settings','disk_gb_per_cpu').strip())
+          gbDiskPerProcessor = int(parser.get('settings','disk_gb_per_cpu').strip())
           print 'disk_gb_per_cpu is deprecated - please use disk_gb_per_processor!'
       elif parser.has_option('settings', 'disk_gb_per_processor'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
-          gbDiskPerCpu = int(parser.get('settings','disk_gb_per_processor').strip())
+          gbDiskPerProcessor = int(parser.get('settings','disk_gb_per_processor').strip())
 
       if parser.has_option('settings', 'udp_timeout_seconds'):
           # How long to wait before giving up on more UDP replies          
@@ -284,11 +284,11 @@ def readConf():
                         
       if parser.has_option('settings', 'mb_per_cpu'):
           # If this isn't set, then we use default (2048 MiB)
-          mbPerCpu = int(parser.get('settings','mb_per_cpu'))
+          mbPerProcessor = int(parser.get('settings','mb_per_cpu'))
           print 'mb_per_cpu is deprecated - please use mb_per_processor!'
       elif parser.has_option('settings', 'mb_per_processor'):
           # If this isn't set, then we use default (2048 MiB)
-          mbPerCpu = int(parser.get('settings','mb_per_processor'))
+          mbPerProcessor = int(parser.get('settings','mb_per_processor'))
 
       if parser.has_option('settings', 'shutdown_time'):
         try:
@@ -297,13 +297,13 @@ def readConf():
           return 'Failed to parse shutdown_time (must be a Unix time seconds date/time)'
 
       if parser.has_option('settings', 'hs06_per_cpu'):
-          hs06PerCpu = float(parser.get('settings','hs06_per_cpu'))
+          hs06PerProcessor = float(parser.get('settings','hs06_per_cpu'))
           print 'hs06_per_cpu is deprecated - please use hs06_per_processor!'
       elif parser.has_option('settings', 'hs06_per_processor'):
-          hs06PerCpu = float(parser.get('settings','hs06_per_processor'))
+          hs06PerProcessor = float(parser.get('settings','hs06_per_processor'))
       else:
           # If this isn't set, then we use the default 1.0 per virtual cpu
-          hs06PerCpu = 1.0
+          hs06PerProcessor = 1.0
 
       try:
           # Get list of factory machines to query via UDP. Leave an empty list if none.
@@ -606,7 +606,7 @@ class VacVM:
       self.joboutputsHeartbeat = None
       self.cpuSeconds          = 0
       self.cpuPercentage       = 0
-      self.cpus                = 0
+      self.processors                = 0
       self.mb                  = 0
       self.hs06                = 0.0
       self.shutdownMessage     = None
@@ -686,19 +686,19 @@ class VacVM:
         self.joboutputsHeartbeat = None
 
       try: 
-        self.cpus = int(open(self.machinesDir() + '/jobfeatures/allocated_cpu', 'r').read().strip())
+        self.processors = int(open(self.machinesDir() + '/jobfeatures/allocated_cpu', 'r').read().strip())
       except:
         pass
       
       try: 
         self.hs06 = float(open(self.machinesDir() + '/machinefeatures/hs06', 'r').read().strip())
       except:
-        self.hs06 = hs06PerCpu * self.cpus
+        self.hs06 = hs06PerProcessor * self.processors
       
       try: 
         self.mb = (int(open(self.machinesDir() + '/jobfeatures/max_rss_bytes', 'r').read().strip()) / 1048576)
       except:
-        self.mb = mbPerCpu * self.cpus
+        self.mb = mbPerProcessor * self.processors
       
       try:
         # this is written by Vac as it monitors the machine through libvirt
@@ -843,7 +843,7 @@ class VacVM:
               userFQANField +
               'WallDuration: ' + str(self.heartbeat - self.started) + '\n' +
               'CpuDuration: ' + str(self.cpuSeconds) + '\n' +
-              'Processors: ' + str(self.cpus) + '\n' +
+              'Processors: ' + str(self.processors) + '\n' +
               'NodeCount: 1\n' +
               'InfrastructureDescription: APEL-VAC\n' +
               'InfrastructureType: grid\n' +
@@ -938,19 +938,19 @@ class VacVM:
 
       # HEPSPEC06 per virtual machine
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/hs06',
-                 str(hs06PerCpu * self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(hs06PerProcessor * self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Easy in 2016 MJF
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/total_cpu',
-                 str(self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. We don't know the physical vs logical cores distinction here so we just use cpu
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/phys_cores',
-                 str(self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. Again just use cpu
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/log_cores',
-                 str(self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. Tell them they have the whole VM to themselves; they are in the only jobslot here
       vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/jobslots',
@@ -985,13 +985,13 @@ class VacVM:
 
       # Deprecated. For the scaled cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpu_limit_secs_lrms',
-                 str(cpuLimitSecs * self.cpus),
+                 str(cpuLimitSecs * self.processors),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
 
       # For the cpu limit, we use the wallclock seconds multiple by the cpu
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/cpu_limit_secs',
-                 str(cpuLimitSecs * self.cpus),
+                 str(cpuLimitSecs * self.processors),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. For the scaled wallclock limit, we use the wallclock seconds without factoring in cpu
@@ -1016,24 +1016,24 @@ class VacVM:
 
       # Job=VM so per-job HEPSPEC06 is same as hs06
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/hs06_job',
-                 str(hs06PerCpu * self.cpus), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(hs06PerProcessor * self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # mbPerCpu is in units of 1024^2 bytes
+      # mbPerProcessor is in units of 1024^2 bytes
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/max_rss_bytes',
-                 str(mbPerCpu * self.cpus * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(mbPerProcessor * self.processors * 1048576), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # Deprecated. mbPerCpu is in units of 1024^2 bytes, whereas old jobfeatures wants 1000^2!!!
+      # Deprecated. mbPerProcessor is in units of 1024^2 bytes, whereas old jobfeatures wants 1000^2!!!
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/mem_limit_MB',
-                 str((mbPerCpu * self.cpus * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str((mbPerProcessor * self.processors * 1048576) / 1000000), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
 
       # cpuPerMachine again
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/allocated_cpu',
-                 str(self.cpus) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.processors) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Deprecated. cpuPerMachine again
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/allocated_CPU',
-                 str(self.cpus) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+                 str(self.processors) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # We do not know max_swap_bytes or scratch_limit_bytes so ignore them
 
@@ -1092,7 +1092,7 @@ class VacVM:
 
    def createVM(self, machinetypeName, cpus, shutdownTime):
       self.model           = machinetypes[machinetypeName]['machine_model']
-      self.cpus            = cpus
+      self.processors            = cpus
       self.created         = int(time.time())
       self.shutdownTime    = shutdownTime
       self.machinetypeName = machinetypeName
@@ -1214,7 +1214,7 @@ class VacVM:
           # Create big empty disk file for CernVM
 
           try:
-            gbDisk = (gbDiskPerCpu if gbDiskPerCpu else gbDiskPerCpuDefault) * self.cpus
+            gbDisk = (gbDiskPerProcessor if gbDiskPerProcessor else gbDiskPerProcessorDefault) * self.processors
           
             fTmp, rootDiskFileName = tempfile.mkstemp(prefix = 'root.disk.', dir = '/var/lib/vac/tmp')
             vac.vacutils.logLine('Make ' + str(gbDisk) + ' GB sparse file ' + rootDiskFileName)
@@ -1263,9 +1263,9 @@ class VacVM:
       xmldesc=( """<domain type='kvm'>
   <name>""" + self.name + """</name>
   <uuid>""" + self.uuidStr + """</uuid>
-  <memory unit='MiB'>""" + str(mbPerCpu * self.cpus) + """</memory>
-  <currentMemory unit='MiB'>"""  + str(mbPerCpu * self.cpus) + """</currentMemory>
-  <vcpu>""" + str(self.cpus) + """</vcpu>
+  <memory unit='MiB'>""" + str(mbPerProcessor * self.processors) + """</memory>
+  <currentMemory unit='MiB'>"""  + str(mbPerProcessor * self.processors) + """</currentMemory>
+  <vcpu>""" + str(self.processors) + """</vcpu>
   <os>
     <type arch='x86_64' machine='pc'>hvm</type>
     <boot dev='cdrom'/>
@@ -1389,12 +1389,12 @@ class VacVM:
      # Now try to create logical volume
      vac.vacutils.logLine('Trying to create logical volume for ' + self.name + ' in ' + volumeGroup)
 
-     if gbDiskPerCpu:
+     if gbDiskPerProcessor:
        # Fixed size has been given in configuration. Round down to match extent size.
-       sizeToCreate = ((gbDiskPerCpu * self.cpus * 1000000000) / vgExtentBytes) * vgExtentBytes
+       sizeToCreate = ((gbDiskPerProcessor * self.processors * 1000000000) / vgExtentBytes) * vgExtentBytes
      else:
        # Not given, so calculate. Round down to match extent size.
-       sizeToCreate = ((self.cpus * (vgTotalBytes - vgNonVacBytes) / numCpus) / vgExtentBytes) * vgExtentBytes
+       sizeToCreate = ((self.processors * (vgTotalBytes - vgNonVacBytes) / numProcessors) / vgExtentBytes) * vgExtentBytes
      
      os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
 
@@ -1767,7 +1767,6 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
                                    'vacquery_version' : 'VacQuery ' + vac.shared.vacQueryVersion,
                                    'space'            : spaceName,
                                    'cookie'           : hashlib.sha256(salt + factoryName).hexdigest(),
-                                   'method'           : 'machinetypes', # will be deprecated
                                    'message_type'     : 'machinetypes_query'}),
                        (factoryName,995))
 
@@ -1793,8 +1792,7 @@ def sendMachinetypesRequests(factoryList = None, clientName = '-'):
              continue
 
 # should check types as well as presence!
-           if (('method' in response and response['method'] == 'machinetype') or # will be deprecated
-               ('message_type' in response and response['message_type'] == 'machinetype_status')) and \
+           if 'message_type' in response and response['message_type'] == 'machinetype_status' and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -1885,8 +1883,7 @@ def sendMachinesRequests(factoryList = None, clientName = '-'):
              continue
 
 # should check types as well as presence!
-           if (('method' in response and response['method'] == 'machine') or # will be deprecated
-               ('message_type' in response and response['message_type'] == 'machine_status')) and \
+           if 'message_type' in response and response['message_type'] == 'machine_status') and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -1973,8 +1970,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
              vac.vacutils.logLine('json.loads failed for ' + data)
              continue
 
-           if (('method' in response and response['method'] == 'factory') or 
-               ('message_type' in response and response['message_type'] == 'factory_status')) and \
+           if 'message_type' in response and response['message_type'] == 'factory_status' and \
               'cookie' 			in response and \
               'space' 			in response and \
               response['space']  == spaceName and \
@@ -2000,7 +1996,6 @@ def makeMachineResponses(cookie, clientName = '-'):
      vac.vacutils.logLine(vm.name + ' is ' + str(vm.state) + ' (' + str(vm.machinetypeName) + ', started ' + str(vm.created) + ')')
 
      responseDict = {
-                'method'		: 'machine', # will be deprecated
                 'message_type'		: 'machine_status',
                 'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
@@ -2040,10 +2035,10 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
    # Go through the machinetypes
    for machinetypeName in machinetypes:
 
-     totalHS06               = 0.0
-     numBeforeFizzle         = 0
-     totalMachines           = 0
-     totalCpu                = 0
+     runningHS06       = 0.0
+     numBeforeFizzle   = 0
+     runningMachines   = 0
+     runningProcessors = 0
 
      # Go through the VM slots, looking for starting/running instances of this machinetype
      for ordinal in range(numMachineSlots):
@@ -2075,14 +2070,14 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          timeHeartbeat = None
 
        try:                  
-         numCpu = float(open(machinesDir + '/jobfeatures/allocated_cpu', 'r').readline())
+         numProcessors = float(open(machinesDir + '/jobfeatures/allocated_cpu', 'r').readline())
        except:
-         numCpu = 1
+         numProcessors = 1
 
        try:                  
          hs06 = float(open(machinesDir + '/jobfeatures/hs06_job', 'r').readline())
        except:
-         hs06 = hs06PerCpu * numCpu
+         hs06 = hs06PerProcessor * numProcessors
 
        hasFinished = os.path.exists(machinesDir + '/finished')
 
@@ -2093,19 +2088,19 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
            (timeHeartbeat > int(time.time() - 3600)) and
            not hasFinished):
          # Running
-         totalHS06     += hs06
-         totalMachines += 1
-         totalCpu      += numCpu
+         runningHS06       += hs06
+         runningMachines   += 1
+         runningProcessors += numProcessors
 
          if int(time.time()) < timeStarted + machinetypes[machinetypeName]['fizzle_seconds']:
            numBeforeFizzle += 1
 
        elif not timeStarted and (created > int(time.time() - 3600)):
          # Starting
-         totalHS06       += hs06
-         totalMachines   += 1
-         totalCpu        += 1
-         numBeforeFizzle += 1         
+         runningHS06       += hs06
+         runningMachines   += 1
+         runningProcessors += 1
+         numBeforeFizzle   += 1         
 
      # Outcome of the most recently created instance of this machinetype that has already finished
 
@@ -2143,7 +2138,6 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
                shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
 
      responseDict = {
-                'method'		: 'machinetype', # will be deprecated
                 'message_type'		: 'machinetype_status',
                 'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
@@ -2154,11 +2148,9 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
                 'time_sent'		: int(time.time()),
 
                 'machinetype'		: machinetypeName,
-                'total_hs06'        	: totalHS06, # deprecated
-                'total_machines'        : totalMachines, #deprecated
-                'running_hs06'        	: totalHS06,
-                'running_machines'      : totalMachines,
-                'running_cpus'          : totalCpu,
+                'running_hs06'        	: runningHS06,
+                'running_machines'      : runningMachines,
+                'running_cpus'          : runningProcessors,
                 'num_before_fizzle' 	: numBeforeFizzle,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime,
@@ -2189,13 +2181,13 @@ def makeFactoryResponse(cookie, clientName = '-'):
 
    try:
      counts = open('/var/lib/vac/counts','r').readline().split()
-     runningMachines = int(counts[0])
-     runningCpus     = int(counts[2])
-     runningHS06     = float(counts[4])
+     runningMachines   = int(counts[0])
+     runningProcessors = int(counts[2])
+     runningHS06       = float(counts[4])
    except:
-     runningCpus     = 0
-     runningMachines = 0
-     runningHS06     = 0
+     runningProcessors = 0
+     runningMachines   = 0
+     runningHS06       = 0
 
    try:
      factoryHeartbeatTime = int(os.stat('/var/lib/vac/factory-heartbeat').st_ctime)
@@ -2231,7 +2223,6 @@ def makeFactoryResponse(cookie, clientName = '-'):
      bootTime = 0
 
    responseDict = {
-                'method'		   : 'factory', # will be deprecated
                 'message_type'		   : 'factory_status',
                 'vac_version'		   : 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	   : 'VacQuery ' + vacQueryVersion,
@@ -2240,15 +2231,12 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),
 
-                'total_cpus'		   : numCpus, # deprecated
-                'max_cpus'		   : numCpus,
-                'running_cpus'             : runningCpus,
+                'max_cpus'		   : numProcessors,
+                'running_cpus'             : runningProcessors,
                 'running_machines'         : runningMachines,
                 'running_hs06'             : runningHS06,
-                'total_machines'           : numCpus, # deprecated
-                'total_hs06'		   : numCpus * hs06PerCpu, # deprecated
-                'max_machines'             : numCpus,
-                'max_hs06'		   : numCpus * hs06PerCpu,
+                'max_machines'             : numProcessors,
+                'max_hs06'		   : numProcessors * hs06PerProcessor,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
