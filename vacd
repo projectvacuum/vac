@@ -166,7 +166,7 @@ def vacOneCycle():
    # Update factory heartbeat file
    vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-   readConfError = vac.shared.readConf()
+   readConfError = vac.shared.readConf(includePipes = True, updatePipes = True)
    
    if readConfError:
      vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
@@ -490,7 +490,7 @@ def vacResponder():
          time.sleep(60.0)
          continue
    
-     readConfError = vac.shared.readConf()
+     readConfError = vac.shared.readConf(includePipes = True)
 
      if readConfError:
        vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)

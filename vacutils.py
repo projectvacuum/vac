@@ -91,6 +91,75 @@ def secondsToHHMMSS(seconds):
    mm, ss = divmod(ss, 60)
    return '%02d:%02d:%02d' % (hh, mm, ss)
 
+def readPipe(pipeFile, pipeURL, updatePipes = False):
+
+   # Default value in case not given in file
+   cacheSeconds = 3600
+
+   try:
+     pipeDict = json.load(open(pipeFile, 'r'))
+   except:
+     logLine('Unable to read vacuum pipe file ' + pipeFile)
+     pipeDict = { 'cache_seconds' : cacheSeconds }
+     
+     try:
+       f = open(pipeFile, 'w')
+     except:
+       raise NameError('Unable to write vacuum pipe file ' + pipeFile)
+     else:
+       json.dump(pipeDict, f)
+       f.close()
+
+   else:
+     try:
+       cacheSeconds = int(pipeDict['cache_seconds'])
+     except:
+       pipeDict['cache_seconds'] = cacheSeconds
+
+   # Check if cache seconds has expired
+   if updatePipes and \
+      int(os.stat(pipeFile).st_mtime) < time.time() - cacheSeconds and \
+      ((pipeURL[0:7] == 'http://') or (pipeURL[0:8] == 'https://')):
+     buffer = StringIO.StringIO()
+     c = pycurl.Curl()
+     c.setopt(c.URL, pipeURL)
+     c.setopt(c.WRITEFUNCTION, buffer.write)
+     c.setopt(c.USERAGENT, versionString)
+     c.setopt(c.TIMEOUT, 30)
+     c.setopt(c.FOLLOWLOCATION, True)
+     c.setopt(c.SSL_VERIFYPEER, 1)
+     c.setopt(c.SSL_VERIFYHOST, 2)
+               
+     if os.path.isdir('/etc/grid-security/certificates'):
+       c.setopt(c.CAPATH, '/etc/grid-security/certificates')
+     else:
+       logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
+
+     try:
+       c.perform()
+     except Exception as e:
+       raise NameError('Failed to read ' + pipeURL + ' (' + str(e) + ')')
+
+     c.close()
+
+     try:
+       pipeDict = json.loads(buffer.getvalue())
+     except:
+       raise NameError('Failed to load vacuum pipe file from ' + pipeURL)
+     else:
+       try:
+         f = open(pipeFile, 'w')
+       except:
+         logLine('Unable to write vacuum pipe file ' + pipeFile)
+         return pipeDict
+       else:
+       json.dump(pipeDict, f)
+       f.close()
+
+     createFile(pipeFile, json.dumps(pipeDict), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH):
+
+   return pipeDict
+
 def createUserData(shutdownTime, machinetypePath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr, 
                    machinefeaturesURL = None, jobfeaturesURL = None, joboutputsURL = None):
    

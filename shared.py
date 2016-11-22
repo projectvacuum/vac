@@ -102,7 +102,7 @@ volumeGroup = None
 gbDiskPerProcessor = None
 machinefeaturesOptions = None
 
-def readConf():
+def readConf(includePipes = False, updatePipes = False):
       global gocdbSitename, \
              factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
@@ -342,6 +342,17 @@ def readConf():
              if sectionNameSplit[0] == 'vmtype':
                print '[vmtype ...] is deprecated. Please use [machinetype ' + sectionNameSplit[1] + '] instead'
          
+             vacuumPipe = {}
+         
+             if includePipe and parser.has_option(sectionName, 'vacuum_pipe_url'):
+                 machinetype['vacuum_pipe_url'] = parser.get(sectionName, 'vacuum_pipe_url').strip()
+
+                 try:
+                   vacuumPipe = vacutils.readPipe('/var/lib/vac/machinetypes/' + sectionNameSplit[1] + '/vacuum.pipe', 
+                                                  machinetype['vacuum_pipe_url'], updatePipes = True)
+                 except:
+                   return "Cannot read vacuum_pipe_url (" + machinetype['vacuum_pipe_url'] + ")"
+
              # Start from any factory-wide common values defined in [settings]
              machinetype = machinetypeCommon.copy()
              machinetype['root_image'] = parser.get(sectionName, 'root_image')
