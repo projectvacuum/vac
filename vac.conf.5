@@ -169,17 +169,30 @@ One [machinetype ...] section must exist for each machinetype in the system, wit
 the name of the machinetype given in the section name, such as [machinetype example].
 A machinetype name must only consist of lowercase letters, numbers, and hyphens.
 Each of these sections contain option=value pairs that are specific to 
-that machinetype.
-
-.B machine_model
-is required and tells Vac how to configure the virtual hardware seen by
-the VMs of this machinetype. Currently cernvm3 or vm-raw. Default cernvm3.
+that machinetype. Typically, only 
+.B taget_share
+and
+.B vacuum_pipe_url
+are required. 
 
 .B target_share
 gives the desired share of the total VMs available in this space for this
 machinetype. The shares do not need to add up to 1.0, and if a share is not given
 for a machinetype, then it is set to 0. Vac factories consult these shares
 when deciding which machinetype to start as VMs become available.
+
+.B vacuum_pipe_url
+gives the HTTP(S) URL of a remote Vacuum Pipe file supplied by the VO which 
+contains details of the boot image, contextualization, and other options 
+needed to create VMs of this machinetype. 
+
+The following options may be given in the Vac configuration to override defaults
+or values set in the Vacuum Pipe file. This should not be required in normal 
+operation.
+
+.B machines_dir_days
+sets the expiration time in days for per-VM directories created under
+/var/lib/vac/machines. Default 3.
 
 .B backoff_seconds
 is the delay after a VM of this machinetype aborts. If a VM aborts, then no new
@@ -211,18 +224,6 @@ less than fizzle_seconds are excluded.
 checking is only carried out once an initial period of fizzle_seconds
 has passed.
 
-.B heartbeat_file
-allows the machinetype to nominate a file which will be created in 
-$JOBOUTPUTS before fizzle_seconds has passed. If this file is
-not created by then and maintained for the lifetime of the VM, the 
-VM will be destroyed.
-
-.B heartbeat_seconds
-gives the frequency at which the heartbeat_file must be updated after
-fizzle_seconds has passed. If the file is not updated for 
-heartbeat_seconds then the VM will be destroyed. If heartbeat_seconds
-is 0, then only the existence of the file will be checked. Default 0.
-
 .B max_wallclock_seconds
 gives the maximum lifetime of a VM. Vac will set 
 $MACHINEFEATURES/shutdowntime for the VM using this value to 
@@ -241,6 +242,26 @@ and
 give the minimum and maximum number of logical processors which can be 
 allocated to VMs of this type when they are created.
 
+.B accounting_fqan
+is used to specify a FQAN to include when writing APEL accounting 
+records, to associate usage with particular experiments.
+
+.B machine_model
+is required and tells Vac how to configure the virtual hardware seen by
+the VMs of this machinetype. Currently cernvm3 or vm-raw. Default cernvm3.
+
+.B heartbeat_file
+allows the machinetype to nominate a file which will be created in 
+$JOBOUTPUTS before fizzle_seconds has passed. If this file is
+not created by then and maintained for the lifetime of the VM, the 
+VM will be destroyed.
+
+.B heartbeat_seconds
+gives the frequency at which the heartbeat_file must be updated after
+fizzle_seconds has passed. If the file is not updated for 
+heartbeat_seconds then the VM will be destroyed. If heartbeat_seconds
+is 0, then only the existence of the file will be checked. Default 0.
+
 .B root_device
 is the device name exposed to the VM that is associated with the root
 disk image. Default vda.
@@ -249,17 +270,22 @@ disk image. Default vda.
 is the device name exposed to the VM that is associated with a scratch
 logical volume in the vm-raw model. Ignored for CernVM. Default vdb.
 
-.B machines_dir_days
-sets the expiration time in days for per-VM directories created under
-/var/lib/vac/machines. Default 3.
-
-.B accounting_fqan
-is used to specify a FQAN to include when writing APEL accounting 
-records, to associate usage with particular experiments.
+.B image_signing_dn
+is used to specify a regular expression to match the DN of an X.509
+certificate used to verify the authenticity of the root image. Vac
+attempts to obtain the certificate and signature from a CernVM Signature 
+Block at the end of the image file, verifies the
+certificate using the CA files in /etc/grid-security/certificates, and
+compares the certificate DN to cernvm_signing_dn. If this option is
+given, all these verification steps must be satisified for the image
+to be used. As of 2016, CernVM images are signed with a DN matching
+the regular expression /CN=cvm-sign01\\.cern\\.ch$
 
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
-relative to the machinetype's subdirectory of /var/lib/vac/machinetypes
+relative to the machinetype's subdirectory of /var/lib/vac/machinetypes .
+For values supplied in a remote Vacuum Pipe file, only filenames without
+'/' characters and HTTP(S) URLs are allowed.
 
 .B root_image
 is the path to the image file from which the VM will boot. With the
@@ -270,17 +296,6 @@ VM starts using an If-Modified-Since request to minimise network load.
 Alternatively, the images may be files in the local filesystem.
 With cernvm3 machine_model, the files are ISO CDROM-style boot images; 
 with the cernvm2 machine_model, they are the root hard disk image itself.
-
-.B cernvm_signing_dn
-is used to specify a regular expression to match the DN of an X.509
-certificate used to verify the authenticity of the root image. Vac
-attempts to obtain the certificate and signature from a CernVM Signature 
-Block at the end of the image file, verifies the
-certificate using the CA files in /etc/grid-security/certificates, and
-compares the certificate DN to cernvm_signing_dn. If this option is
-given, all these verification steps must be satisified for the image
-to be used. As of 2015, CernVM images are signed with a DN matching
-the regular expression /CN=cvm-sign01\\.cern\\.ch$
 
 .B root_public_key
 is the file name of a public key supplied to the contextualization which

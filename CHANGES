@@ -6,6 +6,7 @@
 - Sort eligible machines by machinegroup,machinetype share scores
 - Try to build superslots to handle single and multiprocessor VMs
 - Replace cpu(s) with processor(s) in configuration options
+- cernvm_signing_dn becomes image_signing_dn
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

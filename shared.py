@@ -342,23 +342,67 @@ def readConf(includePipes = False, updatePipes = False):
              if sectionNameSplit[0] == 'vmtype':
                print '[vmtype ...] is deprecated. Please use [machinetype ' + sectionNameSplit[1] + '] instead'
          
-             vacuumPipe = {}
-         
-             if includePipe and parser.has_option(sectionName, 'vacuum_pipe_url'):
+             if includePipes and parser.has_option(sectionName, 'vacuum_pipe_url'):
                  machinetype['vacuum_pipe_url'] = parser.get(sectionName, 'vacuum_pipe_url').strip()
 
                  try:
                    vacuumPipe = vacutils.readPipe('/var/lib/vac/machinetypes/' + sectionNameSplit[1] + '/vacuum.pipe', 
                                                   machinetype['vacuum_pipe_url'], updatePipes = True)
                  except:
-                   return "Cannot read vacuum_pipe_url (" + machinetype['vacuum_pipe_url'] + ")"
+                   # If a vacuum pipe is given but cannot be read then need to disable the machinetype
+                   print "Cannot read vacuum_pipe_url (" + machinetype['vacuum_pipe_url'] + ") - machinetype disabled!"
+                   parser.set(sectionName, 'target_share', '0.0')
 
+                 else:
+                   acceptedOptions = [ 'image_signing_dn', 'machine_model', 'root_device', 'scratch_device', 
+                                       'min_processors', 'max_processors', 'max_wallclock_seconds',
+                                       'min_wallclock_seconds', 'backoff_seconds', 'fizzle_seconds',
+                                       'heartbeat_seconds', 'heartbeat_file', 'accounting_fqan',
+                                       'root_image', 'user_data', 'user_data_proxy_cert', 'user_data_proxy_key',
+                                       'legacy_proxy' ]
+
+                   # Go through vacuumPipe adding options if not already present from configuration files
+                   for optionRaw in vacuumPipe:
+                     option = str(optionRaw)
+                     value  = str(vacuumPipe[optionRaw])
+                
+                     # Skip if option already exists - configuration files take precedence
+                     if parser.has_option(sectionName, option):
+                       continue
+                    
+                     # Check option is one we accept
+                     if not option.startswith('user_data_file_' ) and \
+                        not option.startswith('user_data_option_' ) and \
+                        not option in acceptedOptions:
+                       print 'Option %s is not accepted from vacuum pipe - ignoring!' % option
+                       continue
+                     
+                     # Any options which specify filenames on the hypervisor must be checked here  
+                     if (option.startswith('user_data_file_' ) or 
+                         option.startswith('user_data_proxy_') or 
+                         option ==         'heartbeat_file'   ) and '/' in value:
+                       print 'Option %s in %s cannot contain a "/" - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       continue
+
+                     elif (option == 'user_data' or option == 'root_image') and \
+                        '/' in value and \
+                        not value.startswith('http://') and \
+                        not value.startswith('https://'):
+                       print 'Option %s in %s cannot contain a "/" unless http(s):// - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       continue
+
+                     # if all OK, then can set value as if from configuration files
+                     parser.set(sectionName, option, value)
+             
              # Start from any factory-wide common values defined in [settings]
              machinetype = machinetypeCommon.copy()
              machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
              if parser.has_option(sectionName, 'cernvm_signing_dn'):
                  machinetype['cernvm_signing_dn'] = parser.get(sectionName, 'cernvm_signing_dn').strip()
+                 print 'cernvm_signing_dn is deprecated - please use image_signing_dn'
+             elif parser.has_option(sectionName, 'image_signing_dn'):
+                 machinetype['image_signing_dn'] = parser.get(sectionName, 'image_signing_dn').strip()
 
              if parser.has_option(sectionName, 'target_share'):
                  machinetype['share'] = float(parser.get(sectionName, 'target_share'))
@@ -376,11 +420,19 @@ def readConf(includePipes = False, updatePipes = False):
                  machinetype['machine_model'] = 'cernvm3'
              
              if parser.has_option(sectionName, 'root_device'):
-                 machinetype['root_device'] = parser.get(sectionName, 'root_device')
+               if string.translate(parser.get(sectionName, 'root_device'), None, '0123456789abcdefghijklmnopqrstuvwxyz') != '':
+                 print 'root_device can only contain characters a-z 0-9 so skipping machinetype!'
+                 continue
+
+               machinetype['root_device'] = parser.get(sectionName, 'root_device')                 
              else:
-                 machinetype['root_device'] = 'vda'
-             
+               machinetype['root_device'] = 'vda'          
+
              if parser.has_option(sectionName, 'scratch_device'):
+               if string.translate(parser.get(sectionName, 'scratch_device'), None, '0123456789abcdefghijklmnopqrstuvwxyz') != '':
+                 print 'scratch_device can only contain characters a-z 0-9 so skipping machinetype!'
+                 continue
+                 
                  machinetype['scratch_device'] = parser.get(sectionName, 'scratch_device')
              else:
                  machinetype['scratch_device'] = 'vdb'
