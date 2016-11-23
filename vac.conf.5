@@ -276,7 +276,7 @@ certificate used to verify the authenticity of the root image. Vac
 attempts to obtain the certificate and signature from a CernVM Signature 
 Block at the end of the image file, verifies the
 certificate using the CA files in /etc/grid-security/certificates, and
-compares the certificate DN to cernvm_signing_dn. If this option is
+compares the certificate DN to image_signing_dn. If this option is
 given, all these verification steps must be satisified for the image
 to be used. As of 2016, CernVM images are signed with a DN matching
 the regular expression /CN=cvm-sign01\\.cern\\.ch$
@@ -352,6 +352,18 @@ is the UUID assigned to the VM by Vac.
 .br
 .B ##user_data_space##
 is the Vac space name.
+.br
+.B ##user_data_url##
+is the HTTP(S) from which the user_data template was obtained. Only given if
+the template was retrieved by HTTP(S) rather from a local path.
+.br
+.B ##user_data_machinefeatures_url##
+and
+.B ##user_data_jobfeatures_url##
+and
+.B ##user_data_joboutputs_url##
+are the values of $MACHINEFEATURES, $JOBFEATURES, and $JOBOUTPUTS to set
+within the VM.
 .br
 .B ##user_data_machinetype## 
 and 
