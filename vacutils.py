@@ -153,10 +153,10 @@ def readPipe(pipeFile, pipeURL, updatePipes = False):
          logLine('Unable to write vacuum pipe file ' + pipeFile)
          return pipeDict
        else:
-       json.dump(pipeDict, f)
-       f.close()
+         json.dump(pipeDict, f)
+         f.close()
 
-     createFile(pipeFile, json.dumps(pipeDict), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH):
+     createFile(pipeFile, json.dumps(pipeDict), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
    return pipeDict
 
@@ -346,7 +346,7 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
                                  loc   = -1, 
                                  set   = 0)
    elif cn:
-     # RFC proxy, probably with machinetypeName as proxy CN
+     # RFC proxy, probably with machinetypeName as proxy CN
      newSubject.add_entry_by_txt(field = "CN",
                                  type  = 0x1001,
                                  entry = cn,

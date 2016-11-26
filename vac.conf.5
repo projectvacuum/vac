@@ -57,8 +57,12 @@ Defaults to 2048.
 
 .B hs06_per_processor
 gives the HEPSPEC06 power of each processor in a virtual machine. This is used
-to calculate the total value /etc/machinefeatures/hs06 inside the VM and 
-when writing APEL accounting records. Defaults to 1.
+to calculate the total values $MACHINEFEATURES/hs06 and $JOBFEATURES/hs06_job
+inside the VM, when writing APEL accounting records, and when comparing running
+VMs to target shares. If not set, the default value 1.0 is used internally, but
+the $MACHINEFEATURES and $JOBFEATURES values are not set and only the 
+/var/lib/vac/apel-archive copy of the APEL accounting record for each VM is 
+created.
 
 .B processors_per_superslot
 sets size of the superslots, as the total number of logical processors which

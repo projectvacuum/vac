@@ -61,8 +61,9 @@ json.encoder.FLOAT_REPR = lambda f: ("%.2f" % f)
 import vac
 
 # All VacQuery requests and responses are in this file
-# so we can define the VacQuery protocol version here
-vacQueryVersion = '0.4'
+# so we can define the VacQuery protocol version here.
+# 01.00 is the one described in HSF-TN-2016-04
+vacQueryVersion = '01.00'
 
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
@@ -302,8 +303,8 @@ def readConf(includePipes = False, updatePipes = False):
       elif parser.has_option('settings', 'hs06_per_processor'):
           hs06PerProcessor = float(parser.get('settings','hs06_per_processor'))
       else:
-          # If this isn't set, then we use the default 1.0 per virtual cpu
-          hs06PerProcessor = 1.0
+          # If this isn't set, then we will use the default 1.0 per processor
+          hs06PerProcessor = None
 
       try:
           # Get list of factory machines to query via UDP. Leave an empty list if none.
@@ -669,9 +670,9 @@ class VacVM:
       self.joboutputsHeartbeat = None
       self.cpuSeconds          = 0
       self.cpuPercentage       = 0
-      self.processors                = 0
+      self.processors          = 0
       self.mb                  = 0
-      self.hs06                = 0.0
+      self.hs06                = None
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
       
@@ -756,7 +757,7 @@ class VacVM:
       try: 
         self.hs06 = float(open(self.machinesDir() + '/machinefeatures/hs06', 'r').read().strip())
       except:
-        self.hs06 = hs06PerProcessor * self.processors
+        pass
       
       try: 
         self.mb = (int(open(self.machinesDir() + '/jobfeatures/max_rss_bytes', 'r').read().strip()) / 1048576)
@@ -896,6 +897,11 @@ class VacVM:
       else:
         tmpGocdbSitename = spaceName
 
+      if self.hs06:
+        hs06 = self.hs06
+      else:
+        hs06 = 1.0 * self.processors
+
       mesg = ('APEL-individual-job-message: v0.3\n' + 
               'Site: ' + tmpGocdbSitename + '\n' +
               'SubmitHost: ' + spaceName + '/vac-' + os.uname()[1] + '\n' +
@@ -915,7 +921,7 @@ class VacVM:
               'MemoryReal: ' + str(self.mb * 1024) + '\n' +
               'MemoryVirtual: ' + str(self.mb * 1024) + '\n' +
               'ServiceLevelType: HEPSPEC\n' +
-              'ServiceLevel: ' + str(self.hs06) + '\n' +
+              'ServiceLevel: ' + str(hs06) + '\n' +
               '%%\n')
                           
       fileName = time.strftime('%H%M%S', nowTime) + (str(time.time() % 1) + '00000000')[2:10] 
@@ -926,26 +932,14 @@ class VacVM:
         vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-archive/%Y%m%d/', nowTime) + fileName)
         return
 
-      if gocdbSitename:
-        # We only write the outgoing copy if gocdb_sitename is explicitly given
+      if gocdbSitename and self.hs06:
+        # We only write the outgoing copy if gocdb_sitename and HS06 are explicitly given
         try:
           vac.vacutils.createFile(time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName, mesg, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
         except:
           vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
           return
 
-#   def destroy(self):
-#       conn = libvirt.open(None)
-#       if conn == None:
-#         print 'Failed to open connection to the hypervisor'
-#         return
-#                                  
-#       try:
-#         dom = conn.lookupByUUIDString(self.uuidStr)
-#         dom.destroy()
-#       except:
-#         pass
-   
    def makeOpenStackData(self):
    
       if 'user_data' in machinetypes[self.machinetypeName]:
@@ -1000,7 +994,8 @@ class VacVM:
       os.makedirs(self.machinesDir() + '/joboutputs',      stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
       # HEPSPEC06 per virtual machine
-      vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/hs06',
+      if hs06PerProcessor:
+        vac.vacutils.createFile(self.machinesDir() + '/machinefeatures/hs06',
                  str(hs06PerProcessor * self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # Easy in 2016 MJF
@@ -1074,12 +1069,13 @@ class VacVM:
       # We are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
                  str(int(time.time())), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-                 
-                 
+
+
 
       # Job=VM so per-job HEPSPEC06 is same as hs06
-      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/hs06_job',
-                 str(hs06PerProcessor * self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      if hs06PerProcessor:
+        vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/hs06_job',
+                  str(hs06PerProcessor * self.processors), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       # mbPerProcessor is in units of 1024^2 bytes
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/max_rss_bytes',
@@ -1155,7 +1151,7 @@ class VacVM:
 
    def createVM(self, machinetypeName, cpus, shutdownTime):
       self.model           = machinetypes[machinetypeName]['machine_model']
-      self.processors            = cpus
+      self.processors      = cpus
       self.created         = int(time.time())
       self.shutdownTime    = shutdownTime
       self.machinetypeName = machinetypeName
@@ -2058,6 +2054,11 @@ def makeMachineResponses(cookie, clientName = '-'):
      
      vac.vacutils.logLine(vm.name + ' is ' + str(vm.state) + ' (' + str(vm.machinetypeName) + ', started ' + str(vm.created) + ')')
 
+     if vm.hs06:
+       hs06 = vm.hs06
+     else:
+       hs06 = 1.0 * vm.processors
+
      responseDict = {
                 'message_type'		: 'machine_status',
                 'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
@@ -2076,7 +2077,7 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'heartbeat_time'	: vm.heartbeat,
                 'cpu_seconds'		: vm.cpuSeconds,
                 'cpu_percentage'	: vm.cpuPercentage,
-                'hs06' 		       	: vm.hs06,
+                'hs06' 		       	: hs06,
                 'machinetype'		: vm.machinetypeName,
                 'shutdown_message'  	: vm.shutdownMessage,
                 'shutdown_time'     	: vm.shutdownMessageTime
@@ -2140,7 +2141,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        try:                  
          hs06 = float(open(machinesDir + '/jobfeatures/hs06_job', 'r').readline())
        except:
-         hs06 = hs06PerProcessor * numProcessors
+         hs06 = 1.0 * numProcessors
 
        hasFinished = os.path.exists(machinesDir + '/finished')
 
@@ -2284,6 +2285,11 @@ def makeFactoryResponse(cookie, clientName = '-'):
      bootTime = int(time.time() - float(open('/proc/uptime','r').readline().split()[0]))
    except:
      bootTime = 0
+     
+   if hs06PerProcessor:
+     maxHS06 = numProcessors * hs06PerProcessor
+   else:
+     maxHS06 = numProcessors * 1.0
 
    responseDict = {
                 'message_type'		   : 'factory_status',
@@ -2299,7 +2305,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'running_machines'         : runningMachines,
                 'running_hs06'             : runningHS06,
                 'max_machines'             : numProcessors,
-                'max_hs06'		   : numProcessors * hs06PerProcessor,
+                'max_hs06'		   : maxHS06,
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,

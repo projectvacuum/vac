@@ -1,12 +1,15 @@
 ==================== Changes in Vac version 02.00.00 =================== 
-- Add cpu_per_superslot to [settings]
-- Add max_cpu, min_cpu, machinegroup to [machinetype ...]
+- Replace cpu(s) with processor(s) in configuration options
+- Add max_processors, min_processors, machinegroup to [machinetype ...]
 - Add description to [settings]
 - Add #user_data_url## with URL of the remote user_data file
 - Sort eligible machines by machinegroup,machinetype share scores
+- Add processors_per_superslot to [settings]
 - Try to build superslots to handle single and multiprocessor VMs
-- Replace cpu(s) with processor(s) in configuration options
 - cernvm_signing_dn becomes image_signing_dn
+- Don't create $MACHINEFEATURES/hs06 or $JOBFEATURES/hs06_job or
+  the /var/lib/vac/apel-outgoing APEL records if hs06_per_processor
+  is not set. Default 1.0 still used otherwise.
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

@@ -319,7 +319,11 @@ def vacOneCycle():
 
      if vm.state == vac.shared.VacState.running:
        runningProcessors += vm.processors
-       runningHS06 += vm.hs06
+       
+       if vm.hs06:
+         runningHS06 += vm.hs06
+       else:
+         runningHS06 += 1.0 * vm.processors
        
        if vm.shutdownTime in superslots:
          superslots[vm.shutdownTime] += vm.processors
