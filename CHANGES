@@ -10,6 +10,10 @@
 - Don't create $MACHINEFEATURES/hs06 or $JOBFEATURES/hs06_job or
   the /var/lib/vac/apel-outgoing APEL records if hs06_per_processor
   is not set. Default 1.0 still used otherwise.
+- user_data_file_XXXX, user_data, and root_image now look in 
+  /var/lib/vac/machinetypes/MACHINETYPE/files
+- user_data_proxy replaces user_data_proxy_cert/_key and always looks
+  for /var/lib/vac/machinetypes/MACHINETYPE/x509cert.pem and x509key.pem
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

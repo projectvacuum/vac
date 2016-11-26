@@ -355,12 +355,25 @@ def readConf(includePipes = False, updatePipes = False):
                    parser.set(sectionName, 'target_share', '0.0')
 
                  else:
-                   acceptedOptions = [ 'image_signing_dn', 'machine_model', 'root_device', 'scratch_device', 
-                                       'min_processors', 'max_processors', 'max_wallclock_seconds',
-                                       'min_wallclock_seconds', 'backoff_seconds', 'fizzle_seconds',
-                                       'heartbeat_seconds', 'heartbeat_file', 'accounting_fqan',
-                                       'root_image', 'user_data', 'user_data_proxy_cert', 'user_data_proxy_key',
-                                       'legacy_proxy' ]
+                   acceptedOptions = [
+                                       'accounting_fqan',
+                                       'backoff_seconds',
+                                       'fizzle_seconds',
+                                       'heartbeat_file',
+                                       'heartbeat_seconds',
+                                       'image_signing_dn',
+                                       'legacy_proxy',
+                                       'machine_model',
+                                       'max_processors',
+                                       'max_wallclock_seconds',
+                                       'min_processors',
+                                       'min_wallclock_seconds',
+                                       'root_device',
+                                       'root_image',
+                                       'scratch_device',
+                                       'user_data',
+                                       'user_data_proxy'
+                                     ]
 
                    # Go through vacuumPipe adding options if not already present from configuration files
                    for optionRaw in vacuumPipe:
@@ -380,7 +393,6 @@ def readConf(includePipes = False, updatePipes = False):
                      
                      # Any options which specify filenames on the hypervisor must be checked here  
                      if (option.startswith('user_data_file_' ) or 
-                         option.startswith('user_data_proxy_') or 
                          option ==         'heartbeat_file'   ) and '/' in value:
                        print 'Option %s in %s cannot contain a "/" - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
@@ -520,16 +532,15 @@ def readConf(includePipes = False, updatePipes = False):
                    else:              
                      machinetype[oneOption] = parser.get(sectionName, oneOption)                
              
-             if parser.has_option(sectionName, 'user_data_proxy_cert') and \
-                not parser.has_option(sectionName, 'user_data_proxy_key') :
-                 return 'user_data_proxy_cert given but user_data_proxy_key missing (they can point to the same file if necessary)'
-             elif not parser.has_option(sectionName, 'user_data_proxy_cert') and \
-                  parser.has_option(sectionName, 'user_data_proxy_key') :
-                 return 'user_data_proxy_key given but user_data_proxy_cert missing (they can point to the same file if necessary)'
-             elif parser.has_option(sectionName, 'user_data_proxy_cert') and \
-                  parser.has_option(sectionName, 'user_data_proxy_key') :
-                 machinetype['user_data_proxy_cert'] = parser.get(sectionName, 'user_data_proxy_cert')
-                 machinetype['user_data_proxy_key']  = parser.get(sectionName, 'user_data_proxy_key')
+             if parser.has_option(sectionName, 'user_data_proxy_cert') or \
+                parser.has_option(sectionName, 'user_data_proxy_key') :
+               print 'user_data_proxy_cert and user_data_proxy_key are deprecated. Please use user_data_proxy = True and create x509cert.pem and x509key.pem!'
+             
+             if parser.has_option(sectionName, 'user_data_proxy') and \
+                parser.get(sectionName,'user_data_proxy').strip().lower() == 'true':
+                 machinetype['user_data_proxy'] = True
+             else:
+                 machinetype['user_data_proxy'] = False
              
              if parser.has_option(sectionName, 'legacy_proxy') and \
                 parser.get(sectionName,'legacy_proxy').strip().lower() == 'true':
@@ -1185,7 +1196,7 @@ class VacVM:
         elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
            rawFileName = machinetypes[self.machinetypeName]['root_image']
         else:
-           rawFileName = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
+           rawFileName = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/files/' + machinetypes[self.machinetypeName]['root_image']
 
         if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
           cernvmDict = vac.vacutils.getCernvmImageData(rawFileName)
@@ -1234,7 +1245,7 @@ class VacVM:
         elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
             cernvmCdrom = machinetypes[self.machinetypeName]['root_image']
         else:
-            cernvmCdrom = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_image']
+            cernvmCdrom = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/files/' + machinetypes[self.machinetypeName]['root_image']
 
         if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
             cernvmDict = vac.vacutils.getCernvmImageData(cernvmCdrom)

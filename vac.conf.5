@@ -266,14 +266,6 @@ fizzle_seconds has passed. If the file is not updated for
 heartbeat_seconds then the VM will be destroyed. If heartbeat_seconds
 is 0, then only the existence of the file will be checked. Default 0.
 
-.B root_device
-is the device name exposed to the VM that is associated with the root
-disk image. Default vda.
-
-.B scratch_device
-is the device name exposed to the VM that is associated with a scratch
-logical volume in the vm-raw model. Ignored for CernVM. Default vdb.
-
 .B image_signing_dn
 is used to specify a regular expression to match the DN of an X.509
 certificate used to verify the authenticity of the root image. Vac
@@ -285,9 +277,31 @@ given, all these verification steps must be satisified for the image
 to be used. As of 2016, CernVM images are signed with a DN matching
 the regular expression /CN=cvm-sign01\\.cern\\.ch$
 
+.B root_device
+is the device name exposed to the VM that is associated with the root
+disk image. Default vda.
+
+.B scratch_device
+is the device name exposed to the VM that is associated with a scratch
+logical volume in the vm-raw model. Ignored for CernVM. Default vdb.
+
+.B legacy_proxy
+can be set to True to generate Globus legacy proxies rather than RFC 3820
+proxies. Default False.
+
+.B user_data_proxy
+set to true causes the files x509cert.pem and x509key.pem in the 
+machinetype's subdirectory of /var/lib/vac/machinetypes to be used 
+to make a limited X.509 proxy. The two files can be
+identical if desired, and the X.509 certificate and RSA private key
+will be extracted from the files as appropriate. (Note that this location
+is one level about the files subdirectory in which the following options
+look by default.)
+
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
-relative to the machinetype's subdirectory of /var/lib/vac/machinetypes .
+relative to the files subdirectory of the machinetype's subdirectory of 
+/var/lib/vac/machinetypes .
 For values supplied in a remote Vacuum Pipe file, only filenames without
 '/' characters and HTTP(S) URLs are allowed.
 
@@ -322,17 +336,6 @@ file before the VM is started. user_data_option_XXX takes the string to
 be substituted. user_data_file_XXX takes the relative or absolute path to
 a file whose contents will be substituted for the pattern in the 
 user_data file.
-
-.B user_data_proxy_cert
-and
-.B user_data_proxy_key
-are the locations of files containing X.509 certificate(s) and an RSA 
-private key, all in PEM format, which will be used to make a limited 
-X.509 proxy. The same file can be given for both options if desired.
-
-.B legacy_proxy
-can be set to True to generate Globus legacy proxies rather than RFC 3820
-proxies. Default False.
 
 .SH USER_DATA SUBSTITUTIONS
 
@@ -400,10 +403,34 @@ one, Vac will attempt to create VMs in groups with the same finishing time.
 This causes groups of processors to become available at the same time
 which enables the creation of VMs which require multiple virtual 
 CPUs. When creating these VMs, the max_processors and min_processors values
-from the relevant machinetype section determines the VM's requirements.
-The max_wallclock_seconds and min_wallclock_seconds values are used
-to determine whether there is suffcient time to create a VM of that
-machinetype.
+from the relevant machinetype section determine the VM's requirements.
+The min_wallclock_seconds value is used to determine whether there is 
+sufficient time left to create a VM of that machinetype. max_wallclock_seconds
+determines whether a sufficiently long-lived VM can be created to match the
+superslot.
+
+.sh VACUUM PIPES
+
+If 
+.B vacuum_pipe_url 
+is given within a machinetype as described above, then the corresponding
+file is fetched via HTTP(S) and used to obtain default values supplied by
+the VO associated with that machinetype. The following options are 
+supported within Vacuum Pipe files:
+.B accounting_fqan, backoff_seconds, fizzle_seconds, heartbeat_file,
+.B heartbeat_seconds, image_signing_dn, legacy_proxy, machine_model,
+.B max_processors, max_wallclock_seconds, min_processors, 
+.B min_wallclock_seconds, root_device, root_image, scratch_device,
+.B user_data, user_data_option_XXXX, user_data_file_XXXX,
+.B user_data_proxy.
+In addition 
+.B cache_seconds
+in the Vacuum Pipe file sets the maximum time the file may be cached,
+and defaults to 3600 seconds if not set or the file has never been
+fetched successfully. As explained above, options referring to files
+on the VM factory may not specify filesystem paths if obtained from
+Vacuum Pipe file: only filenames within the 
+/var/lib/vac/machinetypes/MACHINETYPE/files directory are acceptable.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>

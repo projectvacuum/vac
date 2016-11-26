@@ -195,7 +195,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      if userDataPath[0] == '/':
        userDataFile = userDataPath
      else:
-       userDataFile = machinetypePath + '/' + userDataPath
+       userDataFile = machinetypePath + '/files/' + userDataPath
 
      try:
        u = open(userDataFile, 'r')
@@ -230,17 +230,9 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      userDataContents = userDataContents.replace('##user_data_uuid##', uuidStr)
 
    # Insert a proxy created from user_data_proxy_cert / user_data_proxy_key
-   if 'user_data_proxy_cert' in options and 'user_data_proxy_key' in options:
-
-     if options['user_data_proxy_cert'][0] == '/':
-       certPath = options['user_data_proxy_cert']
-     else:
-       certPath = machinetypePath + '/' + options['user_data_proxy_cert']
-
-     if options['user_data_proxy_key'][0] == '/':
-       keyPath = options['user_data_proxy_key']
-     else:
-       keyPath = machinetypePath + '/' + options['user_data_proxy_key']
+   if 'user_data_proxy' in options and options['user_data_proxy'] == True:
+     certPath = machinetypePath + '/x509cert.pem'
+     keyPath  = machinetypePath + '/x509key.pem'
 
      try:
        if ('legacy_proxy' in options) and options['legacy_proxy']:
@@ -261,7 +253,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
            if oneValue[0] == '/':
              f = open(oneValue, 'r')
            else:
-             f = open(machinetypePath + '/' + oneValue, 'r')
+             f = open(machinetypePath + '/files/' + oneValue, 'r')
 
            # deprecated: replace ##user_data_file_xxxx## with value                           
            userDataContents = userDataContents.replace('##' + oneOption + '##', f.read())
