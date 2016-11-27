@@ -404,6 +404,8 @@ This causes groups of processors to become available at the same time
 which enables the creation of VMs which require multiple virtual 
 CPUs. When creating these VMs, the max_processors and min_processors values
 from the relevant machinetype section determine the VM's requirements.
+processors_per_superslot also limits the largest number of processors which
+may be assigned to a single VM (which will occupy a whole superslot.)
 The min_wallclock_seconds value is used to determine whether there is 
 sufficient time left to create a VM of that machinetype. max_wallclock_seconds
 determines whether a sufficiently long-lived VM can be created to match the

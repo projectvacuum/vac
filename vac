@@ -116,10 +116,16 @@ def queryMachines(options, factoryList):
                 else:
                  vmName = response['machine'].split('.')[0]
 
+                if 'num_cpus' in response:
+                  processorsStr = '%2d' % response['num_cpus']
+                else:
+                  processorsStr = ' 1'
+
                 print (
                        vmName + ' ' +
                        ((response['machinetype'] + 14 * ' ') if response['machinetype'] else 10 * '-' + '    ')[0:14] + ' ' + 
                        stateStr + '  ' + 
+                       processorsStr + ' ' +
                        hoursStr[0:21] + 
                        percentStr
                       )

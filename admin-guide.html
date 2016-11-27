@@ -25,6 +25,7 @@ on one or more autonomous hypervisors or &quot;VM Factories&quot;.
 <li><a href="#settings">Configuration of the Vac space</a>
 <li><a href="#gocdbggus">GOCDB and GGUS</a>
 <li><a href="#machinetypes">Setting up machinetypes</a>
+<li><a href="#superslots">Superslots for multiprocessor VMs</a>
 </ul>
 <li><a href="#startingstopping">Starting and stopping vacd</a>
 <li><a href="#stoppingvms">Stopping VMs</a>
@@ -450,7 +451,36 @@ The experiment or VO responsible for each machinetype should supply
 step by step intructions on how to set up the rest of the [machinetype ...]
 section and how to create the files to be placed in its subdirectory
 of /var/lib/vac/machinetypes (likely to be a hostcert.pem and hostkey.pem
-pair to give to the VM.)
+pair to give to the VM, placed in the files subdirectory.)
+
+<p>
+In Vac 02.00 onwards, a VOs may publish Vacuum Pipe files which specify
+default options to create their VMs. In this case, a machinetype section
+will typically just contain the target_share and vacuum_pipe_url options.
+
+<h3><a name="superslots">Superslots for multiprocessor VMs</a></h3>
+
+<p>
+Vac 02.00 introduces the concept of superslots: VMs created within the
+same superslot always have the same finish time, and their processors
+are likely to become available at the same time. For example, if the VM
+factory is trying to manage a mix of single processor and 8 processor
+VMs, the superslots mechanism tries to run single processor VMs in 
+groups to avoid fragmenting the resource and preventing 8 processor
+VMs from having a chance to start when appropriate. 
+
+<p>
+Machinetype definitions including min_processors and max_processors 
+options, allow VMs to be created with more than one virtual CPU.
+For Vac to create VMs with more than one processor, the option
+superslots must be set to a value greater than 1 in [settings], and
+this option also limits the largest number of processors which
+may be assigned to a single VM (which will occupy a whole superslot.)
+Vac may also try to create multiple VMs with less processors than
+processors_per_superslot to complete a superslot. The choice of which
+machinetype to create VMs for is driven by the target shares mechanism,
+but limited by the limits on processors, and min_wallclock_seconds and
+max_wallclock_seconds. 
 
 <h2 style="border-bottom: 1px solid"><a name="startingstopping">Starting and stopping vacd</a></h2>
 

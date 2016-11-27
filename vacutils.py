@@ -161,7 +161,7 @@ def readPipe(pipeFile, pipeURL, updatePipes = False):
    return pipeDict
 
 def createUserData(shutdownTime, machinetypePath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr, 
-                   machinefeaturesURL = None, jobfeaturesURL = None, joboutputsURL = None):
+                   machinefeaturesURL = None, jobfeaturesURL = None, joboutputsURL = None, rootImageURL = None):
    
    # Get raw user_data template file, either from network ...
    if (userDataPath[0:7] == 'http://') or (userDataPath[0:8] == 'https://'):
@@ -219,6 +219,9 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
 
    if joboutputsURL:
      userDataContents = userDataContents.replace('##user_data_joboutputs_url##', joboutputsURL)     
+
+   if rootImageURL :
+     userDataContents = userDataContents.replace('##user_data_root_image_url##', rootImageURL)
 
    # Deprecated vmtype/VM/VMLM terminology
    userDataContents = userDataContents.replace('##user_data_vmtype##',           machinetypeName)

@@ -2,7 +2,8 @@
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]
 - Add description to [settings]
-- Add #user_data_url## with URL of the remote user_data file
+- Add ##user_data_url## with URL of the remote user_data file
+- Add ##user_data_root_image_url## to vacutils
 - Sort eligible machines by machinegroup,machinetype share scores
 - Add processors_per_superslot to [settings]
 - Try to build superslots to handle single and multiprocessor VMs
@@ -14,6 +15,7 @@
   /var/lib/vac/machinetypes/MACHINETYPE/files
 - user_data_proxy replaces user_data_proxy_cert/_key and always looks
   for /var/lib/vac/machinetypes/MACHINETYPE/x509cert.pem and x509key.pem
+- Add num_cpus to VacQuery machines responses.
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

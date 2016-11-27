@@ -1108,7 +1108,13 @@ class VacVM:
       # We do not know max_swap_bytes or scratch_limit_bytes so ignore them
 
    def setupUserDataContents(self):
- 
+   
+      if machinetypes[self.machinetypeName]['root_image'].startswith('http://') or \
+         machinetypes[self.machinetypeName]['root_image'].startswith('https://'):
+       rootImageURL = machinetypes[self.machinetypeName]['root_image']
+      else:
+       rootImageURL = None
+    
       try:
         userDataContents = vac.vacutils.createUserData(
                                                shutdownTime       = self.shutdownTime,
@@ -1122,7 +1128,8 @@ class VacVM:
                                                uuidStr		  = self.uuidStr,
                                                machinefeaturesURL = 'http://' + mjfAddress + '/machinefeatures',
                                                jobfeaturesURL     = 'http://' + mjfAddress + '/jobfeatures',
-                                               joboutputsURL      = 'http://' + mjfAddress + '/joboutputs')
+                                               joboutputsURL      = 'http://' + mjfAddress + '/joboutputs',
+                                               rootImageURL       = rootImageURL )
       except Exception as e:
         raise NameError('Failed to read ' + machinetypes[self.machinetypeName]['user_data'] + ' (' + str(e) + ')')
 
@@ -2086,6 +2093,7 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'created_time'		: vm.created,
                 'started_time'		: vm.started,
                 'heartbeat_time'	: vm.heartbeat,
+                'num_cpus'		: vm.processors,
                 'cpu_seconds'		: vm.cpuSeconds,
                 'cpu_percentage'	: vm.cpuPercentage,
                 'hs06' 		       	: hs06,
