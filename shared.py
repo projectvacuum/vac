@@ -63,7 +63,8 @@ import vac
 # All VacQuery requests and responses are in this file
 # so we can define the VacQuery protocol version here.
 # 01.00 is the one described in HSF-TN-2016-04
-vacQueryVersion = '01.00'
+# 01.01 adds num_cpus to machine_status
+vacQueryVersion = '01.01'
 
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
@@ -2319,12 +2320,17 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),
 
-                'max_cpus'		   : numProcessors,
                 'running_cpus'             : runningProcessors,
                 'running_machines'         : runningMachines,
                 'running_hs06'             : runningHS06,
+                'max_cpus'		   : numProcessors,
                 'max_machines'             : numProcessors,
                 'max_hs06'		   : maxHS06,
+
+                'total_cpus'		   : numProcessors,	# deprecated
+                'total_machines'           : numProcessors,	# deprecated
+                'total_hs06'		   : maxHS06,		# deprecated
+
                 'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,

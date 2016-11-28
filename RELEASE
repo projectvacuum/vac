@@ -1,27 +1,64 @@
-We are pleased to announce the release of Vac 01.00.00
+We are pleased to announce the release of Vac 02.00.00
 
-RPMs for SL6 and the Admin Guide are available from the 01.00
+RPMs for SL6 and the Admin Guide are available from the 02.00
 subdirectory of
 
 https://repo.gridpp.ac.uk/vacproject/vac/
 
-There are no backwards incompatible changes in the Vac configuration
-files, but VM factories should be drained of VMs before upgrading 
-to this version, and then the factories must be rebooted, as the 
-network configuration has changed.
+This version introduces the Superslots and Vacuum Pipe mechanisms
+described in the man pages and Admin Guide.
+
+The user_data_proxy_cert and user_data_proxy_key options have been
+replaced with a single True/False flag user_data_proxy which prompts
+Vac to look for the files x509cert.pem and x509key.pem in the 
+machinetype's subdirectory of /var/lib/vac/machinetypes. For example,
+/var/lib/vac/machinetypes/EXAMPLE/x509cert.pem .
+
+Any per-machinetype files other than x509cert.pem and x509key.pem for
+generating proxies are now placed in a files subdirectory. For example,
+/var/lib/vac/machinetypes/EXAMPLE/files/hostcert.pem . When using a 
+Vacuum Pipe remote configuration file, only files within this directory
+may be accessed when creating a VM, for security reasons.
+
+There are no other backwards incompatible changes in the Vac configuration
+files when compared to Vac 01.00, but deprecation warnings will displayed
+where option names have changed.
+
+Several option name changes are simply replacing "cpu" with processor,
+in preparation for future options to deal with non-uniform memory
+access on factories with more than one physical CPU.
+
+cpu_per_machine   -> processors_per_superslot
+cpu_total         -> total_processors
+overload_per_cpu  -> overload_per_processor
+disk_gb_per_cpu   -> disk_gb_per_processor
+mb_per_cpu        -> mb_per_processor
+hs06_per_cpu      -> hs06_per_processor
+cernvm_signing_dn -> image_signing_dn
+
+If upgrading from a version before Vac 01.00.00, then the factories
+must be drained before upgrading Vac, and then the factories must be 
+rebooted, as the network configuration has changed.
  
 The improvements listed in CHANGES are:
 
-- user_data_option_XXX and user_data_file_XXX options may be given
-  in [settings] to set default substitutions for all machinetypes
-- Any GSI proxies given to VMs have machinetype name as final CN
-- Create 1024 bit GSI proxies
-- Fix bug in over-sending vac-version-logger messages
-- Add squid-conf to vac command for Puppet etc
-- Add per-factory squid cache to Puppet init.pp
-- total_*** becomes max_*** in VacQuery 0.4
-- Use 169.254.169.253 as default route and MJF HTTP server in case VMs
-  block 169.254.169.254 completely to stop user access to EC2 metadata
+==================== Changes in Vac version 02.00.00 =================== 
+- Replace cpu(s) with processor(s) in configuration options
+- Add max_processors, min_processors, machinegroup to [machinetype ...]
+- Add ##user_data_url## with URL of the remote user_data file
+- Add ##user_data_root_image_url## to vacutils
+- Sort eligible machines by machinegroup,machinetype share scores
+- Add processors_per_superslot to [settings]
+- Try to build superslots to handle single and multiprocessor VMs
+- cernvm_signing_dn becomes image_signing_dn
+- Don't create $MACHINEFEATURES/hs06 or $JOBFEATURES/hs06_job or
+  the /var/lib/vac/apel-outgoing APEL records if hs06_per_processor
+  is not set. Default 1.0 still used otherwise.
+- user_data_file_XXXX, user_data, and root_image now look in 
+  /var/lib/vac/machinetypes/MACHINETYPE/files
+- user_data_proxy replaces user_data_proxy_cert/_key and always looks
+  for /var/lib/vac/machinetypes/MACHINETYPE/x509cert.pem and x509key.pem
+- Add num_cpus to VacQuery machines responses.
 
 The man pages and Admin Guide have been updated to reflect these changes.
 
