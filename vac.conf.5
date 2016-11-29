@@ -109,8 +109,10 @@ of factories and VMs via site or central VacMon services.
 .B total_processors
 is derived from /proc/cpuinfo by default and does not usually need to be 
 set explicitly. If set, then it provides an additional limit on the number 
-of virtual machines that will be created. This allows you to reduce the 
-number of running VMs on a factory machine without having to kill running 
+of processors which may be assigned to virtual machines. In turn this 
+limits the number of virtual machines which can be created. This allows 
+you to reduce the number of running VMs on a factory machine without having
+to kill running 
 VMs. Instead, they are allowed to finish one by one and are only recreated
 if total_processors allows.
 
