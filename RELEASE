@@ -36,6 +36,11 @@ mb_per_cpu        -> mb_per_processor
 hs06_per_cpu      -> hs06_per_processor
 cernvm_signing_dn -> image_signing_dn
 
+The per-machinetype root_public_key option has moved to [settings] to
+become a global option with the default /root/.ssh/id_rsa.pub . In
+most cases this won't require any change to configuration or the
+way keys are managed on VM factories.
+
 If upgrading from a version before Vac 01.00.00, then the factories
 must be drained before upgrading Vac, and then the factories must be 
 rebooted, as the network configuration has changed.

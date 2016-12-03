@@ -99,6 +99,7 @@ processorsPerSuperslot = None
 versionLogger = None
 machinetypes = None
 vacmons = None
+rootPublicKeyFile = None
 
 volumeGroup = None
 gbDiskPerProcessor = None
@@ -108,7 +109,7 @@ def readConf(includePipes = False, updatePipes = False):
       global gocdbSitename, \
              factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
-             processorsPerSuperslot, versionLogger, machinetypes, vacmons, \
+             processorsPerSuperslot, versionLogger, machinetypes, vacmons, rootPublicKeyFile, \
              volumeGroup, gbDiskPerProcessor, overloadPerProcessor, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -134,6 +135,7 @@ def readConf(includePipes = False, updatePipes = False):
       versionLogger = 1
       machinetypes = {}
       vacmons = []
+      rootPublicKeyFile = '/root/.ssh/id_rsa.pub'
       
       volumeGroup = 'vac_volume_group'
       machinefeaturesOptions = {}
@@ -241,6 +243,9 @@ def readConf(includePipes = False, updatePipes = False):
            fixNetworking = False
       else:
            fixNetworking = True
+
+      if parser.has_option('settings', 'root_public_key'):
+        rootPublicKeyFile = parser.get('settings', 'root_public_key').strip()
 
       if parser.has_option('settings', 'forward_dev'):
            forwardDev = parser.get('settings','forward_dev').strip()
@@ -452,10 +457,9 @@ def readConf(includePipes = False, updatePipes = False):
                  machinetype['scratch_device'] = 'vdb'
 
              if parser.has_option(sectionName, 'rootpublickey'):
-                 print 'The rootpublickey option is deprecated; please use root_public_key!'
-                 machinetype['root_public_key'] = parser.get(sectionName, 'rootpublickey')
+                 print 'The rootpublickey option is deprecated; please use root_public_key in [settings]!'
              elif parser.has_option(sectionName, 'root_public_key'):
-                 machinetype['root_public_key'] = parser.get(sectionName, 'root_public_key')
+                 print 'The root_public_key option in [machinetype ...] is deprecated; please use root_public_key in [settings]!'
 
              if parser.has_option(sectionName, 'user_data'):
                  machinetype['user_data'] = parser.get(sectionName, 'user_data')
@@ -962,17 +966,11 @@ class VacVM:
 
       metaData = {}
 
-      if 'root_public_key' in machinetypes[self.machinetypeName]:
-
-        if machinetypes[self.machinetypeName]['root_public_key'][0] == '/':
-          root_public_key_file = machinetypes[self.machinetypeName]['root_public_key']
-        else:
-          root_public_key_file = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/' + machinetypes[self.machinetypeName]['root_public_key']
-          
+      if rootPublicKeyFile:          
         try:
-          publicKey = open(root_public_key_file, 'r').read()
+          publicKey = open(rootPublicKeyFile, 'r').read()
         except:
-          raise NameError('Failed to read ' + root_public_key_file)
+          vac.vacutils.logLine('Failed to read ' + rootPublicKeyFile + ' so no ssh access to VMs!')
         else:
           metaData['public_keys'] = { "0" : publicKey }
 

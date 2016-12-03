@@ -140,6 +140,11 @@ processors allocated to the virtual machine. For file-backed virtual
 disks, the default value of 40 GB is used unless overriden by 
 disk_gb_per_processor.
 
+.B root_public_key
+is the file name of a public key which will be offered to the VM if it
+exists. For most machinetypes this will allow root ssh access from the
+VM factory. Default /root/.ssh/id_rsa.pub
+
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking
 state if the vac_169.254.0.0 virtual network does not exist and cannot
@@ -316,11 +321,6 @@ VM starts using an If-Modified-Since request to minimise network load.
 Alternatively, the images may be files in the local filesystem.
 With cernvm3 machine_model, the files are ISO CDROM-style boot images; 
 with the cernvm2 machine_model, they are the root hard disk image itself.
-
-.B root_public_key
-is the file name of a public key supplied to the contextualization which
-will be allowed root ssh access. Setting this option to 
-/root/.ssh/id_rsa.pub will give access from the factory machine.
 
 .B user_data
 is the path of a contextualization file provided by the VO and perhaps 

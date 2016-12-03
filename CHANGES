@@ -16,6 +16,8 @@
 - user_data_proxy replaces user_data_proxy_cert/_key and always looks
   for /var/lib/vac/machinetypes/MACHINETYPE/x509cert.pem and x509key.pem
 - Add num_cpus to VacQuery machines responses.
+- Move root_public_key from machinetype to [settings] and set default
+  /root/.ssh/id_rsa.pub
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 
