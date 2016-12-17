@@ -2329,10 +2329,15 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'total_machines'           : numProcessors,	# deprecated
                 'total_hs06'		   : maxHS06,		# deprecated
 
-                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
-                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
                 'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
+
+                # In the future vac_disk_* will be deprecated in favour of agent_disk_*
+                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
+                'agent_disk_avail_kb'      : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
+                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
+                'agent_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
+
                 'load_average'		   : loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
                 'os_issue'		   : osIssue,
