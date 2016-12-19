@@ -18,7 +18,8 @@
 - Add num_cpus to VacQuery machines responses.
 - Move root_public_key from machinetype to [settings] and set default
   /root/.ssh/id_rsa.pub
-- Add agent_disk_* in factory_status, eventually to replace vac_disk_*
+- Add daemon_disk_* in factory_status, eventually to replace vac_disk_*
+- Add processors keys in VacQuery, eventually to replace cpu keys
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

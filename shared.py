@@ -2078,7 +2078,8 @@ def makeMachineResponses(cookie, clientName = '-'):
 
      responseDict = {
                 'message_type'		: 'machine_status',
-                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
+                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
+                'daemon_version'	: 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
@@ -2092,7 +2093,8 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'created_time'		: vm.created,
                 'started_time'		: vm.started,
                 'heartbeat_time'	: vm.heartbeat,
-                'num_cpus'		: vm.processors,
+                'num_cpus'		: vm.processors, # removed in Vacuum Platform 2.0 spec
+                'num_processors'	: vm.processors,
                 'cpu_seconds'		: vm.cpuSeconds,
                 'cpu_percentage'	: vm.cpuPercentage,
                 'hs06' 		       	: hs06,
@@ -2221,7 +2223,8 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
 
      responseDict = {
                 'message_type'		: 'machinetype_status',
-                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName,
+                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
+                'daemon_version'	: 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
@@ -2232,7 +2235,8 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
                 'machinetype'		: machinetypeName,
                 'running_hs06'        	: runningHS06,
                 'running_machines'      : runningMachines,
-                'running_cpus'          : runningProcessors,
+                'running_cpus'          : runningProcessors, # removed in Vacuum Platform 2.0 spec
+                'running_processors'    : runningProcessors,
                 'num_before_fizzle' 	: numBeforeFizzle,
                 'shutdown_message'  	: shutdownMessage,
                 'shutdown_time'     	: shutdownMessageTime,
@@ -2311,17 +2315,20 @@ def makeFactoryResponse(cookie, clientName = '-'):
 
    responseDict = {
                 'message_type'		   : 'factory_status',
-                'vac_version'		   : 'Vac ' + vacVersion + ' ' + clientName,
+                'vac_version'		   : 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
+                'daemon_version'	   : 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	   : 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	   : cookie,
                 'space'		    	   : spaceName,
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),
 
-                'running_cpus'             : runningProcessors,
+                'running_cpus'             : runningProcessors, # removed in Vacuum Platform 2.0 spec
+                'running_processors'       : runningProcessors,
                 'running_machines'         : runningMachines,
                 'running_hs06'             : runningHS06,
-                'max_cpus'		   : numProcessors,
+                'max_cpus'		   : numProcessors,	# removed in Vacuum Platform 2.0 spec
+                'max_processors'	   : numProcessors,
                 'max_machines'             : numProcessors,
                 'max_hs06'		   : maxHS06,
 
@@ -2332,11 +2339,10 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
 
-                # In the future vac_disk_* will be deprecated in favour of agent_disk_*
-                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
-                'agent_disk_avail_kb'      : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
-                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,
-                'agent_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
+                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024, # removed in Vacuum Platform 2.0 spec
+                'daemon_disk_avail_kb'      : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
+                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,                                    # removed in Vacuum Platform 2.0 spec
+                'daemon_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
 
                 'load_average'		   : loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
