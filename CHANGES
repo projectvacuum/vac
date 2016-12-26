@@ -20,6 +20,7 @@
   /root/.ssh/id_rsa.pub
 - Add daemon_disk_* in factory_status, eventually to replace vac_disk_*
 - Add processors keys in VacQuery, eventually to replace cpu keys
+- Use same timestamp in VacQuery machinetype and machine status messages
 ==================== Changes in Vac version 01.00.01 =================== 
 - Fix cleanup of old machines directories
 ==================== Changes in Vac version 01.00.00 =================== 

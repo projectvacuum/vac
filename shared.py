@@ -2063,6 +2063,7 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
 
 def makeMachineResponses(cookie, clientName = '-'):
    responses = []
+   timeNow = int(time.time()
 
    # Go through the machine slots, sending one message for each
    for ordinal in range(numMachineSlots):
@@ -2085,7 +2086,7 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'space'		    	: spaceName,
                 'factory'       	: os.uname()[1],
                 'num_machines'       	: numMachineSlots,
-                'time_sent'		: int(time.time()),
+                'time_sent'		: timeNow,
 
                 'machine' 		: vm.name,
                 'state'			: vm.state,
@@ -2115,6 +2116,7 @@ def makeMachineResponses(cookie, clientName = '-'):
 def makeMachinetypeResponses(cookie, clientName = '-'):
    # Send back machinetype messages to the querying factory or client
    responses = []
+   timeNow = int(time.time())
 
    # Go through the machinetypes
    for machinetypeName in machinetypes:
@@ -2230,7 +2232,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
                 'space'		    	: spaceName,
                 'factory'       	: os.uname()[1],
                 'num_machinetypes'      : len(machinetypes),
-                'time_sent'		: int(time.time()),
+                'time_sent'		: timeNow,
 
                 'machinetype'		: machinetypeName,
                 'running_hs06'        	: runningHS06,
@@ -2315,7 +2317,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
 
    responseDict = {
                 'message_type'		   : 'factory_status',
-                'vac_version'		   : 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
+                'vac_version'		   : 'Vac ' + vacVersion + ' ' + clientName, # renamed in Vacuum Platform 2.0 spec
                 'daemon_version'	   : 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	   : 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	   : cookie,
@@ -2323,11 +2325,11 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'factory'       	   : os.uname()[1],
                 'time_sent'		   : int(time.time()),
 
-                'running_cpus'             : runningProcessors, # removed in Vacuum Platform 2.0 spec
+                'running_cpus'             : runningProcessors, # renamed in Vacuum Platform 2.0 spec
                 'running_processors'       : runningProcessors,
                 'running_machines'         : runningMachines,
                 'running_hs06'             : runningHS06,
-                'max_cpus'		   : numProcessors,	# removed in Vacuum Platform 2.0 spec
+                'max_cpus'		   : numProcessors,	# renamed in Vacuum Platform 2.0 spec
                 'max_processors'	   : numProcessors,
                 'max_machines'             : numProcessors,
                 'max_hs06'		   : maxHS06,
@@ -2339,9 +2341,9 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'root_disk_avail_kb'       : (rootDiskStatFS.f_bavail * rootDiskStatFS.f_frsize) / 1024,
                 'root_disk_avail_inodes'   : rootDiskStatFS.f_favail,
 
-                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024, # removed in Vacuum Platform 2.0 spec
+                'vac_disk_avail_kb'        : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024, # renamed in Vacuum Platform 2.0 spec
                 'daemon_disk_avail_kb'      : ( vacDiskStatFS.f_bavail *  vacDiskStatFS.f_frsize) / 1024,
-                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,                                    # removed in Vacuum Platform 2.0 spec
+                'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,                                    # renamed in Vacuum Platform 2.0 spec
                 'daemon_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
 
                 'load_average'		   : loadAvg(2),
