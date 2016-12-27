@@ -956,6 +956,20 @@ class VacVM:
           vac.vacutils.logLine('Failed creating ' + time.strftime('/var/lib/vac/apel-outgoing/%Y%m%d/', nowTime) + fileName)
           return
 
+   def sendVacMon(self):
+      # Send VacMon machine_status message(s) about a VM that has finished
+      if not vacmons or self.state != VacState.shutdown or not self.started or not self.heartbeat:
+        return
+
+      machineMessage = makeMachineResponse('0', self.ordinal, clientName = 'vacd-factory')
+      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+      for vacmonHostPort in vacmons:
+        (vacmonHost, vacmonPort) = vacmonHostPort.split(':')
+        sock.sendto(machineMessage, (vacmonHost,int(vacmonPort)))
+
+      sock.close()
+
    def makeOpenStackData(self):
    
       if 'user_data' in machinetypes[self.machinetypeName]:
@@ -2061,26 +2075,24 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
 
    return responses
 
-def makeMachineResponses(cookie, clientName = '-'):
-   responses = []
-   timeNow = int(time.time()
+def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
 
-   # Go through the machine slots, sending one message for each
-   for ordinal in range(numMachineSlots):
-   
-     vm = VacVM(ordinal, checkHypervisor = False)
+   if not timeNow:
+     timeNow = int(time.time()
+
+   vm = VacVM(ordinal, checkHypervisor = False)
      
-     vac.vacutils.logLine(vm.name + ' is ' + str(vm.state) + ' (' + str(vm.machinetypeName) + ', started ' + str(vm.created) + ')')
+   vac.vacutils.logLine(vm.name + ' is ' + str(vm.state) + ' (' + str(vm.machinetypeName) + ', started ' + str(vm.created) + ')')
 
-     if vm.hs06:
-       hs06 = vm.hs06
-     else:
-       hs06 = 1.0 * vm.processors
+   if vm.hs06:
+     hs06 = vm.hs06
+   else:
+     hs06 = 1.0 * vm.processors
 
-     responseDict = {
+   responseDict = {
                 'message_type'		: 'machine_status',
-                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
-                'daemon_version'	: 'Vac ' + vacVersion + ' ' + clientName, # removed in Vacuum Platform 2.0 spec
+                'vac_version'		: 'Vac ' + vacVersion + ' ' + clientName, # renamed in Vacuum Platform 2.0 spec
+                'daemon_version'	: 'Vac ' + vacVersion + ' ' + clientName,
                 'vacquery_version'	: 'VacQuery ' + vacQueryVersion,
                 'cookie'	  	: cookie,
                 'space'		    	: spaceName,
@@ -2102,16 +2114,17 @@ def makeMachineResponses(cookie, clientName = '-'):
                 'machinetype'		: vm.machinetypeName,
                 'shutdown_message'  	: vm.shutdownMessage,
                 'shutdown_time'     	: vm.shutdownMessageTime
-                    }
+                  }
 
-     if gocdbSitename:
-         responseDict['site'] = gocdbSitename
-     else:
-         responseDict['site'] = spaceName
+   if gocdbSitename:
+     responseDict['site'] = gocdbSitename
+   else:
+     responseDict['site'] = spaceName
 
-     responses.append(json.dumps(responseDict))
+   if 'accounting_fqan' in machinetypes[vm.machinetypeName]:
+     responseDict['fqan'] = machinetypes[vm.machinetypeName]['accounting_fqan']
 
-   return responses
+   return json.dumps(responseDict)
 
 def makeMachinetypeResponses(cookie, clientName = '-'):
    # Send back machinetype messages to the querying factory or client
