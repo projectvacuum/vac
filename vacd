@@ -462,7 +462,7 @@ def vacResponder():
 
    sock = None
 
-   vac.vacutils.logLine('vac responder starts')
+   vac.vacutils.logLine('Start new vac responder main loop')
    
    vac.vacutils.setProcessName('vacd-responder')
 
@@ -482,6 +482,7 @@ def vacResponder():
 
      responderPid = os.fork()
      if responderPid != 0:
+       vac.vacutils.logLine('Start new vac responder subprocess: ' + str(responderPid))
        os.waitpid(responderPid, 0)
 
      else:
@@ -511,7 +512,7 @@ def vacResponder():
              sock.bind(('', 995))
            except Exception as e:
              sock = None
-             vac.vacutils.logLine('Failed to bind to vac-responder port 995: ' + str(e))
+             vac.vacutils.logLine('Failed to bind to vac responder port 995: ' + str(e))
              time.sleep(60.0)
              continue
    
