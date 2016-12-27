@@ -63,8 +63,9 @@ import vac
 # All VacQuery requests and responses are in this file
 # so we can define the VacQuery protocol version here.
 # 01.00 is the one described in HSF-TN-2016-04
-# 01.01 adds num_cpus to machine_status
-vacQueryVersion = '01.01'
+# 01.01 has daemon_* and processor renames 
+# 01.02 adds num_processors to machine_status
+vacQueryVersion = '01.02'
 
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
