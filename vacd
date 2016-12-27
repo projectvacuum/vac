@@ -467,43 +467,6 @@ def vacResponder():
    vac.vacutils.setProcessName('vacd-responder')
 
    while True:
-   
-     try:
-       close(so)
-     except:
-       pass
-           
-     so = file('/var/log/vacd-responder', 'a+')
-     os.dup2(so.fileno(), sys.stdout.fileno())
-          
-     try:
-       close(se)
-     except:
-       pass
-
-     se = file('/var/log/vacd-responder', 'a+', 0)     
-     os.dup2(se.fileno(), sys.stderr.fileno())
-
-     if sock is None:
-       sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-       vac.shared.setSockBufferSize(sock)
-       sock.settimeout(60.0)
-
-       try:
-         sock.bind(('', 995))
-       except Exception as e:
-         sock = None
-         vac.vacutils.logLine('Failed to bind to vac-responder port 995: ' + str(e))
-         time.sleep(60.0)
-         continue
-   
-     readConfError = vac.shared.readConf(includePipes = True)
-
-     if readConfError:
-       vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
-       time.sleep(60.0)
-       continue
-          
      try:
        pr = open('/var/lib/vac/responder.pid', 'r')
        pid = int(pr.read().strip())
@@ -512,60 +475,103 @@ def vacResponder():
        if pid != os.getpid():
          vac.vacutils.logLine('os.getpid ' + os.getpid() + ' does not match responder.pid ' + pid + ' - exiting')
          break
-                
+                         
      except:
        vac.vacutils.logLine('no responder.pid - exiting')
        break
 
-     # so log file is updated before we start waiting        
-     sys.stdout.flush()
-     sys.stderr.flush()
-
-     # Update responder heartbeat file
-     vac.vacutils.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-     try:
-       data, addr = sock.recvfrom(1024)
-     except socket.error as msg:
-       continue
-
-     try:
-       queryMessage = json.loads(data)
-     except:
-       continue
-     
-     if ('cookie' in queryMessage and
-         'space'  in queryMessage and 
-         queryMessage['space']  == vac.shared.spaceName):
+     responderPid = os.fork()
+     if responderPid != 0:
+       os.waitpid(cyclePid, 0)
+     else:
+       for n in xrange(1,100):
+         try:
+           close(so)
+         except:
+           pass
+           
+         so = file('/var/log/vacd-responder', 'a+')
+         os.dup2(so.fileno(), sys.stdout.fileno())
           
-         vac.vacutils.logLine("Received " + data + " from " + str(addr))
+         try:
+           close(se)
+         except:
+           pass
 
-         if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
-            ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
-           timeNow = int(time.time())
-           for ordinal in range(numMachineSlots):
-             response = vac.shared.makeMachineResponse(queryMessage['cookie'], ordinal, clientName = 'vacd-responder', timeNow = timeNow):
-             try:
-               sock.sendto(response, addr)
-             except Exception as e:
-               print str(e)
+         se = file('/var/log/vacd-responder', 'a+', 0)     
+         os.dup2(se.fileno(), sys.stderr.fileno())
 
-         elif ('method' in queryMessage and queryMessage['method'] == 'machinetypes') or \
-              ('message_type' in queryMessage and queryMessage['message_type'] == 'machinetypes_query'):
-           for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
-             try:
-               sock.sendto(response, addr)
-             except Exception as e:
-               print str(e)
+         if sock is None:
+           sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+           vac.shared.setSockBufferSize(sock)
+           sock.settimeout(60.0)
 
-         elif ('method' in queryMessage and queryMessage['method'] == 'factories') or \
-              ('message_type' in queryMessage and queryMessage['message_type'] == 'factory_query'):
            try:
-             sock.sendto(vac.shared.makeFactoryResponse(queryMessage['cookie'], clientName = 'vacd-responder'), addr)
-           except:
-             pass
+             sock.bind(('', 995))
+           except Exception as e:
+             sock = None
+             vac.vacutils.logLine('Failed to bind to vac-responder port 995: ' + str(e))
+             time.sleep(60.0)
+             continue
+   
+         readConfError = vac.shared.readConf(includePipes = True)
+  
+         if readConfError:
+           vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
+           time.sleep(60.0)
+           continue
 
-   sys.exit(0) # if we break out of while loop then we exit
+         # so log file is updated before we start waiting        
+         sys.stdout.flush()
+         sys.stderr.flush()
+
+         # Update responder heartbeat file
+         vac.vacutils.createFile('/var/lib/vac/responder-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+         try:
+           data, addr = sock.recvfrom(1024)
+         except socket.error as msg:
+           continue
+
+         try:
+           queryMessage = json.loads(data)
+         except:
+           continue
+
+         if ('cookie' in queryMessage and
+             'space'  in queryMessage and 
+             queryMessage['space']  == vac.shared.spaceName):
+          
+             vac.vacutils.logLine("Received " + data + " from " + str(addr))
+  
+             if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
+                ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
+               timeNow = int(time.time())
+               for ordinal in range(numMachineSlots):
+                 response = vac.shared.makeMachineResponse(queryMessage['cookie'], ordinal, clientName = 'vacd-responder', timeNow = timeNow):
+                 try:
+                   sock.sendto(response, addr)
+                 except Exception as e:
+                   print str(e)
+
+             elif ('method' in queryMessage and queryMessage['method'] == 'machinetypes') or \
+                  ('message_type' in queryMessage and queryMessage['message_type'] == 'machinetypes_query'):
+               for response in vac.shared.makeMachinetypeResponses(queryMessage['cookie'], clientName = 'vacd-responder'):
+                 try:
+                   sock.sendto(response, addr)
+                 except Exception as e:
+                   print str(e)
+
+             elif ('method' in queryMessage and queryMessage['method'] == 'factories') or \
+                  ('message_type' in queryMessage and queryMessage['message_type'] == 'factory_query'):
+               try:
+                 sock.sendto(vac.shared.makeFactoryResponse(queryMessage['cookie'], clientName = 'vacd-responder'), addr)
+               except:
+                 pass
+
+       sys.exit(0) # when we finish/break out of subprocess for loop then we exit
+
+   sys.exit(0) # if we break out of main while loop then we exit
 
 class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
    # Base class for mjfHttpdHandler and metadataHttpHandler, each with their own self.makeBody()
@@ -839,12 +845,13 @@ if __name__ == '__main__':
         if os.fork() == 0:
 
           os.setsid()
+          # vacResponder() contains a retry loop for start failures
           vacResponder()
 
         elif os.fork() == 0:
 
           os.setsid()          
-          # If server fails (eg can't bind) then keep trying
+          # If server fails to start (eg can't bind) then keep trying
           while True:
             vacHttpd('mjf')
             time.sleep(10)
@@ -852,7 +859,7 @@ if __name__ == '__main__':
         elif os.fork() == 0:
 
           os.setsid()
-          # If server fails (eg can't bind) then keep trying
+          # If server fails start (eg can't bind) then keep trying
           while True:
             vacHttpd('metadata')
             time.sleep(10)

@@ -2078,11 +2078,9 @@ def sendFactoriesRequests(factoryList = None, clientName = '-'):
 def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
 
    if not timeNow:
-     timeNow = int(time.time()
+     timeNow = int(time.time())
 
    vm = VacVM(ordinal, checkHypervisor = False)
-     
-   vac.vacutils.logLine(vm.name + ' is ' + str(vm.state) + ' (' + str(vm.machinetypeName) + ', started ' + str(vm.created) + ')')
 
    if vm.hs06:
      hs06 = vm.hs06
