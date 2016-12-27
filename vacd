@@ -482,7 +482,8 @@ def vacResponder():
 
      responderPid = os.fork()
      if responderPid != 0:
-       os.waitpid(cyclePid, 0)
+       os.waitpid(responderPid, 0)
+
      else:
        for n in xrange(1,100):
          try:
@@ -547,8 +548,8 @@ def vacResponder():
              if ('method' in queryMessage and queryMessage['method'] == 'machines') or \
                 ('message_type' in queryMessage and queryMessage['message_type'] == 'machines_query'):
                timeNow = int(time.time())
-               for ordinal in range(numMachineSlots):
-                 response = vac.shared.makeMachineResponse(queryMessage['cookie'], ordinal, clientName = 'vacd-responder', timeNow = timeNow):
+               for ordinal in range(vac.shared.numMachineSlots):
+                 response = vac.shared.makeMachineResponse(queryMessage['cookie'], ordinal, clientName = 'vacd-responder', timeNow = timeNow)
                  try:
                    sock.sendto(response, addr)
                  except Exception as e:
