@@ -91,7 +91,7 @@ def secondsToHHMMSS(seconds):
    mm, ss = divmod(ss, 60)
    return '%02d:%02d:%02d' % (hh, mm, ss)
 
-def readPipe(pipeFile, pipeURL, updatePipes = False):
+def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
 
    # Default value in case not given in file
    cacheSeconds = 3600
@@ -109,6 +109,8 @@ def readPipe(pipeFile, pipeURL, updatePipes = False):
      else:
        json.dump(pipeDict, f)
        f.close()
+       # still force an attempt to fetch remote file
+       cacheSeconds = 0
 
    else:
      try:
@@ -135,6 +137,8 @@ def readPipe(pipeFile, pipeURL, updatePipes = False):
      else:
        logLine('/etc/grid-security/certificates directory does not exist - relying on curl bundle of commercial CAs')
 
+     logLine('Fetching ' + pipeURL)
+
      try:
        c.perform()
      except Exception as e:
@@ -155,6 +159,7 @@ def readPipe(pipeFile, pipeURL, updatePipes = False):
        else:
          json.dump(pipeDict, f)
          f.close()
+         logLine('Saved ' + pipeURL + ' as ' + pipeFile)
 
      createFile(pipeFile, json.dumps(pipeDict), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 

@@ -354,17 +354,18 @@ def readConf(includePipes = False, updatePipes = False):
                  machinetype['vacuum_pipe_url'] = parser.get(sectionName, 'vacuum_pipe_url').strip()
 
                  try:
-                   vacuumPipe = vacutils.readPipe('/var/lib/vac/machinetypes/' + sectionNameSplit[1] + '/vacuum.pipe', 
-                                                  machinetype['vacuum_pipe_url'], updatePipes = True)
-                 except:
+                   vacuumPipe = vac.vacutils.readPipe('/var/lib/vac/machinetypes/' + sectionNameSplit[1] + '/vacuum.pipe', 
+                                                  machinetype['vacuum_pipe_url'], 'Vac ' + vacVersion, updatePipes = True)
+                 except Exception as e:
                    # If a vacuum pipe is given but cannot be read then need to disable the machinetype
-                   print "Cannot read vacuum_pipe_url (" + machinetype['vacuum_pipe_url'] + ") - machinetype disabled!"
+                   print "Cannot read vacuum_pipe_url (" + machinetype['vacuum_pipe_url'] + ": " + str(e) + ") - machinetype disabled!"
                    parser.set(sectionName, 'target_share', '0.0')
 
                  else:
                    acceptedOptions = [
                                        'accounting_fqan',
                                        'backoff_seconds',
+                                       'cache_seconds',
                                        'fizzle_seconds',
                                        'heartbeat_file',
                                        'heartbeat_seconds',
@@ -416,7 +417,9 @@ def readConf(includePipes = False, updatePipes = False):
              
              # Start from any factory-wide common values defined in [settings]
              machinetype = machinetypeCommon.copy()
-             machinetype['root_image'] = parser.get(sectionName, 'root_image')
+
+             if parser.has_option(sectionName, 'root_image'):
+                 machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
              if parser.has_option(sectionName, 'cernvm_signing_dn'):
                  machinetype['cernvm_signing_dn'] = parser.get(sectionName, 'cernvm_signing_dn').strip()
@@ -464,8 +467,8 @@ def readConf(includePipes = False, updatePipes = False):
 
              if parser.has_option(sectionName, 'user_data'):
                  machinetype['user_data'] = parser.get(sectionName, 'user_data')
-             else:
-                 return 'user_data is now required in each machinetype section!'
+#             else:
+#                 return 'user_data is required for each machinetype section!'
 
              if parser.has_option(sectionName, 'min_processors'):
                  machinetype['min_processors'] = int(parser.get(sectionName, 'min_processors'))
