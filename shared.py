@@ -350,6 +350,9 @@ def readConf(includePipes = False, updatePipes = False):
              if sectionNameSplit[0] == 'vmtype':
                print '[vmtype ...] is deprecated. Please use [machinetype ' + sectionNameSplit[1] + '] instead'
          
+             # Start from any factory-wide common values defined in [settings]
+             machinetype = machinetypeCommon.copy()
+
              if includePipes and parser.has_option(sectionName, 'vacuum_pipe_url'):
                  machinetype['vacuum_pipe_url'] = parser.get(sectionName, 'vacuum_pipe_url').strip()
 
@@ -415,9 +418,6 @@ def readConf(includePipes = False, updatePipes = False):
                      # if all OK, then can set value as if from configuration files
                      parser.set(sectionName, option, value)
              
-             # Start from any factory-wide common values defined in [settings]
-             machinetype = machinetypeCommon.copy()
-
              if parser.has_option(sectionName, 'root_image'):
                  machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
