@@ -915,7 +915,7 @@ class VacVM:
       if gocdbSitename:
         tmpGocdbSitename = gocdbSitename
       else:
-        tmpGocdbSitename = spaceName
+        tmpGocdbSitename = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
       if self.hs06:
         hs06 = self.hs06
@@ -2121,7 +2121,7 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    if gocdbSitename:
      responseDict['site'] = gocdbSitename
    else:
-     responseDict['site'] = spaceName
+     responseDict['site'] = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
    if 'accounting_fqan' in machinetypes[vm.machinetypeName]:
      responseDict['fqan'] = machinetypes[vm.machinetypeName]['accounting_fqan']
@@ -2263,7 +2263,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
      if gocdbSitename:
        responseDict['site'] = gocdbSitename
      else:
-       responseDict['site'] = spaceName
+       responseDict['site'] = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
        
      try:
        responseDict['fqan'] = machinetypes[machinetypeName]['accounting_fqan']
@@ -2378,8 +2378,6 @@ def makeFactoryResponse(cookie, clientName = '-'):
    if gocdbSitename:
      responseDict['site'] = gocdbSitename
    else:
-     responseDict['site'] = spaceName
-   
+     responseDict['site'] = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
    return json.dumps(responseDict)
-
