@@ -5,7 +5,7 @@
 ## UNMODIFIED VERSIONS ARE COPIED TO THE Vcycle REPO AS NEEDED  ##
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-4. All rights reserved.
+#  Copyright (c) 2013-7. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -90,6 +90,22 @@ def secondsToHHMMSS(seconds):
    hh, ss = divmod(seconds, 3600)
    mm, ss = divmod(ss, 60)
    return '%02d:%02d:%02d' % (hh, mm, ss)
+
+def secondsToString(timeStamp):
+
+   if timeStamp is None or timeStamp == 0:
+     return ' - '
+  
+   seconds = int(time.time() - timeStamp)
+
+   if seconds < 120:
+     return str(seconds) + 's'
+   elif seconds < 7200:
+     return '%dm' % (seconds / 60)
+   elif seconds < 172800:
+     return '%dh' % (seconds / 3600)
+   else:
+     return '%dd' % (seconds / 86400)
 
 def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
 
