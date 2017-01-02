@@ -569,57 +569,6 @@ def nameFromOrdinal(ordinal):
 def ipFromOrdinal(ordinal):
       return natPrefix + str(ordinal)
 
-def loadAvg(which = None):
-      # By default, use maximum load average
-      # which = 1, 2, or 3
-      
-      try:
-        load0,load1,load2 = open('/proc/loadavg').readline().split()[0:3]
-        loadList = [float(load0),float(load1),float(load2)]
-      except Exception as e:
-        print 'Failed to parse /proc/loadavg (' + str(e) + ')'
-        return None
-
-      if which is None:
-        return max(loadList)
-      else:
-        return loadList[which]
-
-def memInfo():
-   # Get some interesting quantities out of /proc/meminfo
-   result = {}
-   
-   try:
-     f = open('/proc/meminfo', 'r')
-   except:
-     print 'Failed to open /proc/meminfo'
-     return None
-
-   while True:
-     fields = f.readline().split()
-     
-     if len(fields) == 0:
-       break
-     
-     if fields[0] == 'SwapTotal:':
-       result['SwapTotal'] = int(fields[1])
-     elif fields[0] == 'SwapFree:':
-       result['SwapFree'] = int(fields[1])
-     elif fields[0] == 'MemTotal:':
-       result['MemTotal'] = int(fields[1])
-     elif fields[0] == 'MemFree:':
-       result['MemFree'] = int(fields[1])
-
-   f.close()
-
-   if 'SwapTotal' in result and \
-      'SwapFree'  in result and \
-      'MemTotal'  in result and \
-      'MemFree'   in result:
-     return result
-   else:
-     return None
-
 def countProcProcessors():
       numProcessors = 0
 
@@ -2280,7 +2229,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
    vacDiskStatFS  = os.statvfs('/var/lib/vac')
    rootDiskStatFS = os.statvfs('/tmp')
    
-   memory = memInfo()
+   memory = vac.vacutils.memInfo()
 
    try:
      counts = open('/var/lib/vac/counts','r').readline().split()
@@ -2361,7 +2310,7 @@ def makeFactoryResponse(cookie, clientName = '-'):
                 'vac_disk_avail_inodes'    :  vacDiskStatFS.f_favail,                                    # renamed in Vacuum Platform 2.0 spec
                 'daemon_disk_avail_inodes'  :  vacDiskStatFS.f_favail,
 
-                'load_average'		   : loadAvg(2),
+                'load_average'		   : vac.vacutils.loadAvg(2),
                 'kernel_version'	   : os.uname()[2],
                 'os_issue'		   : osIssue,
                 'boot_time'		   : bootTime,

@@ -733,3 +733,54 @@ def makeSshFingerprint(pubFileLine):
      return ':'.join(fingerprint[i:i+2] for i in range(0, len(fingerprint), 2))
    except:
      return None
+
+def loadAvg(which = None):
+   # By default, use maximum load average
+   # which = 1, 2, or 3
+      
+   try:
+     load0,load1,load2 = open('/proc/loadavg').readline().split()[0:3]
+     loadList = [float(load0),float(load1),float(load2)]
+   except Exception as e:
+     print 'Failed to parse /proc/loadavg (' + str(e) + ')'
+     return None
+
+   if which is None:
+     return max(loadList)
+   else:
+     return loadList[which]
+
+def memInfo():
+   # Get some interesting quantities out of /proc/meminfo
+   result = {}
+   
+   try:
+     f = open('/proc/meminfo', 'r')
+   except:
+     print 'Failed to open /proc/meminfo'
+     return None
+
+   while True:
+     fields = f.readline().split()
+     
+     if len(fields) == 0:
+       break
+     
+     if fields[0] == 'SwapTotal:':
+       result['SwapTotal'] = int(fields[1])
+     elif fields[0] == 'SwapFree:':
+       result['SwapFree'] = int(fields[1])
+     elif fields[0] == 'MemTotal:':
+       result['MemTotal'] = int(fields[1])
+     elif fields[0] == 'MemFree:':
+       result['MemFree'] = int(fields[1])
+
+   f.close()
+
+   if 'SwapTotal' in result and \
+      'SwapFree'  in result and \
+      'MemTotal'  in result and \
+      'MemFree'   in result:
+     return result
+   else:
+     return None
