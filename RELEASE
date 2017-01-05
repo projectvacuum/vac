@@ -41,15 +41,18 @@ become a global option with the default /root/.ssh/id_rsa.pub . In
 most cases this won't require any change to configuration or the
 way keys are managed on VM factories.
 
+The man pages and Admin Guide have been updated to reflect these changes.
+
 If upgrading from a version before Vac 01.00.00, then the factories
 must be drained before upgrading Vac, and then the factories must be 
-rebooted, as the network configuration has changed.
+rebooted, as the network configuration changed in 01.00.
  
 The improvements listed in CHANGES are:
 
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]
+- Add description to [settings]
 - Add ##user_data_url## with URL of the remote user_data file
 - Add ##user_data_root_image_url## to vacutils
 - Sort eligible machines by machinegroup,machinetype share scores
@@ -64,7 +67,13 @@ The improvements listed in CHANGES are:
 - user_data_proxy replaces user_data_proxy_cert/_key and always looks
   for /var/lib/vac/machinetypes/MACHINETYPE/x509cert.pem and x509key.pem
 - Add num_cpus to VacQuery machines responses.
-
-The man pages and Admin Guide have been updated to reflect these changes.
+- Move root_public_key from machinetype to [settings] and set default
+  /root/.ssh/id_rsa.pub
+- Add daemon_disk_* in factory_status, eventually to replace vac_disk_*
+- Add processors keys in VacQuery, eventually to replace cpu keys
+- Use same timestamp in VacQuery machinetype and machine status messages
+- Send a machine_status VacMon message when a machine finishes
+- Fork a new responder process every 100 responses
+- Use domain name of spaceName as site name if not defined
 
 For more information about Vac please see https://www.gridpp.ac.uk/vac/
