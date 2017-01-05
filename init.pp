@@ -64,9 +64,9 @@
 #
 # This is similar to the configuration files tree, but instead of these
 # directories containing files they must contain machinetype directories 
-# suitable for installing below /var/lib/vac/machinetypes/files/ . As above, the 
-# first machinetype directory found with a given name is the one which will be 
-# installed.
+# suitable for installing as a machinetype subdirectory tree of 
+# /var/lib/vac/machinetypes/ . As above, the first machinetype
+# directory tree found with a given name is the one which will be installed.
 # 
 # 
 # For both configuration and machinetype files, you may want to create dedicated
@@ -152,7 +152,7 @@ class vac ($space              = "vac01.${domain}",
   # Install site-wide or increasingly specific machinetype files (probably hostcert.pem
   # and hostkey.pem) under /var/lib/vac/machinetypes/...
   #
-  file { '/var/lib/vac/machinetypes/files':
+  file { '/var/lib/vac/machinetypes':
          require => Package['vac'],
          ensure  => directory,
          recurse      => true,
