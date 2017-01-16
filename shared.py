@@ -461,14 +461,12 @@ def readConf(includePipes = False, updatePipes = False):
                  machinetype['scratch_device'] = 'vdb'
 
              if parser.has_option(sectionName, 'rootpublickey'):
-                 print 'The rootpublickey option is deprecated; please use root_public_key in [settings]!'
+                 print 'The rootpublickey option in ' + sectionName + ' is deprecated; please use root_public_key in [settings]!'
              elif parser.has_option(sectionName, 'root_public_key'):
-                 print 'The root_public_key option in [machinetype ...] is deprecated; please use root_public_key in [settings]!'
+                 print 'The root_public_key option in ' + sectionName + ' is deprecated; please use root_public_key in [settings]!'
 
              if parser.has_option(sectionName, 'user_data'):
                  machinetype['user_data'] = parser.get(sectionName, 'user_data')
-#             else:
-#                 return 'user_data is required for each machinetype section!'
 
              if parser.has_option(sectionName, 'min_processors'):
                  machinetype['min_processors'] = int(parser.get(sectionName, 'min_processors'))

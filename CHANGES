@@ -1,5 +1,6 @@
 ==================== Changes in Vac version 02.01.00 =================== 
 - Shutdown messages >= 700 now also count as aborts and trigger backoff
+- vacd started at 56 during the SysV boot up
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]
