@@ -60,6 +60,9 @@ json.encoder.FLOAT_REPR = lambda f: ("%.2f" % f)
 
 import vac
 
+class VacError(Exception):
+  pass
+
 # All VacQuery requests and responses are in this file
 # so we can define the VacQuery protocol version here.
 # 01.00 is the one described in HSF-TN-2016-04
@@ -809,7 +812,7 @@ class VacVM:
                                 stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
         except:
-          vac.vacutils.logLine('Faied creating ' + self.machinesDir() + '/finished')
+          vac.vacutils.logLine('Failed creating ' + self.machinesDir() + '/finished')
 
       # Update the file for this machinetype in the finishes directory, about the most recently created but already finished machine
 
@@ -927,7 +930,7 @@ class VacVM:
         try:
           self.setupUserDataContents()        
         except Exception as e:
-          raise NameError('Failed to create user_data (' + str(e) + ')')
+          raise VacError('Failed to create user_data (' + str(e) + ')')
 
       metaData = {}
 
@@ -942,7 +945,7 @@ class VacVM:
           try:
             open(self.machinesDir() + '/root_public_key','w').write(publicKey)
           except:
-            raise NameError('Failed to create root_public_key')
+            raise VacError('Failed to create root_public_key')
                       
       metaData['uuid']              = self.uuidStr
       metaData['availability_zone'] = spaceName
@@ -961,7 +964,7 @@ class VacVM:
                                 json.dumps(metaData),
                                 stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
-        raise NameError('Failed to create meta_data.json')
+        raise VacError('Failed to create meta_data.json')
 
    def makeMJF(self):
       os.makedirs(self.machinesDir() + '/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1095,20 +1098,20 @@ class VacVM:
                                                joboutputsURL      = 'http://' + mjfAddress + '/joboutputs',
                                                rootImageURL       = rootImageURL )
       except Exception as e:
-        raise NameError('Failed to read ' + machinetypes[self.machinetypeName]['user_data'] + ' (' + str(e) + ')')
+        raise VacError('Failed to read ' + machinetypes[self.machinetypeName]['user_data'] + ' (' + str(e) + ')')
 
       try:
         o = open(self.machinesDir() + '/user_data', 'w')
         o.write(userDataContents)
         o.close()
       except:
-        raise NameError('Failed writing to ' + self.machinesDir() + '/user_data')
+        raise VacError('Failed writing to ' + self.machinesDir() + '/user_data')
 
    def destroyVM(self, shutdownMessage = None):
       conn = libvirt.open(None)
       if conn == None:
           vac.vacutils.logLine('Failed to open connection to the hypervisor')
-          raise NameError('failed to open connection to the hypervisor')
+          raise VacError('failed to open connection to the hypervisor')
 
       try:
         dom = conn.lookupByName(self.name)
@@ -1398,12 +1401,12 @@ class VacVM:
        vgTotalBytes = int(vgsResult[0])
        vgExtentBytes = int(vgsResult[1])
      except Exception as e:
-       raise NameError('Failed to measure size of volume group ' + volumeGroup + ' - missing?')
+       raise VacError('Failed to measure size of volume group ' + volumeGroup + ' - missing?')
 
      try:
        f = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvs --noheadings --units B --nosuffix --options lv_name,lv_size ' + volumeGroup, 'r')
      except Exception as e:
-       raise NameError('Measuring size of logical volumes in ' + volumeGroup + ' fails with ' + str(e))
+       raise VacError('Measuring size of logical volumes in ' + volumeGroup + ' fails with ' + str(e))
 
      vgVacBytes = 0
      vgNonVacBytes = 0
@@ -1441,9 +1444,9 @@ class VacVM:
 
      try:
        if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
-         raise NameError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device')
+         raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device')
      except:
-         raise NameError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing')
+         raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing')
       
 def checkNetwork():
       # Check and if necessary create network and set its attributes

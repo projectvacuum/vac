@@ -50,9 +50,13 @@ import StringIO
 import tempfile
 import calendar
 import hashlib
+import xml.etree.cElementTree
 import pycurl
 import base64
 import M2Crypto
+
+class VacutilsError(Exception):
+   pass
 
 def logLine(text):
    print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
@@ -121,7 +125,7 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
      try:
        f = open(pipeFile, 'w')
      except:
-       raise NameError('Unable to write vacuum pipe file ' + pipeFile)
+       raise VacutilsError('Unable to write vacuum pipe file ' + pipeFile)
      else:
        json.dump(pipeDict, f)
        f.close()
@@ -158,14 +162,14 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
      try:
        c.perform()
      except Exception as e:
-       raise NameError('Failed to read ' + pipeURL + ' (' + str(e) + ')')
+       raise VacutilsError('Failed to read ' + pipeURL + ' (' + str(e) + ')')
 
      c.close()
 
      try:
        pipeDict = json.loads(buffer.getvalue())
      except:
-       raise NameError('Failed to load vacuum pipe file from ' + pipeURL)
+       raise VacutilsError('Failed to load vacuum pipe file from ' + pipeURL)
      else:
        try:
          f = open(pipeFile, 'w')
@@ -204,7 +208,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      try:
        c.perform()
      except Exception as e:
-       raise NameError('Failed to read ' + userDataPath + ' (' + str(e) + ')')
+       raise VacutilsError('Failed to read ' + userDataPath + ' (' + str(e) + ')')
 
      c.close()
 
@@ -223,7 +227,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
        userDataContents = u.read()
        u.close()
      except:
-       raise NameError('Failed to read ' + userDataFile)
+       raise VacutilsError('Failed to read ' + userDataFile)
 
    # Default substitutions (plus ##user_data_url## possibly done already)
    userDataContents = userDataContents.replace('##user_data_space##',            spaceName)
@@ -266,7 +270,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
          userDataContents = userDataContents.replace('##user_data_option_x509_proxy##',
                               makeX509Proxy(certPath, keyPath, shutdownTime, isLegacyProxy=False, cn=machinetypeName))
      except Exception as e:
-       raise NameError('Faled to make proxy (' + str(e) + ')')
+       raise VacutilsError('Faled to make proxy (' + str(e) + ')')
 
    # Site configurable substitutions for this machinetype
    for oneOption, oneValue in options.iteritems():
@@ -287,7 +291,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
 
            f.close()
         except:
-           raise NameError('Failed to read ' + oneValue + ' for ' + oneOption)          
+           raise VacutilsError('Failed to read ' + oneValue + ' for ' + oneOption)          
 
    # Remove any unused patterns from the template
    userDataContents = re.sub('##user_data_[a-z,0-9,_]*##', '', userDataContents)       
@@ -310,14 +314,14 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
    try:
      oldKey = M2Crypto.RSA.load_key(keyPath, emptyCallback1)
    except Exception as e:
-     raise NameError('Failed to get private key from ' + keyPath + ' (' + str(e) + ')')
+     raise VacutilsError('Failed to get private key from ' + keyPath + ' (' + str(e) + ')')
 
    # Get the chain of certificates (just one if a usercert or hostcert file)
 
    try:
      certBIO = M2Crypto.BIO.File(open(certPath))
    except Exception as e:
-     raise NameError('Failed to open certificate file ' + certPath + ' (' + str(e) + ')')
+     raise VacutilsError('Failed to open certificate file ' + certPath + ' (' + str(e) + ')')
 
    oldCerts = []
 
@@ -329,12 +333,12 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
        break
    
    if len(oldCerts) == 0:
-     raise NameError('Failed get certificate from ' + certPath)
+     raise VacutilsError('Failed get certificate from ' + certPath)
 
    # Check the expirationTime
    
    if int(calendar.timegm(time.strptime(str(oldCerts[0].get_not_after()), "%b %d %H:%M:%S %Y %Z"))) < expirationTime:
-     raise NameError('Cert/proxy ' + certPath + ' expires before given expiration time ' + str(expirationTime))
+     raise VacutilsError('Cert/proxy ' + certPath + ' expires before given expiration time ' + str(expirationTime))
 
    # Create the public/private keypair for the new proxy
    
@@ -506,7 +510,7 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
    try:
      f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
    except Exception as e:
-     NameError('Failed to create temporary image file in ' + tmpDir)
+     VacutilsError('Failed to create temporary image file in ' + tmpDir)
         
    ff = os.fdopen(f, 'wb')
    
@@ -545,18 +549,18 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
      ff.close()
    except Exception as e:
      os.remove(tempName)
-     raise NameError('Failed to fetch ' + url + ' (' + str(e) + ')')
+     raise VacutilsError('Failed to fetch ' + url + ' (' + str(e) + ')')
 
    if c.getinfo(c.RESPONSE_CODE) == 200:
      try:
        lastModified = float(c.getinfo(c.INFO_FILETIME))
      except:
        # We fail rather than use a server that doesn't give Last-Modified:
-       raise NameError('Failed to get last modified time for ' + url)
+       raise VacutilsError('Failed to get last modified time for ' + url)
 
      if lastModified < 0.0:
        # We fail rather than use a server that doesn't give Last-Modified:
-       raise NameError('Failed to get last modified time for ' + url)
+       raise VacutilsError('Failed to get last modified time for ' + url)
      else:
        # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
        # continually downloading the image based on our faulty filesystem timestamps
@@ -570,7 +574,7 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
        except:
          pass
            
-       raise NameError('Failed renaming new image ' + imageCache + '/' + urlEncoded)
+       raise VacutilsError('Failed renaming new image ' + imageCache + '/' + urlEncoded)
 
      logLine('New ' + url + ' put in ' + imageCache)
 
@@ -784,3 +788,98 @@ def memInfo():
      return result
    else:
      return None
+
+def UpdateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPath, versionString, spaceValues, machinetypesValues):
+
+   id            = None
+   keys          = {}
+   machinetypes  = []
+   curl          = pycurl.Curl()
+   
+   # First get the current state from GOCDB
+    
+   buffer = StringIO.StringIO()
+   curl.setopt(curl.WRITEFUNCTION, buffer.write)
+   curl.setopt(curl.USERAGENT, versionString)
+   curl.setopt(curl.TIMEOUT, 30)
+   curl.setopt(curl.FOLLOWLOCATION, True)
+   curl.setopt(curl.SSL_VERIFYPEER, 1)
+   curl.setopt(curl.SSL_VERIFYHOST, 2)
+   curl.setopt(curl.SSLCERT, certPath)
+   curl.setopt(curl.SSLKEY, keyPath)
+   curl.setopt(curl.CAPATH, caPath)
+   curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/public/?method=get_service_endpoint&sitename=%s&hostname=%s&service_type=%s' % (siteName, spaceName, serviceType))
+
+   try:
+     curl.perform()
+   except Exception as e:
+     raise VacutilsError('Failed to read service data (' + str(e) + ')')
+
+   print str(buffer.getvalue())
+
+   try:
+     serviceEndpoint = xml.etree.cElementTree.fromstring(buffer.getvalue()).find('SERVICE_ENDPOINT')
+   except Exception as e:
+     raise VacutilsError('Failed to extract serviceEndpoint (' + str(e) + ')')
+            
+   xml.etree.ElementTree.dump(serviceEndpoint)
+
+   print serviceEndpoint.tag
+
+   try:
+      id = serviceEndpoint.attrib['PRIMARY_KEY'].split('G')[0]
+
+      for i in serviceEndpoint:
+
+        if i.tag == 'EXTENSIONS':
+          for ext in i:
+            keys[ext.find('KEY').text] = ext.find('VALUE').text
+
+        elif i.tag == 'ENDPOINTS':
+
+          for endpoint in i:
+            endpointDict = {}
+
+            for j in endpoint:
+
+              if j.text is None:            
+                endpointDict[j.tag] = j.text
+                
+              elif j.tag == 'EXTENSIONS':
+                for ext in j:
+                  endpointDict[ext.find('KEY').text] = ext.find('VALUE').text
+              
+              else:
+                endpointDict[j.tag] = j.text.strip()
+
+            machinetypes.append(endpointDict)
+
+        elif i.text is None:
+          keys[i.tag] = None
+
+        else:
+          keys[i.tag] = i.text.strip()
+
+   except Exception as e:
+      raise VacutilsError('Problem parsing XML tree (' + str(e) + ')')
+             
+   # Now send the updates: service extensions first
+ 
+   curl.setopt(curl.WRITEFUNCTION, sys.write)
+   curl.setopt(curl.CUSTOMREQUEST, 'PUT')
+   curl.setopt(curl.POSTFIELDS, json.loads(spaceValues))
+   curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/Service/%d/ExtensionProperties' % id)
+
+   try:
+     curl.perform()
+   except Exception as e:
+      raise VacutilsError('Failed to update service data (' + str(e) + ')')
+
+   # Next the endpoint
+   
+   for i in machinetypesValues:
+     # need to get the endpointId from machinetypes
+     
+     curl.setopt(curl.POSTFIELDS, json.loads(i))
+     curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/EndPoint/%d/ExtensionProperties' % endpointId)
+     

@@ -409,7 +409,7 @@ def vacOneCycle():
          vmname = vac.shared.nameFromOrdinal(lowestFreeSlot)
          vm     = vac.shared.VacVM(lowestFreeSlot)
 
-         vac.vacutils.logLine('Create ' + vm.name + ' with machinetype ' + chosenMachinetypeName + ' and ' + str(chosenProcessors) + ' processor(s)')
+         vac.vacutils.logLine('Creating ' + vm.name + ' with machinetype ' + chosenMachinetypeName + ', ' + str(chosenProcessors) + ' processor(s), finishing at ' + str(chosenShutdownTime))
          createError = vm.createVM(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
 
          if createError:
