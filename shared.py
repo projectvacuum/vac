@@ -2,7 +2,7 @@
 #  shared.py - common functions, classes, and variables for Vac
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-6. All rights reserved.
+#  Copyright (c) 2013-7. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -169,8 +169,11 @@ def readConf(includePipes = False, updatePipes = False):
           if oneFile[-5:] == '.conf':
             parser.read('/etc/vac.d/' + oneFile)
 
-      # Standalone configuration file, read last in case of manual overrides
+      # Standalone configuration file, read after vac.d in case of manual overrides
       parser.read('/etc/vac.conf')
+      
+      # Very last configuration file, which will be deleted at next boot
+      parser.read('/var/run/vac.conf')
       
       # general settings from [Settings] section
 
