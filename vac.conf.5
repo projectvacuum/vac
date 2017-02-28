@@ -319,8 +319,8 @@ For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
 relative to the files subdirectory of the machinetype's subdirectory of 
 /var/lib/vac/machinetypes .
-For values supplied in a remote Vacuum Pipe file, only filenames without
-'/' characters and HTTP(S) URLs are allowed.
+For values supplied in a remote Vacuum Pipe file, only filenames 
+without '/' characters and HTTP(S) URLs are allowed.
 
 .B root_image
 is the path to the image file from which the VM will boot. With the
@@ -360,7 +360,7 @@ form ##user_data_option_XXX##. In both cases XXX are arbitrary strings
 consisting of letters, numbers, and underscores.
 
 The pattern ##user_data_option_x509_proxy## is replaced by the proxy created
-if the user_data_proxy_cert and user_data_proxy_key options are given.
+if user_data_proxy_cert is set to true.
 
 In addition, the following substitutions are performed automatically by
 Vac using data it holds internally:
@@ -443,7 +443,7 @@ in the Vacuum Pipe file sets the maximum time the file may be cached,
 and defaults to 3600 seconds if not set or the file has never been
 fetched successfully. As explained above, options referring to files
 on the VM factory may not specify filesystem paths if obtained from
-Vacuum Pipe file: only filenames within the 
+the Vacuum Pipe file: only filenames within the 
 /var/lib/vac/machinetypes/MACHINETYPE/files directory are acceptable.
 
 .SH AUTHOR
