@@ -5,7 +5,7 @@ maximum_object_size 1048576 KB
 # Recommended minimum configuration:
 #
 acl manager proto cache_object
-acl localhost src 127.0.0.1/32 169.254.169.0/24
+acl localhost src 127.0.0.1/32 
 acl to_localhost dst 127.0.0.0/8 0.0.0.0/32 
 
 acl localnet src 169.254.169.0/24
