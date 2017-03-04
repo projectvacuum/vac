@@ -74,7 +74,8 @@ def pollFactories():
    
    # Go through the machinetypes and their responses from the factories
    for machinetypeName in vac.shared.machinetypes:
-     machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] = 0.0
+     if vac.shared.machinetypes[machinetypeName]['machinegroup'] not in machinegroupScores:
+       machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] = 0.0
    
      if vac.shared.machinetypes[machinetypeName]['share'] <= 0.0:
        continue

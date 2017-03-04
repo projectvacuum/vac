@@ -304,6 +304,7 @@ class vac ($space              = "vac01.${domain}",
     {
       package { 'squid':
                 ensure  => 'installed',
+                notify => Exec['make_squid_conf'],
               }
 
       service { 'squid':
@@ -312,7 +313,8 @@ class vac ($space              = "vac01.${domain}",
                 require => Package['squid','vac'],
               }
 
-      exec    { "/usr/sbin/vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid.conf":
+      exec    { 'make_squid_conf':
+                command => "/usr/sbin/vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid.conf",
                 require => Package['squid','vac'],
               }
 
