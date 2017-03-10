@@ -632,7 +632,7 @@ def canonicalFQDN(hostName):
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
-class VacVM:
+class VacLM:
    def __init__(self, ordinal, checkHypervisor = True):
       self.ordinal             = ordinal
       self.name                = nameFromOrdinal(ordinal)
@@ -668,7 +668,7 @@ class VacVM:
         conn.close()
                                       
       try:
-        createdStr, self.machinetypeName, self.uuidStr = open('/var/lib/vac/slots/' + self.name,'r').read().split()
+        createdStr, self.machinetypeName = open('/var/lib/vac/slots/' + self.name,'r').read().split()
         self.created = int(createdStr)
       except:
         self.created = None
@@ -782,18 +782,17 @@ class VacVM:
           pass
       
    def machinesDir(self):
-      return '/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr
+      return '/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName
 
    def createHeartbeatFile(self):
       self.heartbeat = int(time.time())
       
       try:
-        f = open('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/heartbeat', 'r')
+        f = open(self.machinesDir() + '/heartbeat', 'r')
         lastCpuSeconds = int(f.readline().split(' ')[0])
         f.close()
         
-        lastHeartbeat = int(os.stat('/var/lib/vac/machines/' + str(self.created) + ':' +
-                                    self.machinetypeName + ':' + self.uuidStr + '/heartbeat').st_ctime)
+        lastHeartbeat = int(os.stat(self.machinesDir() + '/heartbeat').st_ctime)
                                     
         cpuPercentage = 100.0 * float(self.cpuSeconds - lastCpuSeconds) / (self.heartbeat - lastHeartbeat)
         heartbeatLine = str(self.cpuSeconds) + (" %.1f" % cpuPercentage)
@@ -801,8 +800,7 @@ class VacVM:
         heartbeatLine = str(self.cpuSeconds)
 
       try:
-        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' +
-                                self.uuidStr + '/heartbeat', heartbeatLine + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+        vac.vacutils.createFile(self.machinesDir() + '/heartbeat', heartbeatLine + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
         pass
                                   
@@ -963,7 +961,7 @@ class VacVM:
                          }
       
       try:
-        vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/meta_data.json',
+        vac.vacutils.createFile(self.machinesDir() + '/meta_data.json',
                                 json.dumps(metaData),
                                 stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       except:
@@ -1110,7 +1108,7 @@ class VacVM:
       except:
         raise VacError('Failed writing to ' + self.machinesDir() + '/user_data')
 
-   def destroyVM(self, shutdownMessage = None):
+   def destroyVM(self):
       conn = libvirt.open(None)
       if conn == None:
           vac.vacutils.logLine('Failed to open connection to the hypervisor')
@@ -1125,10 +1123,20 @@ class VacVM:
       except:
         pass
 
-      self.state = VacState.shutdown
-
       conn.close()
 
+   def destroyLM(self, shutdownMessage = None):
+   
+      if self.machineModel == 'docker':
+        # Any exceptions passed straight up to caller of destroyLM()
+        # Not yet
+        pass
+   
+      elif self.machineModel == 'cernvm3' or self.machineModel == 'vm-raw':
+        # Any exceptions passed straight up to caller of destroyLM()
+        self.destroyVM()
+
+      self.state = VacState.shutdown
       self.removeLogicalVolume()
 
       if shutdownMessage and not os.path.exists(self.machinesDir() + '/joboutputs/shutdown_message'):
@@ -1137,13 +1145,13 @@ class VacVM:
         except:
           pass
 
-   def createVM(self, machinetypeName, cpus, shutdownTime):
-      self.model           = machinetypes[machinetypeName]['machine_model']
+   def createLM(self, machinetypeName, cpus, shutdownTime):
+      self.machineModel    = machinetypes[machinetypeName]['machine_model']
       self.processors      = cpus
       self.created         = int(time.time())
       self.shutdownTime    = shutdownTime
       self.machinetypeName = machinetypeName
-      self.uuidStr         = str(uuid.uuid4())
+      self.uuidStr         = None
       scratch_disk_xml     = ""
       cernvm_cdrom_xml     = ""
 
@@ -1156,13 +1164,47 @@ class VacVM:
         pass
 
       vac.vacutils.createFile('/var/lib/vac/slots/' + self.name,
-                              str(self.created) + ' ' + self.machinetypeName + ' ' + self.uuidStr,
+                              str(self.created) + ' ' + self.machinetypeName,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      if self.model=='vm-raw':
+      ip      = natPrefix + str(self.ordinal)
+      ipBytes = ip.split('.')
+      mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
+
+      vac.vacutils.logLine('Using MAC ' + mac + ' when creating ' + self.name)
+
+      try:
+        self.makeMJF()
+      except Exception as e:
+        return 'Failed making MJF files (' + str(e) + ')'
+
+      try:
+        self.makeOpenStackData()
+      except Exception as e:
+        return 'Failed making OpenStack meta_data (' + str(e) + ')'
+        
+      vac.vacutils.createFile(self.machinesDir() + '/started',
+                  str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+
+      vac.vacutils.createFile(self.machinesDir() + '/machine_model',
+                  self.machineModel, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+      
+      vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
+                 '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+
+      if self.machineModel == 'vm-raw' or self.machineModel == 'cernvm3':
+        return self.createVM(ip, mac)
+      else:
+        return 'machine_model %s is not supported/recognised' % self.machineModel
+   
+   def createVM(self, ip, mac):
+
+      self.uuidStr = str(uuid.uuid4())
+
+      if self.machineModel=='vm-raw':
         # non-CernVM VM model
       
         if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
@@ -1210,7 +1252,7 @@ class VacVM:
                               " <target dev='" + machinetypes[self.machinetypeName]['scratch_device'] + 
                               "' bus='" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['scratch_device'] else "ide") + "'/>\n</disk>")
       
-      else:
+      elif self.machineModel == 'cernvm3':
         # CernVM VM model
             
         # For cernvm3 always need to set up the ISO boot image
@@ -1275,23 +1317,9 @@ class VacVM:
                              <source file='""" + rootDiskFileName + """' />
                              <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' 
                               bus='""" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/></disk>"""
-    
-      ip      = natPrefix + str(self.ordinal)
-      ipBytes = ip.split('.')
-      mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
-
-      vac.vacutils.logLine('Using MAC ' + mac + ' when creating ' + self.name)
-
-      try:
-        self.makeMJF()
-      except Exception as e:
-        return 'Failed making MJF files (' + str(e) + ')'
-
-      try:
-        self.makeOpenStackData()
-      except Exception as e:
-        return 'Failed making OpenStack meta_data (' + str(e) + ')'
-        
+      else:
+        return 'machine_model %s is not supported/recognised' % self.machineModel
+      
       try:
         conn = libvirt.open(None)
       except:
@@ -1341,7 +1369,7 @@ class VacVM:
       <filterref filter='clean-traffic'/>
     </interface>
     <serial type="file">
-      <source path="/var/lib/vac/machines/"""  + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + """/console.log"/>
+      <source path="/var/lib/vac/machines/"""  + str(self.created) + ':' + self.machinetypeName + """/console.log"/>
       <target port="1"/>
     </serial>                    
     <graphics type='vnc' port='"""  + str(5900 + self.ordinal) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
@@ -1353,12 +1381,6 @@ class VacVM:
 </domain>
 """ )
 
-      vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/started',
-                  str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-      
-      vac.vacutils.createFile('/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName + ':' + self.uuidStr + '/heartbeat',
-                 '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-      
       try:
            dom = conn.createXML(xmldesc, 0)
       except Exception as e:
@@ -1642,7 +1664,7 @@ def cleanupOldMachines():
    for machineDir in machinesList:
    
       try:   
-        createdStr, machinetypeName, uuidStr = machineDir.split(':')
+        createdStr, machinetypeName = machineDir.split(':')
       except:
         continue
 
@@ -1680,7 +1702,7 @@ def makeMjfBody(created, machinetypeName, uuidStr, path):
      # Subdirectories are now allowed
      return None
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
+   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
 
    if requestURI == '/machinefeatures/' or \
       requestURI == '/machinefeatures' or \
@@ -1711,7 +1733,7 @@ def makeMjfBody(created, machinetypeName, uuidStr, path):
 
 def makeMetadataBody(created, machinetypeName, uuidStr, path):
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
+   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
 
    # Fold // to /, and /latest/ to something that will match a dated version
    requestURI = path.replace('//','/').replace('/latest/','/0000-00-00/')
@@ -1759,7 +1781,7 @@ def writePutBody(created, machinetypeName, uuidStr, path, body):
    if len(splitRequestURI) != 3 or splitRequestURI[1] != 'joboutputs' or not splitRequestURI[2]:
      return False
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
+   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
    
    try:
      vac.vacutils.createFile(machinesDir + '/joboutputs/' + splitRequestURI[2],
@@ -2037,7 +2059,7 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    if not timeNow:
      timeNow = int(time.time())
 
-   vm = VacVM(ordinal, checkHypervisor = False)
+   vm = VacLM(ordinal, checkHypervisor = False)
 
    if vm.hs06:
      hs06 = vm.hs06
@@ -2100,7 +2122,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        name = nameFromOrdinal(ordinal)
 
        try:
-         (createdStr, machinetypeNameTmp, uuidStr) = open('/var/lib/vac/slots/' + name,'r').read().split()
+         (createdStr, machinetypeNameTmp) = open('/var/lib/vac/slots/' + name,'r').read().split()
          created = int(createdStr)
        except:
          continue
@@ -2108,7 +2130,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        if machinetypeNameTmp != machinetypeName:
          continue
 
-       machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName + ':' + uuidStr
+       machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
        if not os.path.isdir(machinesDir):
          # machines directory has been cleaned up?
          continue

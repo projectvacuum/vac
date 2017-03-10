@@ -227,7 +227,7 @@ def vacOneCycle():
    for ordinal in range(vac.shared.numMachineSlots):
    
      vmname = vac.shared.nameFromOrdinal(ordinal)   
-     vm     = vac.shared.VacVM(ordinal)
+     vm     = vac.shared.VacLM(ordinal)
      
      if vm.shutdownMessage and (vm.shutdownMessage[0] == '3'):
       vac.vacutils.logLine(vm.name + ' is ' + vm.state + ' (' + str(vm.processors) + ' ' + str(vm.machinetypeName) + ' "' + vm.shutdownMessage + '" ' + str(vm.uuidStr) + 
@@ -260,7 +260,7 @@ def vacOneCycle():
        try:
            if int(time.time()) > vm.shutdownTime:
              vac.vacutils.logLine('VM ' + vm.name + ' has passed shutdowntime without stopping - destroying!')
-             vm.destroyVM()
+             vm.destroyLM()
        except:
            pass
        
@@ -278,35 +278,35 @@ def vacOneCycle():
               vac.vacutils.logLine('VM ' + vm.name + ' has passed fizzle_seconds (' + 
                         str(vac.shared.machinetypes[vm.machinetypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
                         vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file'] + ') has been created - destroying!')
-              vm.destroyVM('700 Heartbeat file not created')
+              vm.destroyLM('700 Heartbeat file not created')
           elif (vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'] > 0) and \
                (int(time.time()) > (vm.joboutputsHeartbeat + vac.shared.machinetypes[vm.machinetypeName]['heartbeat_seconds'])):
               # if heartbeat_seconds is set, we check the file is recent
               vac.vacutils.logLine('VM ' + vm.name + ' has gone ' + str(int(time.time()) - vm.joboutputsHeartbeat) + 
                           ' seconds without updating heartbeat file (' + 
                           vac.shared.machinetypes[vm.machinetypeName]['heartbeat_file'] + ') - destroying!')
-              vm.destroyVM('700 Heartbeat file not updated')
+              vm.destroyLM('700 Heartbeat file not updated')
 
      elif vm.state == vac.shared.VacState.zombie:
        # VM running but no corresponding vac directory structure
        # We kill zombies on sight! 
        vac.vacutils.logLine('VM ' + vm.name + ' running without vac directories - destroying!')
-       vm.destroyVM()
+       vm.destroyLM()
        
      elif vm.state == vac.shared.VacState.paused:
        # Suspended internally somehow? kill it to be safe
        vac.vacutils.logLine('VM ' + vm.name + ' paused without shutting down - destroying!')
-       vm.destroyVM()
+       vm.destroyLM()
 
      if vm.state == vac.shared.VacState.starting and vm.machinetypeName:
        # If VM is still starting and we've come round again, then starting failed! So we clean up
        vac.vacutils.logLine('VM ' + vm.name + ' still in starting state in a new cycle - cleaning up!')
-       vm.destroyVM()
+       vm.destroyLM()
 
      if vm.state == vac.shared.VacState.shutdown:      
        if vm.created and not vm.finished:
-         # destroyVM() makes the finished file so we don't keep doing this
-         vm.destroyVM()
+         # destroyLM() makes the finished file so we don't keep doing this
+         vm.destroyLM()
        
          if vm.started:
            vm.writeApel()
@@ -334,7 +334,7 @@ def vacOneCycle():
        else:
          superslots[vm.shutdownTime]  = vm.processors
 
-     # the destroyVM method updates VacVM.state
+     # the destroyLM method updates VacLM.state
      if vm.state == vac.shared.VacState.running:
        runningCount += 1
   
@@ -408,10 +408,10 @@ def vacOneCycle():
 
        if chosenMachinetypeName:
          vmname = vac.shared.nameFromOrdinal(lowestFreeSlot)
-         vm     = vac.shared.VacVM(lowestFreeSlot)
+         vm     = vac.shared.VacLM(lowestFreeSlot)
 
          vac.vacutils.logLine('Creating ' + vm.name + ' with machinetype ' + chosenMachinetypeName + ', ' + str(chosenProcessors) + ' processor(s), finishing at ' + str(chosenShutdownTime))
-         createError = vm.createVM(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
+         createError = vm.createLM(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
 
          if createError:
            vac.vacutils.logLine('VM creation fails with: ' + createError)
