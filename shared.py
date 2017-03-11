@@ -649,6 +649,19 @@ class VacLM:
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
       
+      try:
+        createdStr, self.machinetypeName, machineModel = open('/var/lib/vac/slots/' + self.name,'r').read().split()
+        self.created = int(createdStr)
+      except:
+        self.created          = None
+        self.machinetypeName  = None
+        self.machineModel     = None
+
+      try: 
+        self.uuidStr = open(self.machinesDir() + '/jobfeatures/job_id', 'r').read().strip()
+      except:
+        self.uuidStr = None
+
       dom      = None
       domState = None
 
@@ -667,23 +680,17 @@ class VacLM:
 
         conn.close()
                                       
-      try:
-        createdStr, self.machinetypeName = open('/var/lib/vac/slots/' + self.name,'r').read().split()
-        self.created = int(createdStr)
-      except:
-        self.created = None
-
       if not self.created or not os.path.isdir(self.machinesDir()):
         # if slot not properly set up or if machines directory is missing then stop now
         
         if dom:
           # if we know a VM is running for this slot, then its a zombie
           self.state = VacState.zombie
+          vac.vacutils.logLine('No created time (or missing machines dir), setting VacState.zombie')
         else:
           # just say shutdown (including never created)
           self.state = VacState.shutdown
 
-        self.uuidStr         = None
         self.machinetypeName = None
         self.created         = None
         return
@@ -712,7 +719,7 @@ class VacLM:
         self.heartbeat = None
 
       try: 
-        self.shutdownTime = int(open(self.machinesDir() + '/machinefeatures/shutdowntime', 'r').read().strip())
+        self.shutdownTime = int(open(self.machinesDir() + '/jobfeatures/shutdowntime_job', 'r').read().strip())
       except:
         self.shutdownTime = None
 
@@ -757,6 +764,7 @@ class VacLM:
           if self.uuidStr != dom.UUIDString():
             # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
             self.state = VacState.zombie
+            vac.vacutils.logLine('UUID mismatch: %s (job_id) != %s (dom), setting VacState.zombie' % (str(self.uuidStr), dom.UUIDString()))
             return
 
           if domState != libvirt.VIR_DOMAIN_RUNNING and domState != libvirt.VIR_DOMAIN_BLOCKED:
@@ -1041,10 +1049,6 @@ class VacLM:
                  str(cpuLimitSecs),
                  stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      # job_id = UUID
-      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
-                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
       # We are about to start the VM now
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
                  str(int(time.time())), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
@@ -1146,14 +1150,14 @@ class VacLM:
           pass
 
    def createLM(self, machinetypeName, cpus, shutdownTime):
+      # Create logical machine: management files, MJF etc created here,
+      # and call createVM() etc to actually create the machine
       self.machineModel    = machinetypes[machinetypeName]['machine_model']
       self.processors      = cpus
       self.created         = int(time.time())
       self.shutdownTime    = shutdownTime
       self.machinetypeName = machinetypeName
       self.uuidStr         = None
-      scratch_disk_xml     = ""
-      cernvm_cdrom_xml     = ""
 
       os.makedirs(self.machinesDir(), stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
@@ -1164,7 +1168,7 @@ class VacLM:
         pass
 
       vac.vacutils.createFile('/var/lib/vac/slots/' + self.name,
-                              str(self.created) + ' ' + self.machinetypeName,
+                              str(self.created) + ' ' + self.machinetypeName + ' ' + self.machineModel,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
@@ -1179,12 +1183,12 @@ class VacLM:
       try:
         self.makeMJF()
       except Exception as e:
-        return 'Failed making MJF files (' + str(e) + ')'
+        raise VacError('Failed making MJF files (' + str(e) + ')')
 
       try:
         self.makeOpenStackData()
       except Exception as e:
-        return 'Failed making OpenStack meta_data (' + str(e) + ')'
+        raise VacError('Failed making OpenStack meta_data (' + str(e) + ')')
         
       vac.vacutils.createFile(self.machinesDir() + '/started',
                   str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
@@ -1195,14 +1199,23 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
                  '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
+      #
+      # Here we run createVM() etc to really create the machine
+      #
       if self.machineModel == 'vm-raw' or self.machineModel == 'cernvm3':
-        return self.createVM(ip, mac)
+        self.createVM(ip, mac)
       else:
-        return 'machine_model %s is not supported/recognised' % self.machineModel
+        raise VacError('machine_model %s is not supported/recognised' % self.machineModel)
    
+      # Now can set job_id = UUID (self.uuidStr set in createVM etc)
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
+                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
    def createVM(self, ip, mac):
 
-      self.uuidStr = str(uuid.uuid4())
+      scratch_disk_xml = ""
+      cernvm_cdrom_xml = ""
+      self.uuidStr     = str(uuid.uuid4())
 
       if self.machineModel=='vm-raw':
         # non-CernVM VM model
@@ -1211,7 +1224,7 @@ class VacLM:
           try:
             rawFileName = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp', 'Vac ' + vacVersion)
           except Exception as e:
-            return 'Failed fetching root_image ' + machinetypes[self.machinetypeName]['root_image'] + ' (' + str(e) + ')'
+            raise VacError('Failed fetching root_image ' + machinetypes[self.machinetypeName]['root_image'] + ' (' + str(e) + ')')
         elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
            rawFileName = machinetypes[self.machinetypeName]['root_image']
         else:
@@ -1220,9 +1233,9 @@ class VacLM:
         if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
           cernvmDict = vac.vacutils.getCernvmImageData(rawFileName)
           if cernvmDict['verified'] == False:
-            return 'Failed to verify signature/cert for ' + rawFileName
+            raise VacError('Failed to verify signature/cert for ' + rawFileName)
           elif re.search(machinetypes[self.machinetypeName]['cernvm_signing_dn'],  cernvmDict['dn']) is None:
-            return 'Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn']
+            raise VacError('Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn'])
           else:
             vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
 
@@ -1230,7 +1243,7 @@ class VacLM:
 
         # Make a small QEMU qcow2 disk for this instance,  backed by the full image stored elsewhere
         if os.system('qemu-img create -b ' + rawFileName + ' -f qcow2 ' + rootDiskFileName + ' >/dev/null') != 0:
-          return 'Creation of copy-on-write disk image fails!'
+          raise VacError('Creation of copy-on-write disk image fails!')
 
         root_disk_xml = """<disk type='file' device='disk'>
                            <driver name='qemu' type='qcow2' cache='unsafe' error_policy='report' />
@@ -1244,7 +1257,7 @@ class VacLM:
           try:
             self.createLogicalVolume()
           except Exception as e:
-            return 'Failed to create required logical volume: ' + str(e)
+            raise VacError('Failed to create required logical volume: ' + str(e))
 
           scratch_disk_xml = ("<disk type='block' device='disk'>\n" +
                               " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
@@ -1260,7 +1273,7 @@ class VacLM:
             try:
               cernvmCdrom = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp', 'Vac ' + vacVersion)
             except Exception as e:
-              return str(e)
+              raise VacError(str(e))
         elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
             cernvmCdrom = machinetypes[self.machinetypeName]['root_image']
         else:
@@ -1269,9 +1282,9 @@ class VacLM:
         if 'cernvm_signing_dn' in machinetypes[self.machinetypeName]:
             cernvmDict = vac.vacutils.getCernvmImageData(cernvmCdrom)
             if cernvmDict['verified'] == False:
-              return 'Failed to verify signature/cert for ' + cernvmCdrom            
+              raise VacError('Failed to verify signature/cert for ' + cernvmCdrom)
             elif re.search(machinetypes[self.machinetypeName]['cernvm_signing_dn'],  cernvmDict['dn']) is None:
-              return 'Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn']
+              raise VacError('Signing DN ' + cernvmDict['dn'] + ' does not match cernvm_signing_dn = ' + machinetypes[self.machinetypeName]['cernvm_signing_dn'])
             else:
               vac.vacutils.logLine('Verified image signed by ' + cernvmDict['dn'])
       
@@ -1288,7 +1301,7 @@ class VacLM:
           try:
             self.createLogicalVolume()
           except Exception as e:
-            return 'Failed to create required logical volume: ' + str(e)
+            raise VacError('Failed to create required logical volume: ' + str(e))
       
           root_disk_xml = ("<disk type='block' device='disk'>\n" +
                            " <driver name='qemu' type='raw' error_policy='report' cache='unsafe'/>\n" +
@@ -1311,22 +1324,22 @@ class VacLM:
             f.truncate(gbDisk * 1000000000)
             f.close()
           except:
-            return 'Creation of sparse disk image fails!'
+            raise VacError('Creation of sparse disk image fails!')
 
           root_disk_xml = """<disk type='file' device='disk'><driver name='qemu' cache='unsafe' type='raw' error_policy='report' />
                              <source file='""" + rootDiskFileName + """' />
                              <target dev='""" + machinetypes[self.machinetypeName]['root_device'] + """' 
                               bus='""" + ("virtio" if "vd" in machinetypes[self.machinetypeName]['root_device'] else "ide") + """'/></disk>"""
       else:
-        return 'machine_model %s is not supported/recognised' % self.machineModel
+        raise VacError('machine_model %s is not supported/recognised' % self.machineModel)
       
       try:
         conn = libvirt.open(None)
       except:
-        return 'exception when opening connection to the hypervisor'
+        raise VacError('exception when opening connection to the hypervisor')
 
       if conn == None:
-        return 'failed to open connection to the hypervisor'
+        raise VacError('failed to open connection to the hypervisor')
 
       if os.path.isfile("/usr/libexec/qemu-kvm"):
         qemuKvmFile = "/usr/libexec/qemu-kvm"
@@ -1386,7 +1399,7 @@ class VacLM:
       except Exception as e:
            vac.vacutils.logLine('Exception ("' + str(e) + '") when trying to create VM domain for ' + self.name)
            conn.close()
-           return 'exception when trying to create VM domain'
+           raise VacError('exception when trying to create VM domain')
       finally:
            # If used, we unlink the big, sparse root disk image once libvirt has it open too,
            # so it disappears when libvirt is finished with it
@@ -1396,15 +1409,13 @@ class VacLM:
       if not dom:
            vac.vacutils.logLine('Failed when trying to create VM domain for ' + self.name)
            conn.close()
-           return 'failed when trying to create VM domain'
+           raise VacErrpr('failed when trying to create VM domain')
            
       conn.close()
        
       self.state = VacState.running
-
-      # Everything ok so return no error message
-      return None
-
+      # Everything ok and return back to createLM()
+      
    def removeLogicalVolume(self):
       if os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
         vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
@@ -2122,7 +2133,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        name = nameFromOrdinal(ordinal)
 
        try:
-         (createdStr, machinetypeNameTmp) = open('/var/lib/vac/slots/' + name,'r').read().split()
+         (createdStr, machinetypeNameTmp, machineModel) = open('/var/lib/vac/slots/' + name,'r').read().split()
          created = int(createdStr)
        except:
          continue
