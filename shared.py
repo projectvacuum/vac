@@ -648,14 +648,15 @@ class VacLM:
       self.hs06                = None
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
+      self.created             = None
+      self.machinetypeName     = None
+      self.machineModel        = None
       
       try:
-        createdStr, self.machinetypeName, machineModel = open('/var/lib/vac/slots/' + self.name,'r').read().split()
+        createdStr, self.machinetypeName, self.machineModel = open('/var/lib/vac/slots/' + self.name,'r').read().split()
         self.created = int(createdStr)
       except:
-        self.created          = None
-        self.machinetypeName  = None
-        self.machineModel     = None
+        pass
 
       try: 
         self.uuidStr = open(self.machinesDir() + '/jobfeatures/job_id', 'r').read().strip()
@@ -764,7 +765,7 @@ class VacLM:
           if self.uuidStr != dom.UUIDString():
             # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
             self.state = VacState.zombie
-            vac.vacutils.logLine('UUID mismatch: %s (job_id) != %s (dom), setting VacState.zombie' % (str(self.uuidStr), dom.UUIDString()))
+            vac.vacutils.logLine('UUID mismatch: %s (job_id) != %s (dom) for LM started %d, setting VacState.zombie' % (str(self.uuidStr), dom.UUIDString(), self.created))
             return
 
           if domState != libvirt.VIR_DOMAIN_RUNNING and domState != libvirt.VIR_DOMAIN_BLOCKED:
@@ -937,43 +938,9 @@ class VacLM:
    
       if 'user_data' in machinetypes[self.machinetypeName]:
         try:
-          self.setupUserDataContents()        
+          self.setupUserDataContents()
         except Exception as e:
           raise VacError('Failed to create user_data (' + str(e) + ')')
-
-      metaData = {}
-
-      if rootPublicKeyFile:          
-        try:
-          publicKey = open(rootPublicKeyFile, 'r').read()
-        except:
-          vac.vacutils.logLine('Failed to read ' + rootPublicKeyFile + ' so no ssh access to VMs!')
-        else:
-          metaData['public_keys'] = { "0" : publicKey }
-
-          try:
-            open(self.machinesDir() + '/root_public_key','w').write(publicKey)
-          except:
-            raise VacError('Failed to create root_public_key')
-                      
-      metaData['uuid']              = self.uuidStr
-      metaData['availability_zone'] = spaceName
-      metaData['hostname']          = self.name
-      metaData['name']              = self.name
-      
-      metaData['meta'] = {
-                           'machinefeatures' : 'http://' + mjfAddress + '/machinefeatures',
-                           'jobfeatures'     : 'http://' + mjfAddress + '/jobfeatures',
-                           'joboutputs'      : 'http://' + mjfAddress + '/joboutputs',
-                           'machinetype'     : self.machinetypeName
-                         }
-      
-      try:
-        vac.vacutils.createFile(self.machinesDir() + '/meta_data.json',
-                                json.dumps(metaData),
-                                stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-      except:
-        raise VacError('Failed to create meta_data.json')
 
    def makeMJF(self):
       os.makedirs(self.machinesDir() + '/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1120,14 +1087,20 @@ class VacLM:
 
       try:
         dom = conn.lookupByName(self.name)
+      except:
+        vac.vacutils.logLine('VM %s has already gone' % self.name)
+        conn.close()
+        return
+        
+      try:
         dom.shutdown()
         # 30s delay for any ACPI handler in the VM
         time.sleep(30.0)
         dom.destroy()
-      except:
-        pass
-
-      conn.close()
+      except Exception as e:
+        raise VacError('failed to destroy %s (%s)' % (self.name, str(e)))
+      finally:
+        conn.close()
 
    def destroyLM(self, shutdownMessage = None):
    
@@ -1139,6 +1112,9 @@ class VacLM:
       elif self.machineModel == 'cernvm3' or self.machineModel == 'vm-raw':
         # Any exceptions passed straight up to caller of destroyLM()
         self.destroyVM()
+        
+      else:
+        raise VacError('machine model %s not supported in destroyLM()' % str(self.machineModel))
 
       self.state = VacState.shutdown
       self.removeLogicalVolume()
@@ -1184,17 +1160,14 @@ class VacLM:
         self.makeMJF()
       except Exception as e:
         raise VacError('Failed making MJF files (' + str(e) + ')')
-
+        
       try:
         self.makeOpenStackData()
       except Exception as e:
         raise VacError('Failed making OpenStack meta_data (' + str(e) + ')')
-        
+
       vac.vacutils.createFile(self.machinesDir() + '/started',
                   str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-
-      vac.vacutils.createFile(self.machinesDir() + '/machine_model',
-                  self.machineModel, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
       
       vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
                  '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
@@ -1742,17 +1715,54 @@ def makeMjfBody(created, machinetypeName, uuidStr, path):
 
    return None
 
-def makeMetadataBody(created, machinetypeName, uuidStr, path):
+def makeMetadataBody(created, machinetypeName, path):
 
    machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
 
    # Fold // to /, and /latest/ to something that will match a dated version
    requestURI = path.replace('//','/').replace('/latest/','/0000-00-00/')
 
-   # EC2 or OpenStack user data
+   # EC2 or OpenStack user-data
    if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/user-data$|^/openstack/[0-9]{4}-[0-9]{2}-[0-9]{2}/user-data$', requestURI):
      try:
        return open(machinesDir + '/user_data', 'r').read()
+     except Exception as e:
+       return None
+
+   # EC2 or OpenStack meta-data.json
+   if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data\.json$|^/openstack/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data\.json$', requestURI):
+     metaData = { 'availability_zone': spaceName }
+
+     try:
+       publicKey = open(machinesDir + '/root_public_key', 'r').read()
+     except:
+       pass
+     else:
+       metaData['public_keys'] = { "0" : publicKey }
+
+     try:
+      uuidStr = open(machinesDir + '/jobfeatures/job_id', 'r').read()
+     except:
+      pass
+     else:
+      metaData['uuid'] = uuidStr
+
+     try:
+       name = open(machinesDir + '/name', 'r').read()
+     except:
+       pass
+     else:
+       metaData['hostname'] = name
+       metaData['name']     = name
+
+     metaData['meta'] = {
+                           'machinefeatures' : 'http://' + mjfAddress + '/machinefeatures',
+                           'jobfeatures'     : 'http://' + mjfAddress + '/jobfeatures',
+                           'joboutputs'      : 'http://' + mjfAddress + '/joboutputs',
+                           'machinetype'     : machinetypeName
+                         }      
+     try:
+       return json.dumps(metaData)
      except Exception as e:
        return None
 
@@ -1775,14 +1785,14 @@ def makeMetadataBody(created, machinetypeName, uuidStr, path):
    # Return UUID for EC2 instance-id, and for ami-id (at least it's something unique)
    if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/ami-id$|^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/instance-id$', requestURI):
      try:
-       return uuidStr
+       return open(machinesDir + '/jobfeatures/job_id', 'r').read()
      except:
        return None
 
    # No body (and therefore 404) if we don't recognise the request
    return None
 
-def writePutBody(created, machinetypeName, uuidStr, path, body):
+def writePutBody(created, machinetypeName, path, body):
 
    # Fold // to /
    requestURI = path.replace('//','/')
