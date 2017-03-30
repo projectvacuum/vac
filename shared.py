@@ -70,6 +70,10 @@ class VacError(Exception):
 # 01.02 adds num_processors to machine_status
 vacQueryVersion = '01.02'
 
+vmModels = [ 'cernvm3', 'vm-raw' ] # Virtual Machine models
+dcModels = [ 'docker' ]            # Docker Container models
+lmModels = vmModels + dcModels     # All Logical Machine models
+
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
 natPrefix           = '169.254.169.'
@@ -941,6 +945,17 @@ class VacLM:
           self.setupUserDataContents()
         except Exception as e:
           raise VacError('Failed to create user_data (' + str(e) + ')')
+         
+      if rootPublicKeyFile:          
+        try:
+          publicKey = open(rootPublicKeyFile, 'r').read()
+        except:
+          vac.vacutils.logLine('Failed to read ' + rootPublicKeyFile + ' so no ssh access to VMs!')
+        else:
+          try:
+            open(self.machinesDir() + '/root_public_key','w').write(publicKey)
+          except:
+            raise VacError('Failed to create root_public_key')
 
    def makeMJF(self):
       os.makedirs(self.machinesDir() + '/machinefeatures', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1104,12 +1119,12 @@ class VacLM:
 
    def destroyLM(self, shutdownMessage = None):
    
-      if self.machineModel == 'docker':
+      if self.machineModel in dcModels:
         # Any exceptions passed straight up to caller of destroyLM()
         # Not yet
         pass
    
-      elif self.machineModel == 'cernvm3' or self.machineModel == 'vm-raw':
+      elif self.machineModel in vmModels:
         # Any exceptions passed straight up to caller of destroyLM()
         self.destroyVM()
         
@@ -1175,7 +1190,7 @@ class VacLM:
       #
       # Here we run createVM() etc to really create the machine
       #
-      if self.machineModel == 'vm-raw' or self.machineModel == 'cernvm3':
+      if self.machineModel in vmModels:
         self.createVM(ip, mac)
       else:
         raise VacError('machine_model %s is not supported/recognised' % self.machineModel)
@@ -1190,7 +1205,7 @@ class VacLM:
       cernvm_cdrom_xml = ""
       self.uuidStr     = str(uuid.uuid4())
 
-      if self.machineModel=='vm-raw':
+      if self.machineModel == 'vm-raw':
         # non-CernVM VM model
       
         if machinetypes[self.machinetypeName]['root_image'][0:7] == 'http://' or machinetypes[self.machinetypeName]['root_image'][0:8] == 'https://':
@@ -1671,7 +1686,7 @@ def cleanupOldMachines():
         # Skip if no heartbeat yet
         continue
 
-def makeMjfBody(created, machinetypeName, uuidStr, path):
+def makeMjfBody(created, machinetypeName, path):
 
    if '/../' in path:
      # Obviously not ok
@@ -1731,7 +1746,7 @@ def makeMetadataBody(created, machinetypeName, path):
 
    # EC2 or OpenStack meta-data.json
    if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data\.json$|^/openstack/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data\.json$', requestURI):
-     metaData = { 'availability_zone': spaceName }
+     metaData = { 'availability_zone': os.uname()[1] }
 
      try:
        publicKey = open(machinesDir + '/root_public_key', 'r').read()
