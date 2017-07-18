@@ -2,6 +2,7 @@
 - Shutdown messages >= 700 now also count as aborts and trigger backoff
 - vacd started at 56 during the SysV boot up
 - Read /var/run/vac.conf (good for settings in preparation for a reboot)
+- Use HS06 per processor for ServiceLevel in APEL accounting records
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]

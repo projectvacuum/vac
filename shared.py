@@ -640,6 +640,7 @@ class VacLM:
    def __init__(self, ordinal, checkHypervisor = True):
       self.ordinal             = ordinal
       self.name                = nameFromOrdinal(ordinal)
+      self.ip                  = None
       self.state               = VacState.unknown
       self.started             = None
       self.finished            = None
@@ -707,6 +708,11 @@ class VacLM:
         # if created but not yet started, then state is starting
         self.started = None
         self.state = VacState.starting
+
+      try:
+        self.ip = open(self.machinesDir() + '/ip', 'r').read().strip()
+      except:
+        pass
 
       try:
         self.finished = int(os.stat(self.machinesDir() + '/finished').st_ctime)
@@ -882,9 +888,9 @@ class VacLM:
         tmpGocdbSitename = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
       if self.hs06:
-        hs06 = self.hs06
+        hs06 = self.hs06 / self.processors
       else:
-        hs06 = 1.0 * self.processors
+        hs06 = 1.0
 
       mesg = ('APEL-individual-job-message: v0.3\n' + 
               'Site: ' + tmpGocdbSitename + '\n' +
@@ -1165,12 +1171,6 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      ip      = natPrefix + str(self.ordinal)
-      ipBytes = ip.split('.')
-      mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
-
-      vac.vacutils.logLine('Using MAC ' + mac + ' when creating ' + self.name)
-
       try:
         self.makeMJF()
       except Exception as e:
@@ -1199,7 +1199,16 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-   def createVM(self, ip, mac):
+      vac.vacutils.createFile(self.machinesDir() + '/ip',
+                 self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+   def createVM(self):
+
+      self.ip = natPrefix + str(self.ordinal)
+      ipBytes = self.ip.split('.')
+      mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
+
+      vac.vacutils.logLine('Using IP=' + self.ip + ' MAC=' + mac + ' when creating ' + self.name)
 
       scratch_disk_xml = ""
       cernvm_cdrom_xml = ""
