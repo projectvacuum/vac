@@ -867,9 +867,9 @@ class VacVM:
         tmpGocdbSitename = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
       if self.hs06:
-        hs06 = self.hs06
+        hs06 = self.hs06 / self.processors
       else:
-        hs06 = 1.0 * self.processors
+        hs06 = 1.0
 
       mesg = ('APEL-individual-job-message: v0.3\n' + 
               'Site: ' + tmpGocdbSitename + '\n' +
