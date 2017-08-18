@@ -226,7 +226,7 @@ def readConf(includePipes = False, updatePipes = False):
       if parser.has_option('settings', 'scratch_gb'):
           # Deprecated
           gbDiskPerProcessor = int(parser.get('settings','scratch_gb').strip())
-          print 'scratch_gb is deprecated. Please use disk_gb_per_cpu in [settings] instead'
+          print 'scratch_gb is deprecated. Please use disk_gb_per_processor in [settings] instead'
       elif parser.has_option('settings', 'disk_gb_per_cpu'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
           gbDiskPerProcessor = int(parser.get('settings','disk_gb_per_cpu').strip())
