@@ -236,7 +236,7 @@ def readConf(includePipes = False, updatePipes = False):
       if parser.has_option('settings', 'scratch_gb'):
           # Deprecated
           gbDiskPerProcessor = int(parser.get('settings','scratch_gb').strip())
-          print 'scratch_gb is deprecated. Please use disk_gb_per_cpu in [settings] instead'
+          print 'scratch_gb is deprecated. Please use disk_gb_per_processor in [settings] instead'
       elif parser.has_option('settings', 'disk_gb_per_cpu'):
           # Size in GB/cpu (1000^3) of disk assigned to machines, default is 40
           gbDiskPerProcessor = int(parser.get('settings','disk_gb_per_cpu').strip())
@@ -1581,6 +1581,11 @@ def checkNetwork():
              return False
            else:
              vac.vacutils.logLine('Set auto-start for network vac_' + natNetwork)
+
+      # Make sure that the dummy module is loaded
+      if os.system('/sbin/modprobe dummy') != 0:
+        vac.vacutils.logLine('(Re)run of modprobe dummy fails!')
+        return False
 
       # Make sure that the dummy0 interface exists
       # Should still return 0 even if dummy0 already exists, with any IP
