@@ -104,12 +104,12 @@ def pollFactories():
        except:
          pass
        else:
-         if (messagecode >= 300) and (messagecode <= 699):
+         if messagecode >= 300:
            # This is an abort!
            #
            # 300 is no work, 400 is banned, 500 is problem with VM/Site
            # 600 is grid-wide problem with job agent or application in VM
-           # (VMs can return 700 for transient problems within the VM)
+           # 700 is transient problem within the VM
            
            # If this is the most recent abort of this machinetype anywhere in this space
            if response['shutdown_time'] > machinetypeResults[machinetypeName]['lastAbort']:

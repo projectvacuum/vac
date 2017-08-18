@@ -207,11 +207,12 @@ class vac ($space              = "vac01.${domain}",
              ensure => "running",
              require => Service['cgconfig'],
           }
-  exec    { 'unset_merge_across_nodes':
-            command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
-            unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
-            before  => Service['ksm'],
-          }
+# This causes instability with 2.6.32-642 kernels?
+#  exec    { 'unset_merge_across_nodes':
+#            command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
+#            unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
+#            before  => Service['ksm'],
+#          }
   service { 'ksm':
              enable => true,
              ensure => "running",
@@ -303,6 +304,7 @@ class vac ($space              = "vac01.${domain}",
     {
       package { 'squid':
                 ensure  => 'installed',
+                notify => Exec['make_squid_conf'],
               }
 
       service { 'squid':
@@ -311,7 +313,8 @@ class vac ($space              = "vac01.${domain}",
                 require => Package['squid','vac'],
               }
 
-      exec    { "/usr/sbin/vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid.conf":
+      exec    { 'make_squid_conf':
+                command => "/usr/sbin/vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid.conf",
                 require => Package['squid','vac'],
               }
 

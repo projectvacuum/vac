@@ -1,4 +1,6 @@
 ==================== Changes in Vac version 02.01.00 =================== 
+- Shutdown messages >= 700 now also count as aborts and trigger backoff
+- vacd started at 56 during the SysV boot up
 ==================== Changes in Vac version 02.00.01 =================== 
 - Use HS06 per processor for ServiceLevel in APEL accounting records
 ==================== Changes in Vac version 02.00.00 =================== 
