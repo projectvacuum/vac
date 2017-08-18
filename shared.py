@@ -708,7 +708,7 @@ class VacVM:
         self.heartbeat = None
 
       try: 
-        self.shutdownTime = int(open(self.machinesDir() + '/machinefeatures/shutdowntime', 'r').read().strip())
+        self.shutdownTime = int(open(self.machinesDir() + '/jobfeatures/shutdowntime_job', 'r').read().strip())
       except:
         self.shutdownTime = None
 
