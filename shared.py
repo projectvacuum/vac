@@ -1548,6 +1548,11 @@ def checkNetwork():
            else:
              vac.vacutils.logLine('Set auto-start for network vac_' + natNetwork)
 
+      # Make sure that the dummy module is loaded
+      if os.system('/sbin/modprobe dummy') != 0:
+        vac.vacutils.logLine('(Re)run of modprobe dummy fails!')
+        return False
+
       # Make sure that the dummy0 interface exists
       # Should still return 0 even if dummy0 already exists, with any IP
       if os.system('/sbin/ifconfig dummy0 ' + dummyAddress) != 0:
