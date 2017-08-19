@@ -608,29 +608,6 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
          else:
            # makeBody comes from the correct subclass
            body = self.makeGetBody(created, machinetypeName, self.path)
-      else:
-        # From a Docker container?
-        ordinal = 0
-        
-        while true: 
-        
-          try:
-            createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
-            created = int(createdStr)
-          except:
-            # Stop when we run out of lock files
-            break
-         
-          try: 
-            ip = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal) + '/ip', 'r').read().strip()
-          except:
-            continue
-
-          if self.client_address[0] != ip:
-            continue
-            
-          # Found it
-          body = self.makeGetBody(created, machinetypeName, self.path)          
 
      try:
        if body is None:
@@ -680,30 +657,6 @@ class mjfHttpdHandler(vacHttpdHandler):
              vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')
            else:
              success = vac.shared.writePutBody(created, machinetypeName, self.path, body)
-
-       else:
-         # From a Docker container?
-         ordinal = 0
-        
-         while true: 
-        
-           try:
-             createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
-             created = int(createdStr)
-           except:
-             # Stop when we run out of lock files
-             break
-         
-           try: 
-             ip = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal) + '/ip', 'r').read().strip()
-           except:
-             continue
-
-           if self.client_address[0] != ip:
-             continue
-            
-           # Found it
-           success = vac.shared.writePutBody(created, machinetypeName, self.path, body)
 
      try:
        if success:

@@ -70,9 +70,10 @@ class VacError(Exception):
 # 01.02 adds num_processors to machine_status
 vacQueryVersion = '01.02'
 
-vmModels = [ 'cernvm3', 'vm-raw' ] # Virtual Machine models
-dcModels = [ 'docker' ]            # Docker Container models
-lmModels = vmModels + dcModels     # All Logical Machine models
+vmModels = [ 'cernvm3', 'vm-raw' ]        # Virtual Machine models
+dcModels = [ 'docker' ]                   # Docker Container models
+scModels = [ 'singularity' ]              # Singularity Container models
+lmModels = vmModels + dcModels + scModels # All Logical Machine models
 
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
@@ -1126,6 +1127,11 @@ class VacLM:
    def destroyLM(self, shutdownMessage = None):
    
       if self.machineModel in dcModels:
+        # Any exceptions passed straight up to caller of destroyLM()
+        # Not yet
+        pass
+   
+      elif self.machineModel in scModels:
         # Any exceptions passed straight up to caller of destroyLM()
         # Not yet
         pass
