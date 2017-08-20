@@ -1692,7 +1692,7 @@ def makeMjfBody(created, machinetypeName, uuidStr, path):
        body = '<html><body><ul>'
 
        for fileName in os.listdir(machinesDir + '/' + splitRequestURI[1]):
-         body += '<li><a href="' + splitRequestURI[2] + '">' + splitRequestURI[2] + '</a></li>'
+         body += '<li><a href="' + fileName + '">' + fileName + '</a></li>'
          
        body += '</ul></body></html>'
        return body
