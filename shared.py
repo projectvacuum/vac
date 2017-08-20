@@ -84,6 +84,7 @@ factoryAddress      = mjfAddress
 dummyAddress        = metaAddress
 udpBufferSize       = 16777216
 gbDiskPerProcessorDefault = 40
+singularityUser     = 'vacsngly'
 
 overloadPerProcessor = None
 gocdbSitename = None
@@ -421,9 +422,10 @@ def readConf(includePipes = False, updatePipes = False):
 
                      elif (option == 'user_data' or option == 'root_image') and \
                         '/' in value and \
+                        (not value.startswith('/cvmfs/') or '/../' in value) and \
                         not value.startswith('http://') and \
                         not value.startswith('https://'):
-                       print 'Option %s in %s cannot contain a "/" unless http(s):// - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
 
                      # if all OK, then can set value as if from configuration files
@@ -1198,6 +1200,8 @@ class VacLM:
       #
       if self.machineModel in vmModels:
         self.createVM()
+      elif self.machineModel in scModels:
+        self.createSC()
       else:
         raise VacError('machine_model %s is not supported/recognised' % self.machineModel)
    
@@ -1208,7 +1212,18 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/ip',
                  self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
+   def createSC(self):
+      # Create Singularity container
+
+      self.uuidStr = str(uuid.uuid4())
+
+      if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
+        raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
+
+       
+
    def createVM(self):
+      # Create virtual machine: cernvm3 or vm-raw 
 
       self.ip = natPrefix + str(self.ordinal)
       ipBytes = self.ip.split('.')
@@ -2412,3 +2427,31 @@ def makeFactoryResponse(cookie, clientName = '-'):
      responseDict['site'] = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
    return json.dumps(responseDict)
+
+
+def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP):
+   # Create a temporary text file containing contents then move
+   # it into place. Rename is an atomic operation in POSIX,
+   # including situations where targetname already exists.
+
+   try:
+     ftup = tempfile.mkstemp(prefix = 'temp', dir = '/var/lib/vac/tmp', text = True)
+     os.write(ftup[0], contents)
+       
+     if mode:
+       os.fchmod(ftup[0], mode)
+
+     os.close(ftup[0])
+     os.rename(ftup[1], targetname)
+     return True
+     
+   except Exception as e:
+     logLine('createFile(' + targetname + ',...) fails with "' + str(e) + '"')
+     
+     try:
+       os.remove(ftup[1])
+     except:
+       pass
+
+     return False
+     
