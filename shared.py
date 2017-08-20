@@ -896,7 +896,7 @@ class VacLM:
       mesg = ('APEL-individual-job-message: v0.3\n' + 
               'Site: ' + tmpGocdbSitename + '\n' +
               'SubmitHost: ' + spaceName + '/vac-' + os.uname()[1] + '\n' +
-              'LocalJobId: ' + self.uuidStr + '\n' +
+              'LocalJobId: ' + str(self.uuidStr) + '\n' +
               'LocalUserId: ' + os.uname()[1] + '\n' +
               'Queue: ' + self.machinetypeName + '\n' +
               'GlobalUserName: ' + userDN + '\n' +
@@ -1197,7 +1197,7 @@ class VacLM:
       # Here we run createVM() etc to really create the machine
       #
       if self.machineModel in vmModels:
-        self.createVM(ip, mac)
+        self.createVM()
       else:
         raise VacError('machine_model %s is not supported/recognised' % self.machineModel)
    
@@ -1732,7 +1732,7 @@ def makeMjfBody(created, machinetypeName, path):
        body = '<html><body><ul>'
 
        for fileName in os.listdir(machinesDir + '/' + splitRequestURI[1]):
-         body += '<li><a href="' + splitRequestURI[2] + '">' + splitRequestURI[2] + '</a></li>'
+         body += '<li><a href="' + fileName + '">' + fileName + '</a></li>'
          
        body += '</ul></body></html>'
        return body

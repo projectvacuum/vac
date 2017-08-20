@@ -17,24 +17,24 @@
 # All other ##user_data__## sustitutions for this template are
 # generated automatically by Vac.
 #
-# Andrew.McNab@cern.ch December 2015
+# Andrew.McNab@cern.ch August 2017
 #
 
 # Set the hostname if available; display otherwise
-hostname ##user_data_vm_hostname##
+hostname ##user_data_machine_hostname##
 
-mkdir -p /etc/joboutputs
+mkdir -p /var/spool/joboutputs
 
 # Create the epilog.sh which is run at the end of set up 
 # within the CernVM virtual machine
 cat <<EP_EOF >>/var/lib/hepix/context/epilog.sh
 #!/bin/sh
 (
-echo 'Created by example user_data' > /etc/joboutputs/example.txt
+echo 'Created by example user_data' > /var/spool/joboutputs/example.txt
 sleep 300
 /sbin/shutdown -h now 'VM shutting down ...'
 sleep 1234567890
-) > /etc/joboutputs/example.log 2>&1
+) > /var/spool/joboutputs/example.log 2>&1
 EP_EOF
 chmod +x /var/lib/hepix/context/epilog.sh
 exit 0
