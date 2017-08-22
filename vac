@@ -3,7 +3,7 @@
 #  vac - Vac command line utility
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-6. All rights reserved.
+#  Copyright (c) 2013-7. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -120,12 +120,25 @@ def queryMachines(options, factoryList):
                   processorsStr = '%2d' % response['num_cpus']
                 else:
                   processorsStr = ' 1'
+                  
+                if 'model' in response:
+                  if response['model'] in vac.shared.vmModels:
+                    modelStr = 'VM'
+                  elif response['model'] in vac.shared.scModels:
+                    modelStr = 'SC'
+                  elif response['model'] in vac.shared.dcModels:
+                    modelStr = 'DC'
+                  else:
+                    modelStr = '??'
+                else:
+                  modelStr = 'VM'
 
                 print (
                        vmName + ' ' +
                        ((response['machinetype'] + 14 * ' ') if response['machinetype'] else 10 * '-' + '    ')[0:14] + ' ' + 
                        stateStr + '  ' + 
                        processorsStr + ' ' +
+                       modelStr + ' ' +
                        hoursStr[0:21] + 
                        percentStr
                       )

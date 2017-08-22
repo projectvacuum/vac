@@ -36,6 +36,7 @@
 import re
 import os
 import sys
+import pwd
 import uuid
 import time
 import glob
@@ -43,6 +44,7 @@ import errno
 import base64
 import shutil
 import string
+import signal
 import hashlib
 import StringIO
 import urllib
@@ -84,7 +86,9 @@ factoryAddress      = mjfAddress
 dummyAddress        = metaAddress
 udpBufferSize       = 16777216
 gbDiskPerProcessorDefault = 40
-singularityUser     = 'vacsngly'
+singularityUser     = None
+singularityUid      = None
+singularityGid      = None
 
 overloadPerProcessor = None
 gocdbSitename = None
@@ -120,6 +124,7 @@ def readConf(includePipes = False, updatePipes = False):
              factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
              processorsPerSuperslot, versionLogger, machinetypes, vacmons, rootPublicKeyFile, \
+             singularityUser, singularityUid, singularityGid, \
              volumeGroup, gbDiskPerProcessor, overloadPerProcessor, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
@@ -146,7 +151,8 @@ def readConf(includePipes = False, updatePipes = False):
       machinetypes = {}
       vacmons = []
       rootPublicKeyFile = '/root/.ssh/id_rsa.pub'
-      
+      singularityUser = None
+        
       volumeGroup = 'vac_volume_group'
       machinefeaturesOptions = {}
       
@@ -231,6 +237,18 @@ def readConf(includePipes = False, updatePipes = False):
           # Multiplier to calculate overload veto against creating more VMs
           overloadPerProcessor = float(parser.get('settings','overload_per_processor'))
              
+      if parser.has_option('settings', 'singularity_user'):
+          singularityUser = parser.get('settings','singularity_user').strip()
+          try:
+            pwdStruct = pwd.getpwnam(singularityUser)
+            singularityUid = pwdStruct[2]
+            singularityGid = pwdStruct[3]
+          except:
+            return 'Singularity user %s does not exist!' % singularityUser
+            
+          if singularityUid == 0:
+            return 'You cannot use root as the Singularity user!'
+
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
           volumeGroup = parser.get('settings','volume_group').strip()
@@ -635,12 +653,134 @@ def canonicalFQDN(hostName):
    except:
      # If failed, then just return what we were given
      return hostName
-              
+
+def killZombieVMs():
+   # Look for VMs which are not properly associated with
+   # logical machine slots and kill them
+   
+   conn = libvirt.open(None)
+   if conn == None:
+     vac.vacutils.logLine('Failed to open connection to the hypervisor')
+     raise
+
+   for ordinal in xrange(numMachineSlots):
+      name = nameFromOrdinal(ordinal)
+      
+      try:
+        createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + name,'r').read().split()
+      except:
+        createdStr      = None
+        machinetypeName = None
+        machineModel    = None
+        uuidStr         = None
+      else:
+        try: 
+          # Can't use self.machinesDir()
+          uuidStr = open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/jobfeatures/job_id', 'r').read().strip()
+        except:
+          uuidStr = None
+
+      try:
+        dom = conn.lookupByName(name)
+      except:
+        # Not running so can continue
+        continue
+
+      killZombie = False
+      
+      if machineModel not in vmModels:
+        # We think a non-VM should be running here
+        vac.vacutils.logLine('VM still running alongside %s LM in slot %s, killing zombie' % (self.machineModel, self.name))
+        killZombie = True
+
+      if uuidStr != dom.UUIDString():
+        # Doesn't match slot's UUID
+        vac.vacutils.logLine('UUID mismatch: %s (job_id) != %s (dom) for LM %s, killing zombie' % (str(uuidStr), dom.UUIDString(), name))
+        killZombie = True
+
+      if not createdStr or not os.path.isdir('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName):
+        # Our files say otherwise
+        vac.vacutils.logLine('No created time (or missing machines dir), killing zombie')
+        killZombie = True
+
+      if killZombie:
+        try:
+          dom.shutdown()
+          # 30s delay for any ACPI handler in the VM
+          time.sleep(30.0)
+          dom.destroy()
+        except Exception as e:
+          vac.vacutils.logLine('Failed to destroy %s (%s)' % (name, str(e)))
+             
+   conn.close()
+   
+def killZombieSCs():
+   # Look for Singularity Container processes which are not properly associated with
+   # logical machine slots and kill them
+   
+   if singularityUser:
+
+     # First compose a list of expected running Singularity Container head process PIDs   
+     singularityPids = []
+   
+     for ordinal in xrange(numMachineSlots):
+       name = nameFromOrdinal(ordinal)
+   
+       try:
+         createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + name,'r').read().split()
+       except:
+         continue
+         
+       if machineModel not in scModels:
+         # If slot not meant to be an SC then ignore
+         continue
+
+       try: 
+         pid = int(open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/pid', 'r').read().strip())
+       except:
+         pid = None
+         
+       try:
+         finished = int(os.stat('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/finished').st_ctime)
+       except:
+         finished = None
+                  
+       if pid and finished is None:
+         # Only add pid if the SC hasn't finished
+         singularityPids.append(pid)
+
+     # Now find all the processes of singularityUser and check if valid        
+     for pid in os.listdir('/proc'):
+     
+       if not pid.isdigit():
+         continue
+       
+       try:
+         uid = int(os.stat('/proc/' + pid).st_uid)
+       except:
+         # Failed to get process owner ID. Process gone?
+         continue
+         
+       if uid != singularityUid:
+         # Ignore processes unless they are owned by singularityUser
+         continue
+       
+       try:
+         pgid = int(open('/proc/' + pid, 'r').read().split(')')[1].split(' ')[3])
+       except:
+         # Failed to get process group ID. Process gone?
+         continue
+
+       if pgid not in singularityPids:
+         # Process group ID does not correspond to any valid Singularity Container head process!
+         vac.vacutil.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
+         os.kill(int(pid), signal.SIG_KILL)
+                              
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
 class VacLM:
-   def __init__(self, ordinal, checkHypervisor = True):
+   def __init__(self, ordinal, forResponder = False):
       self.ordinal             = ordinal
       self.name                = nameFromOrdinal(ordinal)
       self.ip                  = None
@@ -670,36 +810,10 @@ class VacLM:
         self.uuidStr = open(self.machinesDir() + '/jobfeatures/job_id', 'r').read().strip()
       except:
         self.uuidStr = None
-
-      dom      = None
-      domState = None
-
-      if checkHypervisor:
-        # By default we check the hypervisor, but can set False to disable this in the responder
-        conn = libvirt.open(None)
-        if conn == None:
-          vac.vacutils.logLine('Failed to open connection to the hypervisor')
-          raise
-
-        try:
-          dom = conn.lookupByName(self.name)
-          domState = dom.info()[0]
-        except:
-          pass
-
-        conn.close()
-                                      
+                                              
       if not self.created or not os.path.isdir(self.machinesDir()):
         # if slot not properly set up or if machines directory is missing then stop now
-        
-        if dom:
-          # if we know a VM is running for this slot, then its a zombie
-          self.state = VacState.zombie
-          vac.vacutils.logLine('No created time (or missing machines dir), setting VacState.zombie')
-        else:
-          # just say shutdown (including never created)
-          self.state = VacState.shutdown
-
+        self.state           = VacState.shutdown
         self.machinetypeName = None
         self.created         = None
         return
@@ -759,7 +873,7 @@ class VacLM:
         self.mb = mbPerProcessor * self.processors
       
       try:
-        # this is written by Vac as it monitors the machine through libvirt
+        # this is written by Vac as it monitors the logical machine
         oneLine = open(self.machinesDir() + '/heartbeat', 'r').readline()
                                     
         self.cpuSeconds = int(oneLine.split(' ')[0])
@@ -772,15 +886,24 @@ class VacLM:
         self.cpuSeconds    = 0
         self.cpuPercentage = 0
 
-      if checkHypervisor:
-        # If we checked the hypervisor, then act on what we found
-        if dom:                
-          if self.uuidStr != dom.UUIDString():
-            # if VM exists but doesn't match slot's UUID, then a zombie, to be killed
-            self.state = VacState.zombie
-            vac.vacutils.logLine('UUID mismatch: %s (job_id) != %s (dom) for LM started %d, setting VacState.zombie' % (str(self.uuidStr), dom.UUIDString(), self.created))
-            return
+      if not forResponder and self.machineModel in vmModels:
+        dom      = None
+        domState = None
 
+        conn = libvirt.open(None)
+        if conn == None:
+          vac.vacutils.logLine('Failed to open connection to the hypervisor')
+          raise
+
+        try:
+          dom = conn.lookupByName(self.name)
+          domState = dom.info()[0]
+        except:
+          pass
+
+        conn.close()
+
+        if dom:
           if domState != libvirt.VIR_DOMAIN_RUNNING and domState != libvirt.VIR_DOMAIN_BLOCKED:
             # If domain exists, but not Running/Blocked, then say Paused
             self.state = VacState.paused
@@ -796,6 +919,24 @@ class VacLM:
           # Actually, we're shutdown since VM not really running
           self.state = VacState.shutdown
 
+      if not forResponder and self.machineModel in scModels:
+
+        try:
+          pid = int(open(self.machinesDir() + '/pid', 'r').read().strip())
+        except:
+          pid = None
+          uid = None
+        else:
+          try:
+            uid = int(os.stat('/proc/' + str(pid)).st_uid)
+          except:
+            uid = None
+
+        if uid != singularityUid:
+          # Actually, we're shutdown since SC head process is not really running
+          self.state = VacState.shutdown
+
+
       if self.state == VacState.shutdown:
         try:
           self.shutdownMessage = open(self.machinesDir() + '/joboutputs/shutdown_message', 'r').read().strip()
@@ -804,7 +945,7 @@ class VacLM:
           pass
       
    def machinesDir(self):
-      return '/var/lib/vac/machines/' + str(self.created) + ':' + self.machinetypeName
+      return '/var/lib/vac/machines/' + str(self.created) + '_' + self.machinetypeName
 
    def createHeartbeatFile(self):
       self.heartbeat = int(time.time())
@@ -839,7 +980,7 @@ class VacLM:
 
       # Update the file for this machinetype in the finishes directory, about the most recently created but already finished machine
 
-      finishedFilesList = glob.glob('/var/lib/vac/machines/*:' + self.machinetypeName + ':*/finished')
+      finishedFilesList = glob.glob('/var/lib/vac/machines/*_' + self.machinetypeName + '/finished')
      
       if finishedFilesList:
         finishedFilesList.sort()
@@ -955,7 +1096,7 @@ class VacLM:
         except Exception as e:
           raise VacError('Failed to create user_data (' + str(e) + ')')
          
-      if rootPublicKeyFile:          
+      if rootPublicKeyFile:
         try:
           publicKey = open(rootPublicKeyFile, 'r').read()
         except:
@@ -1126,6 +1267,39 @@ class VacLM:
       finally:
         conn.close()
 
+   def destroySC(self):
+
+     try:
+       scPid = int(open(self.machinesDir() + '/pid', 'r').read().strip())
+     except:
+       return
+
+     for pid in os.listdir('/proc'):
+     
+       if not pid.isdigit():
+         continue
+       
+       try:
+         uid = int(os.stat('/proc/' + pid).st_uid)
+       except:
+         # Failed to get process owner ID. Process gone?
+         continue
+         
+       if uid != singularityUid:
+         # Ignore processes unless they are owned by singularityUser
+         continue
+       
+       try:
+         pgid = int(open('/proc/' + pid, 'r').read().split(')')[1].split(' ')[3])
+       except:
+         # Failed to get process group ID. Process gone?
+         continue
+
+       if pgid == scPid:
+         # Process in the process group of the SC head process, so kill it
+         vac.vacutil.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
+         os.kill(int(pid), signal.SIG_KILL)
+
    def destroyLM(self, shutdownMessage = None):
    
       if self.machineModel in dcModels:
@@ -1136,7 +1310,7 @@ class VacLM:
       elif self.machineModel in scModels:
         # Any exceptions passed straight up to caller of destroyLM()
         # Not yet
-        pass
+        self.destroySC()
    
       elif self.machineModel in vmModels:
         # Any exceptions passed straight up to caller of destroyLM()
@@ -1186,6 +1360,7 @@ class VacLM:
         
       try:
         self.makeOpenStackData()
+        # This includes making the user_data file
       except Exception as e:
         raise VacError('Failed making OpenStack meta_data (' + str(e) + ')')
 
@@ -1209,8 +1384,9 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-      vac.vacutils.createFile(self.machinesDir() + '/ip',
-                 self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      if self.ip:
+        vac.vacutils.createFile(self.machinesDir() + '/ip',
+                  self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
    def createSC(self):
       # Create Singularity container
@@ -1220,8 +1396,56 @@ class VacLM:
       if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
         raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
 
-       
+      os.makedirs(self.machinesDir() + '/mnt',
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
+      if volumeGroup and self.measureVolumeGroup():
+        # Create logical volume for Singularity
+
+        try:
+          self.createLogicalVolume()
+        except Exception as e:
+          raise VacError('Failed to create required logical volume: ' + str(e))
+
+        try:
+          os.system('/usr/sbin/mke2fs -t ext4 /dev/' + volumeGroup + '/' + self.name)
+        except Exception as e:
+          raise VacError('Failed to create filesystem: ' + str(e))
+          
+        try:
+          os.system('/usr/bin/mount /dev/' + volumeGroup + '/' + self.name + ' ' + self.machinesDir() + '/mnt')
+        except Exception as e:
+          raise VacError('Failed to mount filesystem: ' + str(e))
+      
+      os.makedirs(self.machinesDir() + '/mnt/home/' + singularityUser, 
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs(self.machinesDir() + '/mnt/tmp', 
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+      os.makedirs(self.machinesDir() + '/mnt/var/tmp', 
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+
+      os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+
+      pid = os.fork()
+      
+      if pid == 0:
+        os.chdir('/tmp')
+        os.setpgid(0, 0)
+        os.setgid(1002)
+        os.setuid(1002)
+        os.execl('/usr/bin/singularity', 'singularity', 
+                 '-v','-v','-v',
+                 'exec',
+                 '--bind', self.machinesDir() + '/user_data:/user_data',
+                 '--bind', self.machinesDir() + '/machinefeatures:/machinefeatures',
+                 '--bind', self.machinesDir() + '/jobfeatures:/jobfeatures',
+                 machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
+                 '/user_data' ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
+                 )
+
+      vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
+      createFile(self.machinesDir() + '/pid', str(pid))
+             
    def createVM(self):
       # Create virtual machine: cernvm3 or vm-raw 
 
@@ -1400,7 +1624,7 @@ class VacLM:
       <filterref filter='clean-traffic'/>
     </interface>
     <serial type="file">
-      <source path="/var/lib/vac/machines/"""  + str(self.created) + ':' + self.machinetypeName + """/console.log"/>
+      <source path="/var/lib/vac/machines/"""  + str(self.created) + '_' + self.machinetypeName + """/console.log"/>
       <target port="1"/>
     </serial>                    
     <graphics type='vnc' port='"""  + str(5900 + self.ordinal) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
@@ -1435,7 +1659,21 @@ class VacLM:
       # Everything ok and return back to createLM()
       
    def removeLogicalVolume(self):
+   
       if os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
+      
+        # First try to unmount the logical volume in case used for Singularity
+        try:
+          # Kill any processes still using the filesystem
+          os.system('/usr/sbin/fuser --kill --mount /dev/' + str(volumeGroup) + '/' + self.name)
+          # Unmount the filesystem itself
+          os.system('/usr/bin/umount /dev/' + str(volumeGroup) + '/' + self.name)
+        except:
+          pass
+        else:
+          vac.vacutils.logLine('Unmount logical volume /dev/' + volumeGroup + '/' + self.name)
+
+        # Now remove the logical volume itself
         vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
         os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
 
@@ -1494,7 +1732,8 @@ class VacLM:
        # Not given, so calculate. Round down to match extent size.
        sizeToCreate = ((self.processors * (vgTotalBytes - vgNonVacBytes) / numProcessors) / vgExtentBytes) * vgExtentBytes
      
-     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
+     # Option -y means we wipe existing signatures etc
+     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate -y --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
 
      try:
        if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
@@ -1692,6 +1931,7 @@ def fixNetworkingCommands():
         pass
 
 def cleanupOldMachines():
+   # Remove files and directories associated with old machines
 
    machinesList = os.listdir('/var/lib/vac/machines')
 
@@ -1736,7 +1976,7 @@ def makeMjfBody(created, machinetypeName, path):
      # Subdirectories are now allowed
      return None
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
+   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
 
    if requestURI == '/machinefeatures/' or \
       requestURI == '/machinefeatures' or \
@@ -1767,7 +2007,7 @@ def makeMjfBody(created, machinetypeName, path):
 
 def makeMetadataBody(created, machinetypeName, path):
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
+   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
 
    # Fold // to /, and /latest/ to something that will match a dated version
    requestURI = path.replace('//','/').replace('/latest/','/0000-00-00/')
@@ -1852,7 +2092,7 @@ def writePutBody(created, machinetypeName, path, body):
    if len(splitRequestURI) != 3 or splitRequestURI[1] != 'joboutputs' or not splitRequestURI[2]:
      return False
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
+   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
    
    try:
      vac.vacutils.createFile(machinesDir + '/joboutputs/' + splitRequestURI[2],
@@ -2130,12 +2370,12 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    if not timeNow:
      timeNow = int(time.time())
 
-   vm = VacLM(ordinal, checkHypervisor = False)
+   lm = VacLM(ordinal, forResponder = True)
 
-   if vm.hs06:
-     hs06 = vm.hs06
+   if lm.hs06:
+     hs06 = lm.hs06
    else:
-     hs06 = 1.0 * vm.processors
+     hs06 = 1.0 * lm.processors
 
    responseDict = {
                 'message_type'		: 'machine_status',
@@ -2148,20 +2388,21 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
                 'num_machines'       	: numMachineSlots,
                 'time_sent'		: timeNow,
 
-                'machine' 		: vm.name,
-                'state'			: vm.state,
-                'uuid'			: vm.uuidStr,
-                'created_time'		: vm.created,
-                'started_time'		: vm.started,
-                'heartbeat_time'	: vm.heartbeat,
-                'num_cpus'		: vm.processors, # removed in Vacuum Platform 2.0 spec
-                'num_processors'	: vm.processors,
-                'cpu_seconds'		: vm.cpuSeconds,
-                'cpu_percentage'	: vm.cpuPercentage,
+                'machine' 		: lm.name,
+                'state'			: lm.state,
+                'model'			: lm.machineModel,
+                'uuid'			: lm.uuidStr,
+                'created_time'		: lm.created,
+                'started_time'		: lm.started,
+                'heartbeat_time'	: lm.heartbeat,
+                'num_cpus'		: lm.processors, # removed in Vacuum Platform 2.0 spec
+                'num_processors'	: lm.processors,
+                'cpu_seconds'		: lm.cpuSeconds,
+                'cpu_percentage'	: lm.cpuPercentage,
                 'hs06' 		       	: hs06,
-                'machinetype'		: vm.machinetypeName,
-                'shutdown_message'  	: vm.shutdownMessage,
-                'shutdown_time'     	: vm.shutdownMessageTime
+                'machinetype'		: lm.machinetypeName,
+                'shutdown_message'  	: lm.shutdownMessage,
+                'shutdown_time'     	: lm.shutdownMessageTime
                   }
 
    if gocdbSitename:
@@ -2169,8 +2410,8 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    else:
      responseDict['site'] = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
-   if 'accounting_fqan' in machinetypes[vm.machinetypeName]:
-     responseDict['fqan'] = machinetypes[vm.machinetypeName]['accounting_fqan']
+   if 'accounting_fqan' in machinetypes[lm.machinetypeName]:
+     responseDict['fqan'] = machinetypes[lm.machinetypeName]['accounting_fqan']
 
    return json.dumps(responseDict)
 
@@ -2201,7 +2442,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        if machinetypeNameTmp != machinetypeName:
          continue
 
-       machinesDir = '/var/lib/vac/machines/' + str(created) + ':' + machinetypeName
+       machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
        if not os.path.isdir(machinesDir):
          # machines directory has been cleaned up?
          continue
@@ -2257,7 +2498,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
 
      try:
        # Updated by createFinishedFile()
-       dir = '/var/lib/vac/machines/' + open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().replace(' ',':')
+       dir = '/var/lib/vac/machines/' + open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().replace(' ','_')
      except:
        pass
      else:

@@ -155,6 +155,12 @@ is the file name of a public key which will be offered to the VM if it
 exists. For most machinetypes this will allow root ssh access from the
 VM factory. Default /root/.ssh/id_rsa.pub
 
+.B singularity_user
+is the username to use when creating Singularity containers, and must
+be given if those containers are to be used. Vac will kill processes
+running as this user which are not part of a valid Singularity container
+managed by Vac.
+
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking
 state if the vac_169.254.0.0 virtual network does not exist and cannot
