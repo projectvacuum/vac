@@ -1090,12 +1090,6 @@ class VacLM:
 
    def makeOpenStackData(self):
    
-      if 'user_data' in machinetypes[self.machinetypeName]:
-        try:
-          self.setupUserDataContents()
-        except Exception as e:
-          raise VacError('Failed to create user_data (' + str(e) + ')')
-         
       if rootPublicKeyFile:
         try:
           publicKey = open(rootPublicKeyFile, 'r').read()
@@ -1218,6 +1212,20 @@ class VacLM:
        rootImageURL = machinetypes[self.machinetypeName]['root_image']
       else:
        rootImageURL = None
+
+      # Set the MJFJO paths for the different machine models       
+      if self.machineModel in vmModels: 
+        machinefeaturesURL = 'http://' + mjfAddress + '/machinefeatures'
+        jobfeaturesURL     = 'http://' + mjfAddress + '/jobfeatures'
+        joboutputsURL      = 'http://' + mjfAddress + '/joboutputs'
+      elif self.machineModel in scModels:
+        machinefeaturesURL = '/tmp/machinefeatures'
+        jobfeaturesURL     = '/tmp/jobfeatures'
+        joboutputsURL      = '/tmp/joboutputs'
+      else:
+        machinefeaturesURL = None
+        jobfeaturesURL     = None
+        joboutputsURL      = None
     
       try:
         userDataContents = vac.vacutils.createUserData(
@@ -1230,9 +1238,9 @@ class VacLM:
                                                userDataPath	  = machinetypes[self.machinetypeName]['user_data'], 
                                                hostName		  = self.name, 
                                                uuidStr		  = self.uuidStr,
-                                               machinefeaturesURL = 'http://' + mjfAddress + '/machinefeatures',
-                                               jobfeaturesURL     = 'http://' + mjfAddress + '/jobfeatures',
-                                               joboutputsURL      = 'http://' + mjfAddress + '/joboutputs',
+                                               machinefeaturesURL = machinefeaturesURL,
+                                               jobfeaturesURL     = jobfeaturesURL,
+                                               joboutputsURL      = joboutputsURL,
                                                rootImageURL       = rootImageURL )
       except Exception as e:
         raise VacError('Failed to read ' + machinetypes[self.machinetypeName]['user_data'] + ' (' + str(e) + ')')
@@ -1358,9 +1366,15 @@ class VacLM:
       except Exception as e:
         raise VacError('Failed making MJF files (' + str(e) + ')')
         
+
+      if 'user_data' in machinetypes[self.machinetypeName]:
+        try:
+          self.setupUserDataContents()
+        except Exception as e:
+          raise VacError('Failed to create user_data (' + str(e) + ')')
+
       try:
         self.makeOpenStackData()
-        # This includes making the user_data file
       except Exception as e:
         raise VacError('Failed making OpenStack meta_data (' + str(e) + ')')
 
@@ -1416,14 +1430,9 @@ class VacLM:
           os.system('/usr/bin/mount /dev/' + volumeGroup + '/' + self.name + ' ' + self.machinesDir() + '/mnt')
         except Exception as e:
           raise VacError('Failed to mount filesystem: ' + str(e))
-      
-      os.makedirs(self.machinesDir() + '/mnt/home/' + singularityUser, 
-                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      os.makedirs(self.machinesDir() + '/mnt/tmp', 
-                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-      os.makedirs(self.machinesDir() + '/mnt/var/tmp', 
-                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
+      os.chown(self.machinesDir() + '/mnt', singularityUid, singularityGid)
+      os.chown(self.machinesDir() + '/joboutputs', singularityUid, singularityGid)
       os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
       pid = os.fork()
@@ -1436,9 +1445,12 @@ class VacLM:
         os.execl('/usr/bin/singularity', 'singularity', 
                  '-v','-v','-v',
                  'exec',
+                 '--contain',
+                 '--workdir', self.machinesDir() + '/mnt',
+                 '--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
+                 '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
+                 '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
                  '--bind', self.machinesDir() + '/user_data:/user_data',
-                 '--bind', self.machinesDir() + '/machinefeatures:/machinefeatures',
-                 '--bind', self.machinesDir() + '/jobfeatures:/jobfeatures',
                  machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
                  '/user_data' ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
                  )
