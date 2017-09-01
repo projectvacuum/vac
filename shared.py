@@ -433,7 +433,8 @@ def readConf(includePipes = False, updatePipes = False):
                        continue
                      
                      # Any options which specify filenames on the hypervisor must be checked here  
-                     if (option.startswith('user_data_file_' ) or 
+                     if (option.startswith('user_data_file_' )  or
+                         option ==         'cvmfs_repositories' or
                          option ==         'heartbeat_file'   ) and '/' in value:
                        print 'Option %s in %s cannot contain a "/" - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
@@ -448,6 +449,8 @@ def readConf(includePipes = False, updatePipes = False):
 
                      # if all OK, then can set value as if from configuration files
                      parser.set(sectionName, option, value)
+             
+             # Now go through the machinetype options, whether from configuration or vacuum pipe
              
              if parser.has_option(sectionName, 'root_image'):
                  machinetype['root_image'] = parser.get(sectionName, 'root_image')
@@ -561,6 +564,11 @@ def readConf(includePipes = False, updatePipes = False):
              else:
                  machinetype['machinegroup'] = sectionNameSplit[1]
                                        
+             if parser.has_option(sectionName, 'cvmfs_repositories'):
+               machinetype['cvmfs_repositories'] = set(parser.get(sectionName, 'cvmfs_repositories').split())
+             else:
+               machinetype['cvmfs_repositories'] = set([])
+          
              for (oneOption,oneValue) in parser.items(sectionName):
 
                  if (oneOption[0:17] == 'user_data_option_') or (oneOption[0:15] == 'user_data_file_'):
@@ -799,13 +807,15 @@ class VacLM:
       self.created             = None
       self.machinetypeName     = None
       self.machineModel        = None
-      
+
       try:
         createdStr, self.machinetypeName, self.machineModel = open('/var/lib/vac/slots/' + self.name,'r').read().split()
         self.created = int(createdStr)
       except:
         pass
 
+      self.cvmfsRepositories = machinetypes[self.machinetypeName]['cvmfs_repositories']
+      
       try: 
         self.uuidStr = open(self.machinesDir() + '/jobfeatures/job_id', 'r').read().strip()
       except:
@@ -1435,6 +1445,26 @@ class VacLM:
       os.chown(self.machinesDir() + '/joboutputs', singularityUid, singularityGid)
       os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
+      argsList = [singularity', 
+                  '-v','-v','-v',
+                  'exec',
+                  '--contain',
+                  '--workdir', self.machinesDir() + '/mnt']
+ 
+      if machinetypes[self.machinetypeName]['cvmfs_repositories']:
+        # Bind everything mounted in cvmfs
+        argsList.append(['--bind', '/cvmfs:/cvmfs'])
+        # Make sure the requested cvmfs repositories are mounted
+        for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
+          os.listdir('/cvmfs/' + repo)
+             
+      argsList.append(['--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
+                       '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
+                       '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
+                       '--bind', self.machinesDir() + '/user_data:/user_data',
+                       machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
+                       '/user_data']) ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
+
       pid = os.fork()
       
       if pid == 0:
@@ -1442,18 +1472,7 @@ class VacLM:
         os.setpgid(0, 0)
         os.setgid(1002)
         os.setuid(1002)
-        os.execl('/usr/bin/singularity', 'singularity', 
-                 '-v','-v','-v',
-                 'exec',
-                 '--contain',
-                 '--workdir', self.machinesDir() + '/mnt',
-                 '--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
-                 '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
-                 '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
-                 '--bind', self.machinesDir() + '/user_data:/user_data',
-                 machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
-                 '/user_data' ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
-                 )
+        os.execv('/usr/bin/singularity', argsList)
 
       vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
       createFile(self.machinesDir() + '/pid', str(pid))

@@ -212,10 +212,11 @@ def vacOneCycle():
    
    # These are updated at the END of each cycle of the for loop
    # --> So we do not use  continue  within this loop! <--
-   runningProcessors = 0
-   runningCount      = 0
-   runningHS06       = 0.0
-   superslots        = {}
+   runningProcessors    = 0
+   runningCount         = 0
+   runningHS06          = 0.0
+   superslots           = {}
+   allCvmfsRepositories = []
    
    vacDiskStatFS = os.statvfs('/var/lib/vac')
    if vacDiskStatFS.f_bavail * vacDiskStatFS.f_frsize < 1024 * 1024 * 1024:
@@ -337,6 +338,8 @@ def vacOneCycle():
          superslots[lm.shutdownTime] += lm.processors
        else:
          superslots[lm.shutdownTime]  = lm.processors
+         
+       allCvmfsRepositories.update(lm.cvmfsRepositories)
 
      # the destroyLM method updates VacLM.state
      if lm.state == vac.shared.VacState.running:
@@ -344,6 +347,10 @@ def vacOneCycle():
   
    # finished with all LMs, so output counts for Nagios etc
    vac.vacutils.createFile('/var/lib/vac/counts', '%d %d %d %d %.2f' % (runningCount,vac.shared.numMachineSlots,runningProcessors,vac.shared.numProcessors,runningHS06), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
+   # Make sure all cvmfs repos used by running containers stay mounted
+   for repo in allCvmfsRepositories:
+     os.listdir('/cvmfs/' + repo)
 
    # Try to create new LM
    vac.vacutils.logLine('Start a LM creation attempt (only one this cycle)')
