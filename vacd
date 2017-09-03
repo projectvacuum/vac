@@ -224,6 +224,7 @@ def vacOneCycle():
      ableToStartOne = False
    
    vac.shared.killZombieVMs()
+   vac.shared.killZombieDCs()
    vac.shared.killZombieSCs()
       
    lowestFreeSlot = None
@@ -231,7 +232,7 @@ def vacOneCycle():
    for ordinal in range(vac.shared.numMachineSlots):
    
      lmname = vac.shared.nameFromOrdinal(ordinal)
-     lm     = vac.shared.VacLM(ordinal)
+     lm     = vac.shared.initVacLM(ordinal)
      
      if lm.shutdownMessage and (lm.shutdownMessage[0] == '3'):
       vac.vacutils.logLine(lm.name + ' is ' + lm.state + ' (' + str(lm.processors) + ' ' + str(lm.machinetypeName) + ' "' + lm.shutdownMessage + '" ' + str(lm.uuidStr) + 
@@ -420,7 +421,7 @@ def vacOneCycle():
 
        if chosenMachinetypeName:
          lmname = vac.shared.nameFromOrdinal(lowestFreeSlot)
-         lm     = vac.shared.VacLM(lowestFreeSlot)
+         lm     = vac.shared.initVacLM(lowestFreeSlot)
 
          vac.vacutils.logLine('Creating ' + lm.name + ' with machinetype ' + chosenMachinetypeName + ', ' + str(chosenProcessors) + ' processor(s), finishing at ' + str(chosenShutdownTime))
          createError = lm.createLM(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)

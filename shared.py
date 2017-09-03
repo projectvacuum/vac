@@ -46,6 +46,7 @@ import shutil
 import string
 import signal
 import hashlib
+import subprocess
 import StringIO
 import urllib
 import datetime
@@ -439,12 +440,17 @@ def readConf(includePipes = False, updatePipes = False):
                        print 'Option %s in %s cannot contain a "/" - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
 
+                     elif (option == 'user_data' or option == 'root_image') and '/../' in value:
+                       print 'Option %s in %s cannot contain "/../" - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       continue
+
                      elif (option == 'user_data' or option == 'root_image') and \
                         '/' in value and \
-                        (not value.startswith('/cvmfs/') or '/../' in value) and \
+                        not value.startswith('docker:') and \
+                        not value.startswith('/cvmfs/') and \
                         not value.startswith('http://') and \
                         not value.startswith('https://'):
-                       print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... or docker:... - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
 
                      # if all OK, then can set value as if from configuration files
@@ -452,9 +458,6 @@ def readConf(includePipes = False, updatePipes = False):
              
              # Now go through the machinetype options, whether from configuration or vacuum pipe
              
-             if parser.has_option(sectionName, 'root_image'):
-                 machinetype['root_image'] = parser.get(sectionName, 'root_image')
-
              if parser.has_option(sectionName, 'cernvm_signing_dn'):
                  machinetype['cernvm_signing_dn'] = parser.get(sectionName, 'cernvm_signing_dn').strip()
                  print 'cernvm_signing_dn is deprecated - please use image_signing_dn'
@@ -475,7 +478,17 @@ def readConf(includePipes = False, updatePipes = False):
                  machinetype['machine_model'] = parser.get(sectionName, 'machine_model')
              else:
                  machinetype['machine_model'] = 'cernvm3'
+                 
+             if machinetype['machine_model'] not in lmModels:
+               return 'Machine model %s is not defined!' % machinetype['machine_model']
              
+             if parser.has_option(sectionName, 'root_image'):
+                 machinetype['root_image'] = parser.get(sectionName, 'root_image')
+
+                 if machinetype['root_image'].startswith('docker:') and \
+                    (machinetype['machine_model'] not in dcModels and machinetype['machine_model'] not in scModels):
+                   return 'Can only use a docker: image URI with Docker and Singularity machine models!'
+
              if parser.has_option(sectionName, 'root_device'):
                if string.translate(parser.get(sectionName, 'root_device'), None, '0123456789abcdefghijklmnopqrstuvwxyz') != '':
                  print 'root_device can only contain characters a-z 0-9 so skipping machinetype!'
@@ -722,6 +735,41 @@ def killZombieVMs():
              
    conn.close()
    
+def killZombieDCs():
+   # Look for Docker Container processes which are not properly associated with
+   # logical machine slots and kill them
+   
+   try:
+     containers = dockerPsCommand()
+   except Exception as e:
+     vac.vacutil.logLine('Failed to get list of Docker zombie candidates (%s)' % str(e))
+     return
+      
+   for name in containers: 
+     # Look at this container looking for a mismatch. Unless we continue, remove the container
+     
+     try:
+       createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + name,'r').read().split()
+     except:
+       # The corresponding slot isn't defined. Container is a zombie!
+       pass
+     else:
+       if machineModel in dcModels:
+         # This slot IS a Docker container. So may not be a zombie!
+         try:       
+           uuidStr = open('/var/lib/vac/machines/%s-%s/joboutputs/job_id','r').read().strip()
+         except:
+           # But no UUID/ID defined for the slot's container. A zombie!
+           pass
+         else:
+           if uuidStr == containers['name']['id']:
+             # UUID = ID, so in this one case, NOT a zombie!
+             continue
+
+     # We've fallen through one way or another. So a zombie!
+     vac.vacutil.logLine('Removing zombie Docker container %s' % name)
+     dockerRmCommand(name)
+
 def killZombieSCs():
    # Look for Singularity Container processes which are not properly associated with
    # logical machine slots and kill them
@@ -787,7 +835,25 @@ def killZombieSCs():
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
+def initVacLM(ordinal, forResponder = False):
+   try:
+     createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + nameFromOrdinal(ordinal),'r').read().split()
+   except:
+     return VacLM(ordinal, forResponder)
+     
+   if machineModel in vmModels:
+     return VacVM(ordinal, forResponder)
+   elif machineModel in dcModels:
+     return VacDC(ordinal, forResponder)
+   elif machineModel in scModels:
+     return VacSC(ordinal, forResponder)
+   else:
+     raise VacError('machineModel %s is not supported' % machineModel)
+
 class VacLM:
+   # This class is both a base class for VacVM, VacSC, and VacDC
+   # and also used for slots which have not been previously initalised
+
    def __init__(self, ordinal, forResponder = False):
       self.ordinal             = ordinal
       self.name                = nameFromOrdinal(ordinal)
@@ -1228,6 +1294,10 @@ class VacLM:
         machinefeaturesURL = 'http://' + mjfAddress + '/machinefeatures'
         jobfeaturesURL     = 'http://' + mjfAddress + '/jobfeatures'
         joboutputsURL      = 'http://' + mjfAddress + '/joboutputs'
+      elif self.machineModel in dcModels:
+        machinefeaturesURL = '/etc/machinefeatures'
+        jobfeaturesURL     = '/etc/jobfeatures'
+        joboutputsURL      = '/var/spool/joboutputs'
       elif self.machineModel in scModels:
         machinefeaturesURL = '/tmp/machinefeatures'
         jobfeaturesURL     = '/tmp/jobfeatures'
@@ -1262,81 +1332,8 @@ class VacLM:
       except:
         raise VacError('Failed writing to ' + self.machinesDir() + '/user_data')
 
-   def destroyVM(self):
-      conn = libvirt.open(None)
-      if conn == None:
-          vac.vacutils.logLine('Failed to open connection to the hypervisor')
-          raise VacError('failed to open connection to the hypervisor')
-
-      try:
-        dom = conn.lookupByName(self.name)
-      except:
-        vac.vacutils.logLine('VM %s has already gone' % self.name)
-        conn.close()
-        return
-        
-      try:
-        dom.shutdown()
-        # 30s delay for any ACPI handler in the VM
-        time.sleep(30.0)
-        dom.destroy()
-      except Exception as e:
-        raise VacError('failed to destroy %s (%s)' % (self.name, str(e)))
-      finally:
-        conn.close()
-
-   def destroySC(self):
-
-     try:
-       scPid = int(open(self.machinesDir() + '/pid', 'r').read().strip())
-     except:
-       return
-
-     for pid in os.listdir('/proc'):
-     
-       if not pid.isdigit():
-         continue
-       
-       try:
-         uid = int(os.stat('/proc/' + pid).st_uid)
-       except:
-         # Failed to get process owner ID. Process gone?
-         continue
-         
-       if uid != singularityUid:
-         # Ignore processes unless they are owned by singularityUser
-         continue
-       
-       try:
-         pgid = int(open('/proc/' + pid, 'r').read().split(')')[1].split(' ')[3])
-       except:
-         # Failed to get process group ID. Process gone?
-         continue
-
-       if pgid == scPid:
-         # Process in the process group of the SC head process, so kill it
-         vac.vacutil.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
-         os.kill(int(pid), signal.SIG_KILL)
-
    def destroyLM(self, shutdownMessage = None):
    
-      if self.machineModel in dcModels:
-        # Any exceptions passed straight up to caller of destroyLM()
-        # Not yet
-        pass
-   
-      elif self.machineModel in scModels:
-        # Any exceptions passed straight up to caller of destroyLM()
-        # Not yet
-        self.destroySC()
-   
-      elif self.machineModel in vmModels:
-        # Any exceptions passed straight up to caller of destroyLM()
-        self.destroyVM()
-        
-      else:
-        raise VacError('machine model %s not supported in destroyLM()' % str(self.machineModel))
-
       self.state = VacState.shutdown
       self.removeLogicalVolume()
 
@@ -1394,93 +1391,102 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
                  '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      #
-      # Here we run createVM() etc to really create the machine
-      #
-      if self.machineModel in vmModels:
-        self.createVM()
-      elif self.machineModel in scModels:
-        self.createSC()
-      else:
-        raise VacError('machine_model %s is not supported/recognised' % self.machineModel)
+   def removeLogicalVolume(self):
    
-      # Now can set job_id = UUID (self.uuidStr set in createVM etc)
-      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
-                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-      if self.ip:
-        vac.vacutils.createFile(self.machinesDir() + '/ip',
-                  self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-
-   def createSC(self):
-      # Create Singularity container
-
-      self.uuidStr = str(uuid.uuid4())
-
-      if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
-        raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
-
-      os.makedirs(self.machinesDir() + '/mnt',
-                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-
-      if volumeGroup and self.measureVolumeGroup():
-        # Create logical volume for Singularity
-
-        try:
-          self.createLogicalVolume()
-        except Exception as e:
-          raise VacError('Failed to create required logical volume: ' + str(e))
-
-        try:
-          os.system('/usr/sbin/mke2fs -t ext4 /dev/' + volumeGroup + '/' + self.name)
-        except Exception as e:
-          raise VacError('Failed to create filesystem: ' + str(e))
-          
-        try:
-          os.system('/usr/bin/mount /dev/' + volumeGroup + '/' + self.name + ' ' + self.machinesDir() + '/mnt')
-        except Exception as e:
-          raise VacError('Failed to mount filesystem: ' + str(e))
-
-      os.chown(self.machinesDir() + '/mnt', singularityUid, singularityGid)
-      os.chown(self.machinesDir() + '/joboutputs', singularityUid, singularityGid)
-      os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
-
-      argsList = [singularity', 
-                  '-v','-v','-v',
-                  'exec',
-                  '--contain',
-                  '--workdir', self.machinesDir() + '/mnt']
- 
-      if machinetypes[self.machinetypeName]['cvmfs_repositories']:
-        # Bind everything mounted in cvmfs
-        argsList.append(['--bind', '/cvmfs:/cvmfs'])
-        # Make sure the requested cvmfs repositories are mounted
-        for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
-          os.listdir('/cvmfs/' + repo)
-             
-      argsList.append(['--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
-                       '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
-                       '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
-                       '--bind', self.machinesDir() + '/user_data:/user_data',
-                       machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
-                       '/user_data']) ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
-
-      pid = os.fork()
+      if os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
       
-      if pid == 0:
-        os.chdir('/tmp')
-        os.setpgid(0, 0)
-        os.setgid(1002)
-        os.setuid(1002)
-        os.execv('/usr/bin/singularity', argsList)
+        # First try to unmount the logical volume in case used for Singularity
+        try:
+          # Kill any processes still using the filesystem
+          os.system('/usr/sbin/fuser --kill --mount /dev/' + str(volumeGroup) + '/' + self.name)
+          # Unmount the filesystem itself
+          os.system('/usr/bin/umount /dev/' + str(volumeGroup) + '/' + self.name)
+        except:
+          pass
+        else:
+          vac.vacutils.logLine('Unmount logical volume /dev/' + volumeGroup + '/' + self.name)
 
-      vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
-      createFile(self.machinesDir() + '/pid', str(pid))
-             
-   def createVM(self):
+        # Now remove the logical volume itself
+        vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
+        os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
+
+   def measureVolumeGroup(self):
+     try:
+       return os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()
+     except Exception as e:
+       return None
+
+   def createLogicalVolume(self):
+
+     # Always remove any leftover volume of the same name
+     self.removeLogicalVolume()
+
+     try:
+       vgsResult = self.measureVolumeGroup()
+       vgTotalBytes = int(vgsResult[0])
+       vgExtentBytes = int(vgsResult[1])
+     except Exception as e:
+       raise VacError('Failed to measure size of volume group ' + volumeGroup + ' - missing?')
+
+     try:
+       f = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvs --noheadings --units B --nosuffix --options lv_name,lv_size ' + volumeGroup, 'r')
+     except Exception as e:
+       raise VacError('Measuring size of logical volumes in ' + volumeGroup + ' fails with ' + str(e))
+
+     vgVacBytes = 0
+     vgNonVacBytes = 0
+     nameParts = os.uname()[1].split('.',1)
+     domainRegex = nameParts[1].replace('.','\.')
+
+     while True:
+       try:
+        name,sizeStr = f.readline().strip().split()
+        size = int(sizeStr)
+       except:
+        break
+
+       if re.search('^' + nameParts[0] + '-[0-9][0-9]\.' + domainRegex + '$', name) is None:
+        vgNonVacBytes += size
+       else:
+        vgVacBytes += size
+
+     f.close()
+
+     vac.vacutils.logLine('Volume group ' + volumeGroup + ' has ' + str(vgVacBytes) + ' bytes used by Vac and ' + str(vgNonVacBytes) + 
+                          ' bytes by others, out of ' + str(vgTotalBytes) + ' bytes in total. The extent size is ' + str(vgExtentBytes) + ' bytes.')
+
+     # Now try to create logical volume
+     vac.vacutils.logLine('Trying to create logical volume for ' + self.name + ' in ' + volumeGroup)
+
+     if gbDiskPerProcessor:
+       # Fixed size has been given in configuration. Round down to match extent size.
+       sizeToCreate = ((gbDiskPerProcessor * self.processors * 1000000000) / vgExtentBytes) * vgExtentBytes
+     else:
+       # Not given, so calculate. Round down to match extent size.
+       sizeToCreate = ((self.processors * (vgTotalBytes - vgNonVacBytes) / numProcessors) / vgExtentBytes) * vgExtentBytes
+     
+     # Option -y means we wipe existing signatures etc
+     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate -y --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
+
+     try:
+       if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
+         raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device')
+     except:
+         raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing')
+
+
+class VacVM(VacLM):
+
+   def create(self):
+      # Initialisation common to all machine models
+      self.createLM()
+   
       # Create virtual machine: cernvm3 or vm-raw 
 
       self.ip = natPrefix + str(self.ordinal)
+      vac.vacutils.createFile(self.machinesDir() + '/ip',
+                              self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+
       ipBytes = self.ip.split('.')
       mac     = '56:4D:%02X:%02X:%02X:%02X' % (int(ipBytes[0]), int(ipBytes[1]), int(ipBytes[2]), int(ipBytes[3]))
 
@@ -1489,6 +1495,8 @@ class VacLM:
       scratch_disk_xml = ""
       cernvm_cdrom_xml = ""
       self.uuidStr     = str(uuid.uuid4())
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
+                              self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       if self.machineModel == 'vm-raw':
         # non-CernVM VM model
@@ -1689,89 +1697,257 @@ class VacLM:
       self.state = VacState.running
       # Everything ok and return back to createLM()
       
-   def removeLogicalVolume(self):
-   
-      if os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
-      
-        # First try to unmount the logical volume in case used for Singularity
+   def destroy(self, shutdownMessage = None):
+      conn = libvirt.open(None)
+      if conn == None:
+          vac.vacutils.logLine('Failed to open connection to the hypervisor')
+          raise VacError('failed to open connection to the hypervisor')
+
+      try:
+        dom = conn.lookupByName(self.name)
+      except:
+        vac.vacutils.logLine('VM %s has already gone' % self.name)
+        conn.close()
+        return
+        
+      try:
+        dom.shutdown()
+        # 30s delay for any ACPI handler in the VM
+        time.sleep(30.0)
+        dom.destroy()
+      except Exception as e:
+        raise VacError('failed to destroy %s (%s)' % (self.name, str(e)))
+      finally:
+        conn.close()
+
+     self.destroyLM(shutdownMessage)    
+
+class VacDC(VacLM):
+
+   def create(self):
+      # Initialisation common to all machine models
+      self.createLM()
+
+      # Create Docker container
+
+      if machinetypes[self.machinetypeName]['root_image'].startswith('docker://'):
+        image = machinetypes[self.machinetypeName]['root_image'][9:]
+      elif machinetypes[self.machinetypeName]['root_image'].startswith('docker:'):
+        image = machinetypes[self.machinetypeName]['root_image'][7:]
+      else:
+        raise VacError('Docker root_image must begin with "docker:"')        
+
+      os.makedirs(self.machinesDir() + '/mnt',
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+
+      if volumeGroup and self.measureVolumeGroup():
+        # Create logical volume for Docker container
+
         try:
-          # Kill any processes still using the filesystem
-          os.system('/usr/sbin/fuser --kill --mount /dev/' + str(volumeGroup) + '/' + self.name)
-          # Unmount the filesystem itself
-          os.system('/usr/bin/umount /dev/' + str(volumeGroup) + '/' + self.name)
-        except:
-          pass
-        else:
-          vac.vacutils.logLine('Unmount logical volume /dev/' + volumeGroup + '/' + self.name)
+          self.createLogicalVolume()
+        except Exception as e:
+          raise VacError('Failed to create required logical volume: ' + str(e))
 
-        # Now remove the logical volume itself
-        vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
-        os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
-
-   def measureVolumeGroup(self):
-     try:
-       return os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()
-     except Exception as e:
-       return None
-
-   def createLogicalVolume(self):
-
-     # Always remove any leftover volume of the same name
-     self.removeLogicalVolume()
-
-     try:
-       vgsResult = self.measureVolumeGroup()
-       vgTotalBytes = int(vgsResult[0])
-       vgExtentBytes = int(vgsResult[1])
-     except Exception as e:
-       raise VacError('Failed to measure size of volume group ' + volumeGroup + ' - missing?')
-
-     try:
-       f = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvs --noheadings --units B --nosuffix --options lv_name,lv_size ' + volumeGroup, 'r')
-     except Exception as e:
-       raise VacError('Measuring size of logical volumes in ' + volumeGroup + ' fails with ' + str(e))
-
-     vgVacBytes = 0
-     vgNonVacBytes = 0
-     nameParts = os.uname()[1].split('.',1)
-     domainRegex = nameParts[1].replace('.','\.')
-
-     while True:
-       try:
-        name,sizeStr = f.readline().strip().split()
-        size = int(sizeStr)
-       except:
-        break
-
-       if re.search('^' + nameParts[0] + '-[0-9][0-9]\.' + domainRegex + '$', name) is None:
-        vgNonVacBytes += size
-       else:
-        vgVacBytes += size
-
-     f.close()
-
-     vac.vacutils.logLine('Volume group ' + volumeGroup + ' has ' + str(vgVacBytes) + ' bytes used by Vac and ' + str(vgNonVacBytes) + 
-                          ' bytes by others, out of ' + str(vgTotalBytes) + ' bytes in total. The extent size is ' + str(vgExtentBytes) + ' bytes.')
-
-     # Now try to create logical volume
-     vac.vacutils.logLine('Trying to create logical volume for ' + self.name + ' in ' + volumeGroup)
-
-     if gbDiskPerProcessor:
-       # Fixed size has been given in configuration. Round down to match extent size.
-       sizeToCreate = ((gbDiskPerProcessor * self.processors * 1000000000) / vgExtentBytes) * vgExtentBytes
-     else:
-       # Not given, so calculate. Round down to match extent size.
-       sizeToCreate = ((self.processors * (vgTotalBytes - vgNonVacBytes) / numProcessors) / vgExtentBytes) * vgExtentBytes
-     
-     # Option -y means we wipe existing signatures etc
-     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate -y --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
-
-     try:
-       if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
-         raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not a block device')
-     except:
-         raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing')
+        try:
+          os.system('/usr/sbin/mke2fs -t ext4 /dev/' + volumeGroup + '/' + self.name)
+        except Exception as e:
+          raise VacError('Failed to create filesystem: ' + str(e))
+          
+        try:
+          os.system('/usr/bin/mount /dev/' + volumeGroup + '/' + self.name + ' ' + self.machinesDir() + '/mnt')
+        except Exception as e:
+          raise VacError('Failed to mount filesystem: ' + str(e))
+          
+      bindsList = []
       
+      bindsList.append([self.machinesDir() + '/user_data', '/user_data'])
+       
+      if machinetypes[self.machinetypeName]['cvmfs_repositories']:
+        # Share everything mounted in cvmfs
+        bindsList.append(['/cvmfs','/cvmfs'])
+
+        # Make sure the requested cvmfs repositories are mounted
+        for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
+          os.listdir('/cvmfs/' + repo)
+
+      bindsList.extend([[self.machinesDir() + '/machinefeatures', '/etc/machinefeatures' ],
+                        [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ],
+                        [self.machinesDir() + '/joboutputs',      '/var/spool/joboutputs'],
+                        [self.machinesDir() + '/user_data',       '/user_data'           ]])
+
+      try:
+        self.uuidStr = dockerRunCommand(bindsList, self.name, image, '/user_data')
+      except Exception as e:
+        raise VacError('Failed to create Docker container %s (%s)' % (self.name, str(e)))
+      else:
+        vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
+                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+             
+   def destroy(self, shutdownMessage = None)
+
+     try:
+       dockerRmCommand(self.uuid)
+     except:
+       raise VacError('Failed to destroy Docker container %s (%s)!' % (self.name, str(e)))
+
+     self.destroyLM(shutdownMessage)    
+
+def dockerPsCommand():
+      # Return a list of currently defined Docker containers, filtered
+      # by the pattern of names Vac creates on this host.
+      # We use the docker command rather than the API for portability
+      
+      host,domain = os.uname()[1].split('.',1)
+
+      pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
+                            shell=True, stdout=PIPE).stdout
+
+      containers = {}
+
+      for line in pp:
+        try:
+          name, id, image, status, rest = line.split()
+        except:
+          continue          
+        
+        if name.startswith(host + '-') and name.endswith('.' + domain):
+          containers[name] = { "id" : id, "image" : image, "status" : status }
+          
+      pp.close()
+      
+      return containers        
+
+def dockerRunCommand(bindsList, name, image, script):
+      # Run a Docker container 
+      # We use the docker command rather than the API for portability
+      
+      binds = ''
+      
+      for i in bindsList:
+        binds += '-v %s:%s ' % i
+              
+      pp = subprocess.Popen('/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script), 
+                            shell=True, stdout=PIPE).stdout
+                            
+      id = pp.readline().strip()
+      
+      pp.close()
+      return id
+
+def dockerRmCommand(name):
+  # Remove Docker container by name
+      # We use the docker command rather than the API for portability
+      
+      subprocess.Call('/usr/bin/docker rm --force %s' % name, shell=True)
+
+class VacSC(VacLM):
+
+   def create(self):
+      # Initialisation common to all machine models
+      self.createLM()
+
+      # Create Singularity container
+      if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
+        raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
+
+      os.makedirs(self.machinesDir() + '/mnt',
+                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+
+      if volumeGroup and self.measureVolumeGroup():
+        # Create logical volume for Singularity
+
+        try:
+          self.createLogicalVolume()
+        except Exception as e:
+          raise VacError('Failed to create required logical volume: ' + str(e))
+
+        try:
+          os.system('/usr/sbin/mke2fs -t ext4 /dev/' + volumeGroup + '/' + self.name)
+        except Exception as e:
+          raise VacError('Failed to create filesystem: ' + str(e))
+          
+        try:
+          os.system('/usr/bin/mount /dev/' + volumeGroup + '/' + self.name + ' ' + self.machinesDir() + '/mnt')
+        except Exception as e:
+          raise VacError('Failed to mount filesystem: ' + str(e))
+
+      os.chown(self.machinesDir() + '/mnt', singularityUid, singularityGid)
+      os.chown(self.machinesDir() + '/joboutputs', singularityUid, singularityGid)
+      os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+
+      argsList = ['singularity', 
+                  '-v','-v','-v',
+                  'exec',
+                  '--contain',
+                  '--workdir', self.machinesDir() + '/mnt']
+ 
+      if machinetypes[self.machinetypeName]['cvmfs_repositories']:
+        # Bind everything mounted in cvmfs
+        argsList.append(['--bind', '/cvmfs:/cvmfs'])
+        # Make sure the requested cvmfs repositories are mounted
+        for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
+          os.listdir('/cvmfs/' + repo)
+             
+      argsList.append(['--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
+                       '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
+                       '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
+                       '--bind', self.machinesDir() + '/user_data:/user_data',
+                       machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
+                       '/user_data']) ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
+
+      pid = os.fork()
+      
+      if pid == 0:
+        os.chdir('/tmp')
+        os.setpgid(0, 0)
+        os.setgid(1002)
+        os.setuid(1002)
+        os.execv('/usr/bin/singularity', argsList)
+
+      vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
+      createFile(self.machinesDir() + '/pid', str(pid))
+
+      # Set job_id/UUID, always starting with PID for debugging
+      self.uuidStr = '%06d-%s' % (pid, str(uuid.uuid4()))
+      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
+                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+             
+   def destroy(self, shutdownMessage = None)
+
+     try:
+       scPid = int(open(self.machinesDir() + '/pid', 'r').read().strip())
+     except:
+       # Already gone???
+       pass
+     else:
+       for pid in os.listdir('/proc'):
+     
+         if not pid.isdigit():
+           continue
+       
+         try:
+           uid = int(os.stat('/proc/' + pid).st_uid)
+         except:
+           # Failed to get process owner ID. Process gone?
+           continue
+         
+         if uid != singularityUid:
+           # Ignore processes unless they are owned by singularityUser
+           continue
+       
+         try:
+           pgid = int(open('/proc/' + pid, 'r').read().split(')')[1].split(' ')[3])
+         except:
+           # Failed to get process group ID. Process gone?
+           continue
+
+         if pgid == scPid:
+           # Process in the process group of the SC head process, so kill it
+           vac.vacutil.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
+           os.kill(int(pid), signal.SIG_KILL)
+
+     self.destroyLM(shutdownMessage)    
+
 def checkNetwork():
       # Check and if necessary create network and set its attributes
 
@@ -2401,7 +2577,7 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    if not timeNow:
      timeNow = int(time.time())
 
-   lm = VacLM(ordinal, forResponder = True)
+   lm = initVacLM(ordinal, forResponder = True)
 
    if lm.hs06:
      hs06 = lm.hs06
