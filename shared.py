@@ -742,7 +742,7 @@ def killZombieDCs():
    try:
      containers = dockerPsCommand()
    except Exception as e:
-     vac.vacutil.logLine('Failed to get list of Docker zombie candidates (%s)' % str(e))
+     vac.vacutils.logLine('Failed to get list of Docker zombie candidates (%s)' % str(e))
      return
       
    for name in containers: 
@@ -767,7 +767,7 @@ def killZombieDCs():
              continue
 
      # We've fallen through one way or another. So a zombie!
-     vac.vacutil.logLine('Removing zombie Docker container %s' % name)
+     vac.vacutils.logLine('Removing zombie Docker container %s' % name)
      dockerRmCommand(name)
 
 def killZombieSCs():
@@ -829,7 +829,7 @@ def killZombieSCs():
 
        if pgid not in singularityPids:
          # Process group ID does not correspond to any valid Singularity Container head process!
-         vac.vacutil.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
+         vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
          os.kill(int(pid), signal.SIG_KILL)
                               
 class VacState:
@@ -868,6 +868,7 @@ class VacLM:
       self.processors          = 0
       self.mb                  = 0
       self.hs06                = None
+      self.accountingFqan      = None
       self.shutdownMessage     = None
       self.shutdownMessageTime = None
       self.created             = None
@@ -880,8 +881,11 @@ class VacLM:
       except:
         pass
 
-      self.cvmfsRepositories = machinetypes[self.machinetypeName]['cvmfs_repositories']
-      
+      try:
+        self.cvmfsRepositories = machinetypes[self.machinetypeName]['cvmfs_repositories']
+      except:
+        self.cvmfsRepositories = ''
+
       try: 
         self.uuidStr = open(self.machinesDir() + '/jobfeatures/job_id', 'r').read().strip()
       except:
@@ -906,6 +910,11 @@ class VacLM:
         self.ip = open(self.machinesDir() + '/ip', 'r').read().strip()
       except:
         pass
+
+      try:
+        self.accountingFqan = open(self.machinesDir() + '/accounting_fqan', 'r').read().strip()
+      except:
+        self.accountingFqan = None
 
       try:
         self.finished = int(os.stat(self.machinesDir() + '/finished').st_ctime)
@@ -1368,6 +1377,10 @@ class VacLM:
       vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
+      if 'accounting_fqan' in machinetypes[machinetypeName]:
+        vac.vacutils.createFile(self.machinesDir() + '/accounting_fqan', machinetypes[machinetypeName]['accounting_fqan'],
+                              stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+
       try:
         self.makeMJF()
       except Exception as e:
@@ -1644,6 +1657,7 @@ class VacVM(VacLM):
     <suspend-to-disk enabled='no'/>
     <suspend-to-mem  enabled='no'/>
   </pm>
+  <cpu mode='host-passthrough'/>
   <features>
     <acpi/>
     <apic/>
@@ -1720,7 +1734,7 @@ class VacVM(VacLM):
       finally:
         conn.close()
 
-     self.destroyLM(shutdownMessage)    
+      self.destroyLM(shutdownMessage)    
 
 class VacDC(VacLM):
 
@@ -1783,7 +1797,7 @@ class VacDC(VacLM):
         vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              
-   def destroy(self, shutdownMessage = None)
+   def destroy(self, shutdownMessage = None):
 
      try:
        dockerRmCommand(self.uuid)
@@ -1800,7 +1814,7 @@ def dockerPsCommand():
       host,domain = os.uname()[1].split('.',1)
 
       pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
-                            shell=True, stdout=PIPE).stdout
+                            shell=True, stdout=subprocess.PIPE).stdout
 
       containers = {}
 
@@ -1827,7 +1841,7 @@ def dockerRunCommand(bindsList, name, image, script):
         binds += '-v %s:%s ' % i
               
       pp = subprocess.Popen('/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script), 
-                            shell=True, stdout=PIPE).stdout
+                            shell=True, stdout=subprocess.PIPE).stdout
                             
       id = pp.readline().strip()
       
@@ -1912,7 +1926,7 @@ class VacSC(VacLM):
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              
-   def destroy(self, shutdownMessage = None)
+   def destroy(self, shutdownMessage = None):
 
      try:
        scPid = int(open(self.machinesDir() + '/pid', 'r').read().strip())
@@ -1943,7 +1957,7 @@ class VacSC(VacLM):
 
          if pgid == scPid:
            # Process in the process group of the SC head process, so kill it
-           vac.vacutil.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
+           vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
            os.kill(int(pid), signal.SIG_KILL)
 
      self.destroyLM(shutdownMessage)    
@@ -2131,7 +2145,7 @@ def fixNetworkingCommands():
         pass
        
       try:
-        cmd = '/bin/kill -9 `/bin/ps -C dnsmasq -o pid,args | /bin/grep -- "--listen-address ' + factoryAddress + '" | /bin/cut -f1 -d" "`'
+        cmd = '/bin/kill -9 `/bin/ps -C dnsmasq -o pid,args | /bin/egrep -- "--listen-address ' + factoryAddress + '|--conf-file=[^ ]*' + natNetwork + '.conf" | /bin/cut -f1 -d" "`'
         vac.vacutils.logLine('Trying  ' + cmd)
         os.system(cmd)
       except:
@@ -2617,8 +2631,8 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    else:
      responseDict['site'] = '.'.join(spaceName.split('.')[1:]) if '.' in spaceName else spaceName
 
-   if 'accounting_fqan' in machinetypes[lm.machinetypeName]:
-     responseDict['fqan'] = machinetypes[lm.machinetypeName]['accounting_fqan']
+   if lm.accountingFqan:
+     responseDict['fqan'] = lm.accountingFqan
 
    return json.dumps(responseDict)
 
