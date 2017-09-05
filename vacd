@@ -216,7 +216,7 @@ def vacOneCycle():
    runningCount         = 0
    runningHS06          = 0.0
    superslots           = {}
-   allCvmfsRepositories = []
+   allCvmfsRepositories = set([])
    
    vacDiskStatFS = os.statvfs('/var/lib/vac')
    if vacDiskStatFS.f_bavail * vacDiskStatFS.f_frsize < 1024 * 1024 * 1024:
@@ -230,120 +230,119 @@ def vacOneCycle():
    lowestFreeSlot = None
       
    for ordinal in range(vac.shared.numMachineSlots):
-   
-     lmname = vac.shared.nameFromOrdinal(ordinal)
-     lm     = vac.shared.initVacLM(ordinal)
-     
-     if lm.shutdownMessage and (lm.shutdownMessage[0] == '3'):
-      vac.vacutils.logLine(lm.name + ' is ' + lm.state + ' (' + str(lm.processors) + ' ' + str(lm.machinetypeName) + ' "' + lm.shutdownMessage + '" ' + str(lm.uuidStr) + 
-                           ') Minimum ' + str(lm.machinetypeName) + ' fizzle_seconds=' + str(lm.heartbeat - lm.started) + ' ?')
-     elif lm.shutdownMessage:
-      vac.vacutils.logLine(lm.name + ' is ' + lm.state + ' (' + str(lm.processors) + ' ' + str(lm.machinetypeName) + ' "' + lm.shutdownMessage + '" ' + str(lm.uuidStr) + ')')
+
+     lmSlot = vac.shared.VacSlot(ordinal)
+
+     if lmSlot.shutdownMessage and (lmSlot.shutdownMessage[0] == '3'):
+      vac.vacutils.logLine(lmSlot.name + ' is ' + lmSlot.state + ' (' + str(lmSlot.processors) + ' ' + str(lmSlot.machinetypeName) + ' "' + lmSlot.shutdownMessage + '" ' + str(lmSlot.uuidStr) + 
+                           ') Minimum ' + str(lmSlot.machinetypeName) + ' fizzle_seconds=' + str(lmSlot.heartbeat - lmSlot.started) + ' ?')
+     elif lmSlot.shutdownMessage:
+      vac.vacutils.logLine(lmSlot.name + ' is ' + lmSlot.state + ' (' + str(lmSlot.processors) + ' ' + str(lmSlot.machinetypeName) + ' "' + lmSlot.shutdownMessage + '" ' + str(lmSlot.uuidStr) + ')')
      else:
-      vac.vacutils.logLine(lm.name + ' is ' + lm.state + ' (' + str(lm.processors) + ' ' + str(lm.machinetypeName) + ' "" ' + str(lm.uuidStr) + ')')
+      vac.vacutils.logLine(lmSlot.name + ' is ' + lmSlot.state + ' (' + str(lmSlot.processors) + ' ' + str(lmSlot.machinetypeName) + ' "" ' + str(lmSlot.uuidStr) + ')')
      
-     if lm.state == vac.shared.VacState.running:
+     if lmSlot.state == vac.shared.VacState.running:
        # LM is happily running so we redo the machine's heartbeat file
-       lm.createHeartbeatFile()
+       lmSlot.createHeartbeatFile()
        
-       if vac.shared.shutdownTime and (not lm.shutdownTime or (vac.shared.shutdownTime < lm.shutdownTime)):       
-         lm.shutdownTime = vac.shared.shutdownTime
+       if vac.shared.shutdownTime and (not lmSlot.shutdownTime or (vac.shared.shutdownTime < lmSlot.shutdownTime)):       
+         lmSlot.shutdownTime = vac.shared.shutdownTime
 
          # need to reduce shutdowntime in the LM
          try:
-           vac.vacutils.createFile(lm.machinesDir() + '/machinefeatures/shutdowntime',
-                                    str(lm.shutdownTime),
+           vac.vacutils.createFile(lmSlot.machinesDir() + '/machinefeatures/shutdowntime',
+                                    str(lmSlot.shutdownTime),
                                     stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-           vac.vacutils.createFile(lm.machinesDir() + '/jobfeatures/shutdowntime_job',
-                                    str(lm.shutdownTime),
+           vac.vacutils.createFile(lmSlot.machinesDir() + '/jobfeatures/shutdowntime_job',
+                                    str(lmSlot.shutdownTime),
                                     stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
          except:
            pass
 
        # ah, but are WE happy that it is still running?
        try:
-           if int(time.time()) > lm.shutdownTime:
-             vac.vacutils.logLine('LM ' + lm.name + ' has passed shutdowntime without stopping - destroying!')
-             lm.destroyLM()
+           if int(time.time()) > lmSlot.shutdownTime:
+             vac.vacutils.logLine('LM ' + lmSlot.name + ' has passed shutdowntime without stopping - destroying!')
+             lmSlot.destroy()
        except:
            pass
        
        # if the machinetype is still defined in the configuration and
        # a heartbeat_file is defined for this machinetype and fizzle_seconds is non-zero
        # and fizzle_seconds time has passed since the LM started...
-       if lm.machinetypeName in vac.shared.machinetypes and \
-          'heartbeat_file' in vac.shared.machinetypes[lm.machinetypeName] and \
-          (vac.shared.machinetypes[lm.machinetypeName]['fizzle_seconds'] > 0) and \
-          (int(time.time()) > (lm.started + vac.shared.machinetypes[lm.machinetypeName]['fizzle_seconds'])) and \
-          (int(time.time()) > mjfHttpdStartTime + vac.shared.machinetypes[lm.machinetypeName]['fizzle_seconds']):
+       if lmSlot.machinetypeName in vac.shared.machinetypes and \
+          'heartbeat_file' in vac.shared.machinetypes[lmSlot.machinetypeName] and \
+          (vac.shared.machinetypes[lmSlot.machinetypeName]['fizzle_seconds'] > 0) and \
+          (int(time.time()) > (lmSlot.started + vac.shared.machinetypes[lmSlot.machinetypeName]['fizzle_seconds'])) and \
+          (int(time.time()) > mjfHttpdStartTime + vac.shared.machinetypes[lmSlot.machinetypeName]['fizzle_seconds']):
 
-          if lm.joboutputsHeartbeat is None:
+          if lmSlot.joboutputsHeartbeat is None:
               # destroy LM if file does not exist (even if heartbeat_seconds is zero)
-              vac.vacutils.logLine('LM ' + lm.name + ' has passed fizzle_seconds (' + 
-                        str(vac.shared.machinetypes[lm.machinetypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
-                        vac.shared.machinetypes[lm.machinetypeName]['heartbeat_file'] + ') has been created - destroying!')
-              lm.destroyLM('700 Heartbeat file not created')
-          elif (vac.shared.machinetypes[lm.machinetypeName]['heartbeat_seconds'] > 0) and \
-               (int(time.time()) > (lm.joboutputsHeartbeat + vac.shared.machinetypes[lm.machinetypeName]['heartbeat_seconds'])):
+              vac.vacutils.logLine('LM ' + lmSlot.name + ' has passed fizzle_seconds (' + 
+                        str(vac.shared.machinetypes[lmSlot.machinetypeName]['fizzle_seconds']) + ') but no heartbeat file (' + 
+                        vac.shared.machinetypes[lmSlot.machinetypeName]['heartbeat_file'] + ') has been created - destroying!')
+              lmSlot.destroy('700 Heartbeat file not created')
+          elif (vac.shared.machinetypes[lmSlot.machinetypeName]['heartbeat_seconds'] > 0) and \
+               (int(time.time()) > (lmSlot.joboutputsHeartbeat + vac.shared.machinetypes[lmSlot.machinetypeName]['heartbeat_seconds'])):
               # if heartbeat_seconds is set, we check the file is recent
-              vac.vacutils.logLine('LM ' + lm.name + ' has gone ' + str(int(time.time()) - lm.joboutputsHeartbeat) + 
+              vac.vacutils.logLine('LM ' + lmSlot.name + ' has gone ' + str(int(time.time()) - lmSlot.joboutputsHeartbeat) + 
                           ' seconds without updating heartbeat file (' + 
    
-                          vac.shared.machinetypes[lm.machinetypeName]['heartbeat_file'] + ') - destroying!')
-              lm.destroyLM('700 Heartbeat file not updated')
+                          vac.shared.machinetypes[lmSlot.machinetypeName]['heartbeat_file'] + ') - destroying!')
+              lmSlot.destroy('700 Heartbeat file not updated')
 
-#     elif lm.state == vac.shared.VacState.zombie:
+#     elif lmSlot.state == vac.shared.VacState.zombie:
 #       # LM running but no corresponding vac directory structure
 #       # We kill zombies on sight! 
-#       vac.vacutils.logLine('LM ' + lm.name + ' running without vac directories - destroying!')
-#       lm.destroyLM()
+#       vac.vacutils.logLine('LM ' + lmSlot.name + ' running without vac directories - destroying!')
+#       lmSlot.destroy()
        
-     elif lm.state == vac.shared.VacState.paused:
+     elif lmSlot.state == vac.shared.VacState.paused:
        # Suspended internally somehow? kill it to be safe
-       vac.vacutils.logLine('LM ' + lm.name + ' paused without shutting down - destroying!')
-       lm.destroyLM()
+       vac.vacutils.logLine('LM ' + lmSlot.name + ' paused without shutting down - destroying!')
+       lmSlot.destroy()
 
-     if lm.state == vac.shared.VacState.starting and lm.machinetypeName:
+     if lmSlot.state == vac.shared.VacState.starting and lmSlot.machinetypeName:
        # If LM is still starting and we've come round again, then starting failed! So we clean up
-       vac.vacutils.logLine('LM ' + lm.name + ' still in starting state in a new cycle - cleaning up!')
-       lm.destroyLM()
+       vac.vacutils.logLine('LM ' + lmSlot.name + ' still in starting state in a new cycle - cleaning up!')
+       lmSlot.destroy()
 
-     if lm.state == vac.shared.VacState.shutdown:      
-       if lm.created and not lm.finished:
-         # destroyLM() makes the finished file so we don't keep doing this
-         lm.destroyLM()
+     if lmSlot.state == vac.shared.VacState.shutdown:      
+       if lmSlot.created and not lmSlot.finished:
+         # destroy() makes the finished file so we don't keep doing this
+         lmSlot.destroy()
        
-         if lm.started:
-           lm.writeApel()
-           lm.sendVacMon()
-           vac.vacutils.logLine('Create finished file for LM ' + lm.name)
-           lm.createFinishedFile()
+         if lmSlot.started:
+           lmSlot.writeApel()
+           lmSlot.sendVacMon()
+           vac.vacutils.logLine('Create finished file for LM ' + lmSlot.name)
+           lmSlot.createFinishedFile()
 
          else:
-           vac.vacutils.logLine('Create finished file for only-starting LM ' + lm.name)
-           lm.createFinishedFile()
+           vac.vacutils.logLine('Create finished file for only-starting LM ' + lmSlot.name)
+           lmSlot.createFinishedFile()
   
        if lowestFreeSlot is None:
          lowestFreeSlot = ordinal
 
-     if lm.state == vac.shared.VacState.running:
-       runningProcessors += lm.processors
+     if lmSlot.state == vac.shared.VacState.running:
+       runningProcessors += lmSlot.processors
        
-       if lm.hs06:
-         runningHS06 += lm.hs06
+       if lmSlot.hs06:
+         runningHS06 += lmSlot.hs06
        else:
-         runningHS06 += 1.0 * lm.processors
+         runningHS06 += 1.0 * lmSlot.processors
        
-       if lm.shutdownTime in superslots:
-         superslots[lm.shutdownTime] += lm.processors
+       if lmSlot.shutdownTime in superslots:
+         superslots[lmSlot.shutdownTime] += lmSlot.processors
        else:
-         superslots[lm.shutdownTime]  = lm.processors
+         superslots[lmSlot.shutdownTime]  = lmSlot.processors
          
-       allCvmfsRepositories.update(lm.cvmfsRepositories)
+       allCvmfsRepositories.update(lmSlot.cvmfsRepositories)
 
-     # the destroyLM method updates VacLM.state
-     if lm.state == vac.shared.VacState.running:
+     # the lmSlot's destroy method updates lmSlot's state
+     if lmSlot.state == vac.shared.VacState.running:
        runningCount += 1
   
    # finished with all LMs, so output counts for Nagios etc
@@ -369,7 +368,7 @@ def vacOneCycle():
      # numProcessors is the number of logical processors which can be allocated to LMs
      vac.vacutils.logLine('LM not created due to total_processors or /proc/cpuinfo limit (' + str(vac.shared.numProcessors) + ')')
    else:  
-     vac.vacutils.logLine('Query factories and try to recreate ' + lm.name)
+     vac.vacutils.logLine('Query factories and try to recreate ' + lmSlot.name)
                           
      eligibleMachinetypeNames = pollFactories()
 
@@ -420,18 +419,17 @@ def vacOneCycle():
              break
 
        if chosenMachinetypeName:
-         lmname = vac.shared.nameFromOrdinal(lowestFreeSlot)
-         lm     = vac.shared.initVacLM(lowestFreeSlot)
+         lmSlot = vac.shared.VacSlot(lowestFreeSlot)
 
-         vac.vacutils.logLine('Creating ' + lm.name + ' with machinetype ' + chosenMachinetypeName + ', ' + str(chosenProcessors) + ' processor(s), finishing at ' + str(chosenShutdownTime))
-         createError = lm.createLM(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
+         vac.vacutils.logLine('Creating ' + lmSlot.name + ' with machinetype ' + chosenMachinetypeName + ', ' + str(chosenProcessors) + ' processor(s), finishing at ' + str(chosenShutdownTime))
+         createError = lmSlot.create(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
 
          if createError:
            vac.vacutils.logLine('LM creation fails with: ' + createError)
            vac.vacutils.createFile('/var/lib/vac/factory-error', 'LM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
          else:
            # We update factory heartbeat after creating a LM in case that took a while
-           vac.vacutils.logLine('LM ' + lm.name + ' created')
+           vac.vacutils.logLine('LM ' + lmSlot.name + ' created')
            vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
            # If no LM creation errors, then cleanup any old message   

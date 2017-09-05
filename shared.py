@@ -835,24 +835,8 @@ def killZombieSCs():
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
-def initVacLM(ordinal, forResponder = False):
-   try:
-     createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + nameFromOrdinal(ordinal),'r').read().split()
-   except:
-     return VacLM(ordinal, forResponder)
-     
-   if machineModel in vmModels:
-     return VacVM(ordinal, forResponder)
-   elif machineModel in dcModels:
-     return VacDC(ordinal, forResponder)
-   elif machineModel in scModels:
-     return VacSC(ordinal, forResponder)
-   else:
-     raise VacError('machineModel %s is not supported' % machineModel)
-
-class VacLM:
-   # This class is both a base class for VacVM, VacSC, and VacDC
-   # and also used for slots which have not been previously initalised
+class VacSlot:
+   # This class represents logical machine slots
 
    def __init__(self, ordinal, forResponder = False):
       self.ordinal             = ordinal
@@ -1341,8 +1325,20 @@ class VacLM:
       except:
         raise VacError('Failed writing to ' + self.machinesDir() + '/user_data')
 
-   def destroyLM(self, shutdownMessage = None):
+   def destroy(self, shutdownMessage = None):
+      # Destroy the logical machine in this slot
    
+      if self.machineModel in vmModels:
+        self.destroyVM()
+      elif machineModel in dcModels:
+        self.destroyDC()
+      elif machineModel in scModels:
+        self.destroySC()
+      else:
+        vac.vacutils.logLine('Machinemodel %s is not supported - try to destory anyway' % self.machineModel)
+
+      # Common finalization
+
       self.state = VacState.shutdown
       self.removeLogicalVolume()
 
@@ -1352,13 +1348,13 @@ class VacLM:
         except:
           pass
 
-   def createLM(self, machinetypeName, cpus, shutdownTime):
-      # Create logical machine: management files, MJF etc created here,
-      # and call createVM() etc to actually create the machine
+   def create(self, machinetypeName, cpus, machineShutdownTime):
+      # Create a logical machine in this slot 
+
       self.machineModel    = machinetypes[machinetypeName]['machine_model']
       self.processors      = cpus
       self.created         = int(time.time())
-      self.shutdownTime    = shutdownTime
+      self.shutdownTime    = machineShutdownTime
       self.machinetypeName = machinetypeName
       self.uuidStr         = None
 
@@ -1403,6 +1399,16 @@ class VacLM:
       
       vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
                  '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+
+      # Create a logical machine with the appropriate model in this slot
+      if self.machineModel in vmModels:
+        self.createVM()
+      elif self.machineModel in dcModels:
+        self.createDC()
+      elif self.machineModel in scModels:
+        self.createSC()
+      else:
+        raise VacError('machineModel %s is not supported' % self.machineModel)
 
    def removeLogicalVolume(self):
    
@@ -1488,14 +1494,9 @@ class VacLM:
          raise VacError('Failing due to /dev/' + volumeGroup + '/' + self.name + ' not existing')
 
 
-class VacVM(VacLM):
-
-   def create(self):
-      # Initialisation common to all machine models
-      self.createLM()
+   def createVM(self):
+      # Create Virtual Machine instance in this logical machine slot
    
-      # Create virtual machine: cernvm3 or vm-raw 
-
       self.ip = natPrefix + str(self.ordinal)
       vac.vacutils.createFile(self.machinesDir() + '/ip',
                               self.ip, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
@@ -1700,7 +1701,7 @@ class VacVM(VacLM):
            # so it disappears when libvirt is finished with it
            if rootDiskFileName:
              os.remove(rootDiskFileName)
-           
+
       if not dom:
            vac.vacutils.logLine('Failed when trying to create VM domain for ' + self.name)
            conn.close()
@@ -1709,9 +1710,10 @@ class VacVM(VacLM):
       conn.close()
        
       self.state = VacState.running
-      # Everything ok and return back to createLM()
       
-   def destroy(self, shutdownMessage = None):
+   def destroyVM(self, shutdownMessage = None):
+      # Destory Virtual Machine running in this logical machine slot
+   
       conn = libvirt.open(None)
       if conn == None:
           vac.vacutils.logLine('Failed to open connection to the hypervisor')
@@ -1734,15 +1736,8 @@ class VacVM(VacLM):
       finally:
         conn.close()
 
-      self.destroyLM(shutdownMessage)    
-
-class VacDC(VacLM):
-
-   def create(self):
-      # Initialisation common to all machine models
-      self.createLM()
-
-      # Create Docker container
+   def createDC(self):
+      # Create a Docker Container instance in this logical machine slot
 
       if machinetypes[self.machinetypeName]['root_image'].startswith('docker://'):
         image = machinetypes[self.machinetypeName]['root_image'][9:]
@@ -1797,70 +1792,17 @@ class VacDC(VacLM):
         vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              
-   def destroy(self, shutdownMessage = None):
+   def destroyDC(self, shutdownMessage = None):
+     # Destroy the Docker Container instance running in this logical machine slot
 
      try:
        dockerRmCommand(self.uuid)
      except:
        raise VacError('Failed to destroy Docker container %s (%s)!' % (self.name, str(e)))
 
-     self.destroyLM(shutdownMessage)    
-
-def dockerPsCommand():
-      # Return a list of currently defined Docker containers, filtered
-      # by the pattern of names Vac creates on this host.
-      # We use the docker command rather than the API for portability
+   def createSC(self):
+      # Create a Singularity Container instance in this logical machine slot
       
-      host,domain = os.uname()[1].split('.',1)
-
-      pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
-                            shell=True, stdout=subprocess.PIPE).stdout
-
-      containers = {}
-
-      for line in pp:
-        try:
-          name, id, image, status, rest = line.split()
-        except:
-          continue          
-        
-        if name.startswith(host + '-') and name.endswith('.' + domain):
-          containers[name] = { "id" : id, "image" : image, "status" : status }
-          
-      pp.close()
-      
-      return containers        
-
-def dockerRunCommand(bindsList, name, image, script):
-      # Run a Docker container 
-      # We use the docker command rather than the API for portability
-      
-      binds = ''
-      
-      for i in bindsList:
-        binds += '-v %s:%s ' % i
-              
-      pp = subprocess.Popen('/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script), 
-                            shell=True, stdout=subprocess.PIPE).stdout
-                            
-      id = pp.readline().strip()
-      
-      pp.close()
-      return id
-
-def dockerRmCommand(name):
-  # Remove Docker container by name
-      # We use the docker command rather than the API for portability
-      
-      subprocess.Call('/usr/bin/docker rm --force %s' % name, shell=True)
-
-class VacSC(VacLM):
-
-   def create(self):
-      # Initialisation common to all machine models
-      self.createLM()
-
-      # Create Singularity container
       if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
         raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
 
@@ -1926,7 +1868,8 @@ class VacSC(VacLM):
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              
-   def destroy(self, shutdownMessage = None):
+   def destroySC(self, shutdownMessage = None):
+     # Destroy the Singularity Container instance in this logical machine slot
 
      try:
        scPid = int(open(self.machinesDir() + '/pid', 'r').read().strip())
@@ -1960,7 +1903,53 @@ class VacSC(VacLM):
            vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
            os.kill(int(pid), signal.SIG_KILL)
 
-     self.destroyLM(shutdownMessage)    
+def dockerPsCommand():
+      # Return a list of currently defined Docker containers, filtered
+      # by the pattern of names Vac creates on this host.
+      # We use the docker command rather than the API for portability
+      
+      host,domain = os.uname()[1].split('.',1)
+
+      pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
+                            shell=True, stdout=subprocess.PIPE).stdout
+
+      containers = {}
+
+      for line in pp:
+        try:
+          name, id, image, status, rest = line.split()
+        except:
+          continue          
+        
+        if name.startswith(host + '-') and name.endswith('.' + domain):
+          containers[name] = { "id" : id, "image" : image, "status" : status }
+          
+      pp.close()
+      
+      return containers        
+
+def dockerRunCommand(bindsList, name, image, script):
+      # Run a Docker container 
+      # We use the docker command rather than the API for portability
+      
+      binds = ''
+      
+      for i in bindsList:
+        binds += '-v %s:%s ' % i
+              
+      pp = subprocess.Popen('/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script), 
+                            shell=True, stdout=subprocess.PIPE).stdout
+                            
+      id = pp.readline().strip()
+      
+      pp.close()
+      return id
+
+def dockerRmCommand(name):
+      # Remove Docker container by name
+      # We use the docker command rather than the API for portability
+      
+      subprocess.Call('/usr/bin/docker rm --force %s' % name, shell=True)
 
 def checkNetwork():
       # Check and if necessary create network and set its attributes
@@ -2591,7 +2580,7 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
    if not timeNow:
      timeNow = int(time.time())
 
-   lm = initVacLM(ordinal, forResponder = True)
+   lm = VacSlot(ordinal, forResponder = True)
 
    if lm.hs06:
      hs06 = lm.hs06
