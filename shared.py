@@ -1318,6 +1318,7 @@ class VacVM:
     <suspend-to-disk enabled='no'/>
     <suspend-to-mem  enabled='no'/>
   </pm>
+  <cpu mode='host-passthrough'/>
   <features>
     <acpi/>
     <apic/>
