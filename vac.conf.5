@@ -321,6 +321,11 @@ will be extracted from the files as appropriate. (Note that this location
 is one level above the files subdirectory in which the following options
 look by default.)
 
+.B container_command
+is the command to run inside a Docker or Singularity container. Only
+the command itself may be given, with no command-line arguments.
+Default /user_data .
+
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
 relative to the files subdirectory of the machinetype's subdirectory of 

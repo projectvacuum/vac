@@ -3,6 +3,7 @@
 - vacd started at 56 during the SysV boot up
 - Read /var/run/vac.conf (good for settings in preparation for a reboot)
 - Use HS06 per processor for ServiceLevel in APEL accounting records
+- Use CPU mode host-passthrough when creating VMs
 - Add Singularity and Docker Container machine models
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options

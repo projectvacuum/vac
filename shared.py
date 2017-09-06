@@ -400,6 +400,7 @@ def readConf(includePipes = False, updatePipes = False):
                                        'accounting_fqan',
                                        'backoff_seconds',
                                        'cache_seconds',
+                                       'container_command',
                                        'fizzle_seconds',
                                        'heartbeat_file',
                                        'heartbeat_seconds',
@@ -514,6 +515,11 @@ def readConf(includePipes = False, updatePipes = False):
 
              if parser.has_option(sectionName, 'user_data'):
                  machinetype['user_data'] = parser.get(sectionName, 'user_data')
+
+             if parser.has_option(sectionName, 'container_command'):
+                 machinetype['container_command'] = parser.get(sectionName, 'container_command')
+             else:
+                 machinetype['container_command'] = '/user_data'
 
              if parser.has_option(sectionName, 'min_processors'):
                  machinetype['min_processors'] = int(parser.get(sectionName, 'min_processors'))
@@ -1001,10 +1007,24 @@ class VacSlot:
           except:
             uid = None
 
-        if uid != singularityUid:
+        if pid is None or uid is None or uid != singularityUid:
           # Actually, we're shutdown since SC head process is not really running
           self.state = VacState.shutdown
 
+      if not forResponder and self.machineModel in dcModels:
+      
+        id = None          
+
+        try:
+          containers = dockerPsCommand()
+        except:
+          pass
+        else:
+          if self.name in containers:
+            id = containers[self.name]['id']
+            
+        if id is None:
+          self.state = VacState.shutdown
 
       if self.state == VacState.shutdown:
         try:
@@ -1330,9 +1350,9 @@ class VacSlot:
    
       if self.machineModel in vmModels:
         self.destroyVM()
-      elif machineModel in dcModels:
+      elif self.machineModel in dcModels:
         self.destroyDC()
-      elif machineModel in scModels:
+      elif self.machineModel in scModels:
         self.destroySC()
       else:
         vac.vacutils.logLine('Machinemodel %s is not supported - try to destory anyway' % self.machineModel)
@@ -1394,12 +1414,6 @@ class VacSlot:
       except Exception as e:
         raise VacError('Failed making OpenStack meta_data (' + str(e) + ')')
 
-      vac.vacutils.createFile(self.machinesDir() + '/started',
-                  str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-      
-      vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
-                 '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-
       # Create a logical machine with the appropriate model in this slot
       if self.machineModel in vmModels:
         self.createVM()
@@ -1409,6 +1423,12 @@ class VacSlot:
         self.createSC()
       else:
         raise VacError('machineModel %s is not supported' % self.machineModel)
+
+      vac.vacutils.createFile(self.machinesDir() + '/started',
+                  str(int(time.time())) + '\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
+      
+      vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
+                 '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
    def removeLogicalVolume(self):
    
@@ -1770,6 +1790,7 @@ class VacSlot:
       bindsList = []
       
       bindsList.append([self.machinesDir() + '/user_data', '/user_data'])
+      os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
        
       if machinetypes[self.machinetypeName]['cvmfs_repositories']:
         # Share everything mounted in cvmfs
@@ -1785,7 +1806,7 @@ class VacSlot:
                         [self.machinesDir() + '/user_data',       '/user_data'           ]])
 
       try:
-        self.uuidStr = dockerRunCommand(bindsList, self.name, image, '/user_data')
+        self.uuidStr = dockerRunCommand(bindsList, self.name, image, machinetypes[self.machinetypeName]['container_command'])
       except Exception as e:
         raise VacError('Failed to create Docker container %s (%s)' % (self.name, str(e)))
       else:
@@ -1796,12 +1817,15 @@ class VacSlot:
      # Destroy the Docker Container instance running in this logical machine slot
 
      try:
-       dockerRmCommand(self.uuid)
-     except:
+       dockerRmCommand(self.name)
+     except Exception as e:
        raise VacError('Failed to destroy Docker container %s (%s)!' % (self.name, str(e)))
 
    def createSC(self):
       # Create a Singularity Container instance in this logical machine slot
+      
+      if not singularityUser:
+        raise VacError('Cannot create Singularity Containers if singularity_user is undefined!')
       
       if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
         raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
@@ -1839,25 +1863,25 @@ class VacSlot:
  
       if machinetypes[self.machinetypeName]['cvmfs_repositories']:
         # Bind everything mounted in cvmfs
-        argsList.append(['--bind', '/cvmfs:/cvmfs'])
+        argsList.extend(['--bind', '/cvmfs:/cvmfs'])
         # Make sure the requested cvmfs repositories are mounted
         for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
           os.listdir('/cvmfs/' + repo)
              
-      argsList.append(['--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
+      argsList.extend(['--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
                        '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
                        '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
                        '--bind', self.machinesDir() + '/user_data:/user_data',
                        machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
-                       '/user_data']) ## ADD OPTION TO SPECIFY COMMAND TO RUN INSIDE CONTAINER TOO
+                       machinetypes[self.machinetypeName]['container_command']]) 
 
       pid = os.fork()
       
       if pid == 0:
         os.chdir('/tmp')
         os.setpgid(0, 0)
-        os.setgid(1002)
-        os.setuid(1002)
+        os.setgid(singularityGid)
+        os.setuid(singularityUid)
         os.execv('/usr/bin/singularity', argsList)
 
       vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
@@ -1904,7 +1928,7 @@ class VacSlot:
            os.kill(int(pid), signal.SIG_KILL)
 
 def dockerPsCommand():
-      # Return a list of currently defined Docker containers, filtered
+      # Return a dictionary of currently defined Docker containers, filtered
       # by the pattern of names Vac creates on this host.
       # We use the docker command rather than the API for portability
       
@@ -1935,7 +1959,7 @@ def dockerRunCommand(bindsList, name, image, script):
       binds = ''
       
       for i in bindsList:
-        binds += '-v %s:%s ' % i
+        binds += '-v %s:%s ' % (i[0], i[1])
               
       pp = subprocess.Popen('/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script), 
                             shell=True, stdout=subprocess.PIPE).stdout
@@ -1949,7 +1973,7 @@ def dockerRmCommand(name):
       # Remove Docker container by name
       # We use the docker command rather than the API for portability
       
-      subprocess.Call('/usr/bin/docker rm --force %s' % name, shell=True)
+      subprocess.call('/usr/bin/docker rm --force %s' % name, shell=True)
 
 def checkNetwork():
       # Check and if necessary create network and set its attributes
