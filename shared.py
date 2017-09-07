@@ -962,7 +962,8 @@ class VacSlot:
       except:
         self.cpuSeconds    = 0
         self.cpuPercentage = 0
-
+ 
+      # Virtual Machine models
       if not forResponder and self.machineModel in vmModels:
         dom      = None
         domState = None
@@ -996,6 +997,7 @@ class VacSlot:
           # Actually, we're shutdown since VM not really running
           self.state = VacState.shutdown
 
+      # Singularity Container models
       if not forResponder and self.machineModel in scModels:
 
         try:
@@ -1013,6 +1015,7 @@ class VacSlot:
           # Actually, we're shutdown since SC head process is not really running
           self.state = VacState.shutdown
 
+      # Docker Container models
       if not forResponder and self.machineModel in dcModels:
       
         id    = None          
@@ -1029,6 +1032,11 @@ class VacSlot:
             
         if id is None or status != 'Up':
           self.state = VacState.shutdown
+        else:
+          try:
+            self.cpuSeconds = int(open('/sys/fs/cgroup/cpu/system.slice/docker-%s.scope/cpuacct.usage' % id, 'r').read()) / 1000000000
+          except:
+            pass
 
       if self.state == VacState.shutdown:
         try:
