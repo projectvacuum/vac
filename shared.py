@@ -811,7 +811,8 @@ def killZombieSCs():
          # Only add pid if the SC hasn't finished
          singularityPids.append(pid)
 
-     vac.vacutils.logLine('Running singularity head process PID/PGIDs: ' + str(singularityPids))
+     vac.vacutils.logLine('Running singularity head process PIDs: ' + str(singularityPids))
+     return
 
      # Now find all the processes of singularityUser and check if valid        
      for pid in os.listdir('/proc'):
@@ -838,7 +839,7 @@ def killZombieSCs():
        if pgid not in singularityPids:
          # Process group ID does not correspond to any valid Singularity Container head process!
          vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
-#         os.kill(int(pid), signal.SIG_KILL)
+         os.kill(int(pid), signal.SIG_KILL)
                               
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
@@ -1893,7 +1894,6 @@ class VacSlot:
       if pid == 0:
         try:
           os.chdir('/tmp')
-          os.setpgid(0, 0)
           os.setgid(singularityGid)
           os.setuid(singularityUid)
           os.execv('/usr/bin/singularity', argsList)
