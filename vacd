@@ -152,10 +152,11 @@ def pollFactories():
                  - vac.shared.machinetypes[machinetypeName]['fizzle_seconds'] * (machinetypeResults[machinetypeName]['numBeforeFizzle'] > 0)))):
         machinetypesList.append( { 'machinetypeName'   : machinetypeName, 
                                    'machinetypeScore'  : machinetypeResults[machinetypeName]['score'],
-                                   'machinegroupScore' : machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']] } )
+                                   'machinegroupScore' : machinegroupScores[vac.shared.machinetypes[machinetypeName]['machinegroup']],
+                                   'random'            : str(random.random()) } )
 
-   # Sort by machinegroup then machinetype scores, lowest score (ie starving) types at the start of the list
-   machinetypesList.sort(key=operator.itemgetter('machinegroupScore', 'machinetypeScore', 'machinetypeName'))
+   # Sort by machinegroup then machinetype scores, lowest score (ie starving) types at the start of the list 
+   machinetypesList.sort(key=operator.itemgetter('machinegroupScore', 'machinetypeScore', 'random'))
 
    vac.vacutils.logLine('Sorted machinegroup/machinetype scores: ' + str(machinetypesList))
 
@@ -639,6 +640,8 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class mjfHttpdHandler(vacHttpdHandler):
 
  # def do_GET(self): is in the vacHttpdHandler class and calls makeGetBody() here
+
+   server_version = 'Vac mjf server'
       
    def makeGetBody(self, created, machinetypeName, path):
      return vac.shared.makeMjfBody(created, machinetypeName, path)
@@ -679,6 +682,8 @@ class mjfHttpdHandler(vacHttpdHandler):
        vac.vacutils.logLine('Sending HTTP response fails with exception ' + str(e))
 
 class metadataHttpdHandler(vacHttpdHandler):
+
+   server_version = 'Vac metadata server'
 
  # def do_GET(self): is in the vacHttpdHandler class and calls makeGetBody() here
 

@@ -750,7 +750,7 @@ def killZombieDCs():
    except Exception as e:
      vac.vacutils.logLine('Failed to get list of Docker zombie candidates (%s)' % str(e))
      return
-      
+
    for name in containers: 
      # Look at this container looking for a mismatch. Unless we continue, remove the container
      
@@ -763,12 +763,12 @@ def killZombieDCs():
        if machineModel in dcModels:
          # This slot IS a Docker container. So may not be a zombie!
          try:       
-           uuidStr = open('/var/lib/vac/machines/%s-%s/joboutputs/job_id','r').read().strip()
-         except:
+           uuidStr = open('/var/lib/vac/machines/%s_%s/jobfeatures/job_id' % (createdStr, machinetypeName),'r').read().strip()
+         except Exception as e:
            # But no UUID/ID defined for the slot's container. A zombie!
            pass
          else:
-           if uuidStr == containers['name']['id']:
+           if uuidStr == containers[name]['id']:
              # UUID = ID, so in this one case, NOT a zombie!
              continue
 
@@ -811,6 +811,8 @@ def killZombieSCs():
          # Only add pid if the SC hasn't finished
          singularityPids.append(pid)
 
+     vac.vacutils.logLine('Running singularity head process PID/PGIDs: ' + str(singularityPids))
+
      # Now find all the processes of singularityUser and check if valid        
      for pid in os.listdir('/proc'):
      
@@ -836,7 +838,7 @@ def killZombieSCs():
        if pgid not in singularityPids:
          # Process group ID does not correspond to any valid Singularity Container head process!
          vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
-         os.kill(int(pid), signal.SIG_KILL)
+#         os.kill(int(pid), signal.SIG_KILL)
                               
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
@@ -1013,17 +1015,19 @@ class VacSlot:
 
       if not forResponder and self.machineModel in dcModels:
       
-        id = None          
+        id    = None          
+        state = None
 
         try:
           containers = dockerPsCommand()
         except:
-          pass
+          vac.vacutils.logLine('Failed to get list of defined Docker containers')
         else:
           if self.name in containers:
             id = containers[self.name]['id']
+            status = containers[self.name]['status']
             
-        if id is None:
+        if id is None or status != 'Up':
           self.state = VacState.shutdown
 
       if self.state == VacState.shutdown:
@@ -1856,7 +1860,6 @@ class VacSlot:
       os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
       argsList = ['singularity', 
-                  '-v','-v','-v',
                   'exec',
                   '--contain',
                   '--workdir', self.machinesDir() + '/mnt']
@@ -1875,14 +1878,20 @@ class VacSlot:
                        machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
                        machinetypes[self.machinetypeName]['container_command']]) 
 
+      vac.vacutils.logLine('Creating SC with /usr/bin/singularity ' + ' '.join(argsList[1:]))
+     
       pid = os.fork()
       
       if pid == 0:
-        os.chdir('/tmp')
-        os.setpgid(0, 0)
-        os.setgid(singularityGid)
-        os.setuid(singularityUid)
-        os.execv('/usr/bin/singularity', argsList)
+        try:
+          os.chdir('/tmp')
+          os.setpgid(0, 0)
+          os.setgid(singularityGid)
+          os.setuid(singularityUid)
+          os.execv('/usr/bin/singularity', argsList)
+        except Exception as e:
+          print str(e)
+          sys.exit(1)
 
       vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
       createFile(self.machinesDir() + '/pid', str(pid))
@@ -1941,10 +1950,10 @@ def dockerPsCommand():
 
       for line in pp:
         try:
-          name, id, image, status, rest = line.split()
+          name, id, image, status, rest = line.split(None, 4)
         except:
           continue          
-        
+
         if name.startswith(host + '-') and name.endswith('.' + domain):
           containers[name] = { "id" : id, "image" : image, "status" : status }
           
@@ -1960,9 +1969,11 @@ def dockerRunCommand(bindsList, name, image, script):
       
       for i in bindsList:
         binds += '-v %s:%s ' % (i[0], i[1])
-              
-      pp = subprocess.Popen('/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script), 
-                            shell=True, stdout=subprocess.PIPE).stdout
+            
+      cmd = '/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script)
+      vac.vacutils.logLine('Creating DC with ' + cmd)
+
+      pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout
                             
       id = pp.readline().strip()
       
