@@ -1800,26 +1800,27 @@ class VacSlot:
         except Exception as e:
           raise VacError('Failed to mount filesystem: ' + str(e))
           
-      bindsList = []
+      rwBindsList = [[self.machinesDir() + '/joboutputs', '/var/spool/joboutputs']]
+
+      roBindsList = []
       
-      bindsList.append([self.machinesDir() + '/user_data', '/user_data'])
+      roBindsList.append([self.machinesDir() + '/user_data', '/user_data'])
       os.chmod(self.machinesDir() + '/user_data', stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
        
       if machinetypes[self.machinetypeName]['cvmfs_repositories']:
         # Share everything mounted in cvmfs
-        bindsList.append(['/cvmfs','/cvmfs'])
+        roBindsList.append(['/cvmfs','/cvmfs'])
 
         # Make sure the requested cvmfs repositories are mounted
         for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
           os.listdir('/cvmfs/' + repo)
 
-      bindsList.extend([[self.machinesDir() + '/machinefeatures', '/etc/machinefeatures' ],
-                        [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ],
-                        [self.machinesDir() + '/joboutputs',      '/var/spool/joboutputs'],
-                        [self.machinesDir() + '/user_data',       '/user_data'           ]])
+      roBindsList.extend([[self.machinesDir() + '/machinefeatures', '/etc/machinefeatures' ],
+                          [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ],
+                          [self.machinesDir() + '/user_data',       '/user_data'           ]])
 
       try:
-        self.uuidStr = dockerRunCommand(bindsList, self.name, image, machinetypes[self.machinetypeName]['container_command'])
+        self.uuidStr = dockerRunCommand(rwBindsList, roBindsList, self.name, image, machinetypes[self.machinetypeName]['container_command'])
       except Exception as e:
         raise VacError('Failed to create Docker container %s (%s)' % (self.name, str(e)))
       else:
@@ -1969,14 +1970,17 @@ def dockerPsCommand():
       
       return containers        
 
-def dockerRunCommand(bindsList, name, image, script):
+def dockerRunCommand(rwBindsList, roBindsList, name, image, script):
       # Run a Docker container 
       # We use the docker command rather than the API for portability
       
       binds = ''
       
-      for i in bindsList:
+      for i in rwBindsList:
         binds += '-v %s:%s ' % (i[0], i[1])
+            
+      for i in roBindsList:
+        binds += '-v %s:%s:ro ' % (i[0], i[1])
             
       cmd = '/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script)
       vac.vacutils.logLine('Creating DC with ' + cmd)
