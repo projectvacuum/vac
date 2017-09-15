@@ -836,11 +836,11 @@ def killZombieDCs():
 def killZombieSCs():
    # Look for Singularity Container processes which are not properly associated with
    # logical machine slots and kill them
-   
+
    if singularityUser:
 
-     # First compose a list of expected running Singularity Container head process PIDs   
-     singularityPids = []
+     # First compose a list of expected running Singularity Container CPU cgroups
+     singularityCpuCgroupPaths = []
    
      for ordinal in xrange(numMachineSlots):
        name = nameFromOrdinal(ordinal)
@@ -855,23 +855,22 @@ def killZombieSCs():
          continue
 
        try: 
-         pid = int(open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/pid', 'r').read().strip())
+         uuidStr = open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/jobfeatures/job_id', 'r').read().strip()
        except:
-         pid = None
+         uuidStr = None
          
        try:
          finished = int(os.stat('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/finished').st_ctime)
        except:
          finished = None
                   
-       if pid and finished is None:
-         # Only add pid if the SC hasn't finished
-         singularityPids.append(pid)
+       if uuidStr and finished is None:
+         # Only add cgroup if the SC hasn't finished
+         singularityCpuCgroupPaths.append(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr)
 
-     vac.vacutils.logLine('Running singularity head process PIDs: ' + str(singularityPids))
-     return
+     vac.vacutils.logLine('Running singularity CPU cgroup paths: ' + str(singularityCpuCgroupPaths))
 
-     # Now find all the processes of singularityUser and check if valid        
+     # Now find all the processes of singularityUser and check if valid (in a Vac SC CPU cgroup)
      for pid in os.listdir('/proc'):
      
        if not pid.isdigit():
@@ -888,15 +887,15 @@ def killZombieSCs():
          continue
        
        try:
-         pgid = int(open('/proc/' + pid, 'r').read().split(')')[1].split(' ')[3])
+         cpuCgroupPath = getProcessCpuCgroupPath(int(pid))
        except:
-         # Failed to get process group ID. Process gone?
+         # Failed to get process cgroup path? Process gone?
          continue
 
-       if pgid not in singularityPids:
-         # Process group ID does not correspond to any valid Singularity Container head process!
-         vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
-         os.kill(int(pid), signal.SIG_KILL)
+       if cpuCgroupPath not in singularityCpuCgroupPaths:
+         # Process group ID does not correspond to any valid Vac Singularity Container CPU cgroup!
+         vac.vacutils.logLine('Kill zombie process %s of Singularity User (%s)' % (pid, singularityUser))
+         os.kill(int(pid), signal.SIGKILL)
                               
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
@@ -1074,7 +1073,7 @@ class VacSlot:
           self.state = VacState.shutdown
         else:
           try:
-            self.cpuSeconds = int(open(getProcessCpuCgroupPath(pid) + '/cpuacct.usage', 'r').read()) / 1000000000
+            self.cpuSeconds = int(open(cpuCgroupFsRoot + '/vac/singularity-' + self.uuidStr + '/cpuacct.usage', 'r').read()) / 1000000000
           except:
             pass
 
