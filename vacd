@@ -183,6 +183,8 @@ def vacOneCycle():
      return
    else:     
      conn.close()
+
+   vac.shared.setCpuCgroupFsRoot()
    
    vac.shared.cleanupOldMachines()
 

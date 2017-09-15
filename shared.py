@@ -71,7 +71,8 @@ class VacError(Exception):
 # 01.00 is the one described in HSF-TN-2016-04
 # 01.01 has daemon_* and processor renames 
 # 01.02 adds num_processors to machine_status
-vacQueryVersion = '01.02'
+# 01.03 adds machine_model to machine_status 
+vacQueryVersion = '01.03'
 
 vmModels = [ 'cernvm3', 'vm-raw' ]        # Virtual Machine models
 dcModels = [ 'docker' ]                   # Docker Container models
@@ -90,6 +91,7 @@ gbDiskPerProcessorDefault = 40
 singularityUser     = None
 singularityUid      = None
 singularityGid      = None
+cpuCgroupFsRoot     = None
 
 overloadPerProcessor = None
 gocdbSitename = None
@@ -625,6 +627,52 @@ def nameFromOrdinal(ordinal):
 def ipFromOrdinal(ordinal):
       return natPrefix + str(ordinal)
 
+def setCpuCgroupFsRoot():
+      global cpuCgroupFsRoot
+      
+      cpuCgroupFsRoot = None
+        
+      try:
+        f = open('/proc/mounts', 'r')
+      except:
+        vac.vacutils.logLine('Failed to open /proc/mounts')
+      
+      for line in f:
+         cgroup, path = line.split()[:2]
+         
+         # CPU cgroup line in /proc/mounts might look like this, with cpuacct listed too:
+         # cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpuacct,cpu 0 0 
+         if cgroup == 'cgroup' and 'cpu' in path.split('/')[-1].split(','):
+           cpuCgroupFsRoot = path
+           break
+           
+      f.close()
+      
+      if cpuCgroupFsRoot:
+        vac.vacutils.logLine('Filesystem root of the CPU cgroup is ' + cpuCgroupFsRoot)
+      else:
+        vac.vacutils.logLine('Could not determine filesystem root of the CPU cgroup!')
+
+def getProcessCpuCgroupPath(pid):
+      if not cpuCgroupFsRoot:
+        raise VacError('cpuCgroupFsRoot is not set!')
+      
+      try:
+        f = open('/proc/%d/cgroup', 'r')
+      except:
+        raise VacError('No cgroup file for PID %d!' % pid)
+        
+      for line in f:
+        n,subsystems,path = line.split(':')
+        
+        if 'cpu' in subsystems.split(','):
+          f.close()
+          return cpuCgroupFsRoot + path
+          
+      f.close()       
+      
+      raise VacError('No CPU cgroup for PID %d!' % pid)  
+       
 def countProcProcessors():
       numProcessors = 0
 
@@ -1035,7 +1083,7 @@ class VacSlot:
           self.state = VacState.shutdown
         else:
           try:
-            self.cpuSeconds = int(open('/sys/fs/cgroup/cpu/system.slice/docker-%s.scope/cpuacct.usage' % id, 'r').read()) / 1000000000
+            self.cpuSeconds = int(open(getProcessCpuCgroupPath(containers[self.name]['pid']) + '/cpuacct.usage', 'r').read()) / 1000000000
           except:
             pass
 
@@ -1952,6 +2000,8 @@ def dockerPsCommand():
       
       host,domain = os.uname()[1].split('.',1)
 
+      # Get the output of docker ps
+
       pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
                             shell=True, stdout=subprocess.PIPE).stdout
 
@@ -1965,6 +2015,26 @@ def dockerPsCommand():
 
         if name.startswith(host + '-') and name.endswith('.' + domain):
           containers[name] = { "id" : id, "image" : image, "status" : status }
+          
+      pp.close()
+      
+      # Get the output of docker inspect
+      
+      pp = subprocess.Popen('/usr/bin/docker inspect --format "{{.Name}} {{.State.Pid}}" ' + ' '.join([i for i in containers]),
+                            shell=True, stdout=subprocess.PIPE).stdout
+
+      for line in pp:
+        try:
+          name, pidStr = line.split()
+        except:
+          continue          
+
+        if name[0] == '/':
+          name = name[1:]
+
+        if name in containers:
+          # Add pid value to the dictionary entry
+          containers[name]['pid'] = int(pidStr)
           
       pp.close()
       
@@ -2647,7 +2717,7 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
 
                 'machine' 		: lm.name,
                 'state'			: lm.state,
-                'model'			: lm.machineModel,
+                'machine_model'		: lm.machineModel,
                 'uuid'			: lm.uuidStr,
                 'created_time'		: lm.created,
                 'started_time'		: lm.started,

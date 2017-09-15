@@ -89,12 +89,12 @@ def queryMachines(options, factoryList):
                 elif response['state'] == vac.shared.VacState.running:
                   hoursStr = '%5.2f hrs' % ((time.time() - response['started_time']) / 3600.0)
 
-                  if ('model' not in response or response['model'] not in vac.shared.scModels) and response['heartbeat_time'] > response['started_time']:
+                  if ('machine_model' not in response or response['machine_model'] not in vac.shared.scModels) and response['heartbeat_time'] > response['started_time']:
                     hoursStr += ' %0.1f%%' % (100.0 * response['cpu_seconds'] / float(response['heartbeat_time'] - response['started_time']))
                     
                   hoursStr +=  22 * ' '
 
-                  if ('model' not in response or response['model'] not in vac.shared.scModels) and response['cpu_percentage'] is not None:
+                  if ('machine_model' not in response or response['machine_model'] not in vac.shared.scModels) and response['cpu_percentage'] is not None:
                     percentStr = '%5.1f%%' % response['cpu_percentage']
                   else:
                     percentStr = '      '
@@ -121,17 +121,17 @@ def queryMachines(options, factoryList):
                 else:
                   processorsStr = ' 1'
                   
-                if 'model' in response:
-                  if response['model'] in vac.shared.vmModels:
+                if 'machine_model' in response:
+                  if response['machine_model'] in vac.shared.vmModels:
                     modelStr = 'VM'
-                  elif response['model'] in vac.shared.scModels:
+                  elif response['machine_model'] in vac.shared.scModels:
                     modelStr = 'SC'
-                  elif response['model'] in vac.shared.dcModels:
+                  elif response['machine_model'] in vac.shared.dcModels:
                     modelStr = 'DC'
                   else:
                     modelStr = '??'
                 else:
-                  modelStr = 'VM'
+                  modelStr = '??'
 
                 print (
                        vmName + ' ' +
