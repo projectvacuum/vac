@@ -89,12 +89,12 @@ def queryMachines(options, factoryList):
                 elif response['state'] == vac.shared.VacState.running:
                   hoursStr = '%5.2f hrs' % ((time.time() - response['started_time']) / 3600.0)
 
-                  if ('machine_model' not in response or response['machine_model'] not in vac.shared.scModels) and response['heartbeat_time'] > response['started_time']:
+                  if response['heartbeat_time'] > response['started_time']:
                     hoursStr += ' %0.1f%%' % (100.0 * response['cpu_seconds'] / float(response['heartbeat_time'] - response['started_time']))
                     
                   hoursStr +=  22 * ' '
 
-                  if ('machine_model' not in response or response['machine_model'] not in vac.shared.scModels) and response['cpu_percentage'] is not None:
+                  if response['cpu_percentage'] is not None:
                     percentStr = '%5.1f%%' % response['cpu_percentage']
                   else:
                     percentStr = '      '

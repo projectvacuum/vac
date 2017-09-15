@@ -1072,6 +1072,11 @@ class VacSlot:
         if pid is None or uid is None or uid != singularityUid:
           # Actually, we're shutdown since SC head process is not really running
           self.state = VacState.shutdown
+        else:
+          try:
+            self.cpuSeconds = int(open(getProcessCpuCgroupPath(pid) + '/cpuacct.usage', 'r').read()) / 1000000000
+          except:
+            pass
 
       # Docker Container models
       if not forResponder and self.machineModel in dcModels:
