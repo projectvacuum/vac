@@ -5,6 +5,7 @@
 - Use HS06 per processor for ServiceLevel in APEL accounting records
 - Use CPU mode host-passthrough when creating VMs
 - Add Singularity and Docker Container machine models
+- Disable unset_merge_across_nodes in Puppet init.pp causes instability
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]
