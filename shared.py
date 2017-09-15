@@ -92,6 +92,7 @@ singularityUser     = None
 singularityUid      = None
 singularityGid      = None
 cpuCgroupFsRoot     = None
+memoryCgroupFsRoot  = None
 
 overloadPerProcessor = None
 gocdbSitename = None
@@ -627,10 +628,11 @@ def nameFromOrdinal(ordinal):
 def ipFromOrdinal(ordinal):
       return natPrefix + str(ordinal)
 
-def setCpuCgroupFsRoot():
-      global cpuCgroupFsRoot
+def setCgroupFsRoots():
+      global cpuCgroupFsRoot, memoryCgroupFsRoot
       
-      cpuCgroupFsRoot = None
+      cpuCgroupFsRoot    = None
+      memoryCgroupFsRoot = None
         
       try:
         f = open('/proc/mounts', 'r')
@@ -642,10 +644,12 @@ def setCpuCgroupFsRoot():
          
          # CPU cgroup line in /proc/mounts might look like this, with cpuacct listed too:
          # cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpuacct,cpu 0 0 
-         if cgroup == 'cgroup' and 'cpu' in path.split('/')[-1].split(','):
-           cpuCgroupFsRoot = path
-           break
-           
+         if cgroup == 'cgroup':
+           if 'cpu' in path.split('/')[-1].split(','):
+             cpuCgroupFsRoot = path
+           elif 'memory' in path.split('/')[-1].split(','):
+             memoryCgroupFsRoot = path
+
       f.close()
       
       if cpuCgroupFsRoot:
@@ -653,17 +657,22 @@ def setCpuCgroupFsRoot():
       else:
         vac.vacutils.logLine('Could not determine filesystem root of the CPU cgroup!')
 
+      if memoryCgroupFsRoot:
+        vac.vacutils.logLine('Filesystem root of the memory cgroup is ' + memoryCgroupFsRoot)
+      else:
+        vac.vacutils.logLine('Could not determine filesystem root of the memory cgroup!')
+
 def getProcessCpuCgroupPath(pid):
       if not cpuCgroupFsRoot:
         raise VacError('cpuCgroupFsRoot is not set!')
       
       try:
-        f = open('/proc/%d/cgroup', 'r')
+        f = open('/proc/%d/cgroup' % pid, 'r')
       except:
         raise VacError('No cgroup file for PID %d!' % pid)
         
       for line in f:
-        n,subsystems,path = line.split(':')
+        n,subsystems,path = line.strip().split(':')
         
         if 'cpu' in subsystems.split(','):
           f.close()
@@ -1937,14 +1946,31 @@ class VacSlot:
 
       vac.vacutils.logLine('Creating SC with /usr/bin/singularity ' + ' '.join(argsList[1:]))
      
+      uuidSuffix = str(uuid.uuid4())
       pid = os.fork()
       
       if pid == 0:
         try:
+          # Set up CPU and memory cgroups
+          pid = os.getpid()
+          uuidStr = '%06d-%s' % (pid, uuidSuffix)
+          
+          os.makedirs(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr)          
+          with open(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cgroup.procs', 'a') as f:
+            f.write('%d\n' % pid)
+          
+          os.makedirs(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr)
+          with open(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cgroup.procs', 'a') as f:
+            f.write('%d\n' % pid)
+
+          # Start changing who we are
           os.chdir('/tmp')
           os.setgid(singularityGid)
           os.setuid(singularityUid)
+          
+          # Run singularity
           os.execv('/usr/bin/singularity', argsList)
+
         except Exception as e:
           print str(e)
           sys.exit(1)
@@ -1953,7 +1979,7 @@ class VacSlot:
       createFile(self.machinesDir() + '/pid', str(pid))
 
       # Set job_id/UUID, always starting with PID for debugging
-      self.uuidStr = '%06d-%s' % (pid, str(uuid.uuid4()))
+      self.uuidStr = '%06d-%s' % (pid, uuidSuffix)
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
                  self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              

@@ -184,7 +184,7 @@ def vacOneCycle():
    else:     
      conn.close()
 
-   vac.shared.setCpuCgroupFsRoot()
+   vac.shared.setCgroupFsRoots()
    
    vac.shared.cleanupOldMachines()
 
