@@ -5,6 +5,7 @@
 - CPU mode host-passthrough when creating VMs
 ==================== Changes in Vac version 02.00.01 =================== 
 - Use HS06 per processor for ServiceLevel in APEL accounting records
+- Disable unset_merge_across_nodes in Puppet init.pp causes instability
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]
