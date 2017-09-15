@@ -1864,8 +1864,7 @@ class VacSlot:
           os.listdir('/cvmfs/' + repo)
 
       roBindsList.extend([[self.machinesDir() + '/machinefeatures', '/etc/machinefeatures' ],
-                          [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ],
-                          [self.machinesDir() + '/user_data',       '/user_data'           ]])
+                          [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ]])
 
       try:
         self.uuidStr = dockerRunCommand(rwBindsList, roBindsList, self.name, image, machinetypes[self.machinetypeName]['container_command'])
