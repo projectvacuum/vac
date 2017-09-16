@@ -834,8 +834,9 @@ def killZombieDCs():
      dockerRmCommand(name)
 
 def killZombieSCs():
-   # Look for Singularity Container processes which are not properly associated with
-   # logical machine slots and kill them
+   # Look for Singularity Container processes which are not properly 
+   # associated with logical machine slots and kill them;
+   # And remove Vac Singularity cgroups which have no processes
 
    if singularityUser:
 
@@ -896,7 +897,21 @@ def killZombieSCs():
          # Process group ID does not correspond to any valid Vac Singularity Container CPU cgroup!
          vac.vacutils.logLine('Kill zombie process %s of Singularity User (%s)' % (pid, singularityUser))
          os.kill(int(pid), signal.SIGKILL)
+   
+   # Remove unused cgroups
+
+   for i in os.listdir(cpuCgroupFsRoot + '/vac'):
+     if i.startswith('singularity-'):
+       if len(open(cpuCgroupFsRoot + '/vac/' + i + '/cgroup.procs').read()) == 0:
+         vac.vacutils.logLine('Remove unused cgroup ' + cpuCgroupFsRoot + '/vac/' + i)
+         os.rmdir(cpuCgroupFsRoot + '/vac/' + i)       
                               
+   for i in os.listdir(memoryCgroupFsRoot + '/vac'):
+     if i.startswith('singularity-'):
+       if len(open(memoryCgroupFsRoot + '/vac/' + i + '/cgroup.procs').read()) == 0:
+         vac.vacutils.logLine('Remove unused cgroup ' + memoryCgroupFsRoot + '/vac/' + i)
+         os.rmdir(memoryCgroupFsRoot + '/vac/' + i)       
+
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
 
@@ -2038,7 +2053,6 @@ def dockerPsCommand():
       host,domain = os.uname()[1].split('.',1)
 
       # Get the output of docker ps
-
       pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
                             shell=True, stdout=subprocess.PIPE).stdout
 
@@ -2055,25 +2069,25 @@ def dockerPsCommand():
           
       pp.close()
       
-      # Get the output of docker inspect
-      
-      pp = subprocess.Popen('/usr/bin/docker inspect --format "{{.Name}} {{.State.Pid}}" ' + ' '.join([i for i in containers]),
+      # Merge in values from the output of docker inspect
+      if containers:
+        pp = subprocess.Popen('/usr/bin/docker inspect --format "{{.Name}} {{.State.Pid}}" ' + ' '.join([i for i in containers]),
                             shell=True, stdout=subprocess.PIPE).stdout
 
-      for line in pp:
-        try:
-          name, pidStr = line.split()
-        except:
-          continue          
+        for line in pp:
+          try:
+            name, pidStr = line.split()
+          except:
+            continue
 
-        if name[0] == '/':
-          name = name[1:]
+          if name[0] == '/':
+            name = name[1:]
 
-        if name in containers:
-          # Add pid value to the dictionary entry
-          containers[name]['pid'] = int(pidStr)
+          if name in containers:
+            # Add pid value to the dictionary entry
+            containers[name]['pid'] = int(pidStr)
           
-      pp.close()
+        pp.close()
       
       return containers        
 
