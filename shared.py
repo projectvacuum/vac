@@ -1880,7 +1880,9 @@ class VacSlot:
                           [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ]])
 
       try:
-        self.uuidStr = dockerRunCommand(rwBindsList, roBindsList, self.name, image, machinetypes[self.machinetypeName]['container_command'])
+        self.uuidStr = dockerRunCommand(rwBindsList, roBindsList, self.name, image,
+                                        machinetypes[self.machinetypeName]['container_command'],
+                                        self.processors * 1024, self.processors * mbPerProcessor * 1048576)
       except Exception as e:
         raise VacError('Failed to create Docker container %s (%s)' % (self.name, str(e)))
       else:
@@ -1959,13 +1961,19 @@ class VacSlot:
           pid = os.getpid()
           uuidStr = '%06d-%s' % (pid, uuidSuffix)
           
-          os.makedirs(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr)          
+          os.makedirs(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
           with open(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cgroup.procs', 'a') as f:
             f.write('%d\n' % pid)
-          
-          os.makedirs(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr)
+
+          with open(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cpu.shares', 'w') as f:
+            f.write('%d\n' % self.processors * 1024)
+
+          os.makedirs(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
           with open(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cgroup.procs', 'a') as f:
             f.write('%d\n' % pid)
+          
+          with open(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr + '/memory.soft_limit_in_bytes', 'w') as f:
+            f.write('%d\n' % self.processors * mbPerProcessor * 1048576)
 
           # Start changing who we are
           os.chdir('/tmp')
@@ -2069,7 +2077,7 @@ def dockerPsCommand():
       
       return containers        
 
-def dockerRunCommand(rwBindsList, roBindsList, name, image, script):
+def dockerRunCommand(rwBindsList, roBindsList, name, image, script, cpuShares, memoryBytes):
       # Run a Docker container 
       # We use the docker command rather than the API for portability
       
@@ -2081,7 +2089,7 @@ def dockerRunCommand(rwBindsList, roBindsList, name, image, script):
       for i in roBindsList:
         binds += '-v %s:%s:ro ' % (i[0], i[1])
             
-      cmd = '/usr/bin/docker run --detach %s --name %s --hostname %s %s %s' % (binds, name, name, image, script)
+      cmd = '/usr/bin/docker run --detach --cpu-shares %d --memory-reservation %d %s --name %s --hostname %s %s %s' % (cpuShares, memoryBytes, binds, name, name, image, script)
       vac.vacutils.logLine('Creating DC with ' + cmd)
 
       pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout
