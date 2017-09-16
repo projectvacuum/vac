@@ -1,4 +1,4 @@
-.TH vac.conf 5 "Feb 2017" "vac.conf" "Vac Manual"
+.TH vac.conf 5 "Sep 2017" "vac.conf" "Vac Manual"
 .SH NAME
 .B vac.conf
 \- Vac configuration file
@@ -30,6 +30,13 @@ are read if present. Along with other files in that directory,
 temporary configuration changes in preparation for a reboot. eg setting
 shutdown_time 
 
+Vac creates and manages Virtual Machines (VMs), and Docker (DC) or
+Singularity (SC) Containers. 
+.B Logical Machine (LM)
+is used to refer to VMs or Containers. Vac documentation always uses
+Machine to refer to VMs and Containers, and Factory to refer to
+hypervisors/hosts.
+
 .SH [SETTINGS] OPTIONS
 
 The [settings] section is required and has options which apply to all virtual
@@ -40,14 +47,14 @@ is required and gives the name of this Vac space. A single space will be
 sufficient for many sites. The space name should be a fully qualified domain
 name, like vac01.example.com and may be used as a virtual CE name in some
 monitoring and accounting systems. It should not be the canonical hostname
-of any of the factory machines.
+of any of the factory machines, and does not need to registered in DNS.
 
 .B factories
 is a space separated list of the fully qualified domain names of all
 the factories in this Vac space, including this factory. The factories are
 queried using UDP when a factory needs to decide which machinetype to start.
 The Vac responder process on the factories replies to these queries with
-a summary of the VM and the outcome of recent attempts to run a VM of each
+a summary of the LMs and the outcome of recent attempts to run a LM of each
 machinetype.
 
 .B udp_timeout_seconds
@@ -55,34 +62,34 @@ is how long to wait before giving up on more UDP replies. Defaults to 10.0
 seconds.
 
 .B mb_per_processor
-sets the memory allocated for each processor in a VM in MiB (1024^2).
-If enough VMs will underuse memory or KSM is enabled, then it may be more
+sets the memory allocated for each processor in a LM in MiB (1024^2).
+If enough LMs will underuse memory or KSM is enabled, then it may be more
 efficient to increase this value and overcommit the factory's physical
 memory to prevent the VM kernels from believing they need to swap.
 Defaults to 2048.
 
 .B hs06_per_processor
-gives the HEPSPEC06 power of each processor in a virtual machine. This is used
+gives the HEPSPEC06 power of each processor in an LM. This is used
 to calculate the total values $MACHINEFEATURES/hs06 and $JOBFEATURES/hs06_job
-inside the VM, when writing APEL accounting records, and when comparing running
-VMs to target shares. If not set, the default value 1.0 is used internally, but
+inside the LM, when writing APEL accounting records, and when comparing running
+LMs to target shares. If not set, the default value 1.0 is used internally, but
 the $MACHINEFEATURES and $JOBFEATURES values are not set and only the 
 /var/lib/vac/apel-archive copy of the APEL accounting record for each VM is 
 created.
 
 .B processors_per_superslot
 sets size of the superslots, as the total number of logical processors which
-can be allocated to single or multiprocessor VMs in each superslot. See 
-.B SUPERSLOTS AND MULTIPROCESSOR VMs
+can be allocated to single or multiprocessor LMs in each superslot. See 
+.B SUPERSLOTS AND MULTIPROCESSOR LMs
 for more details. Defaults to 1, 
-disabling the superslot mechanism and multiprocessor VMs.
+disabling the superslot mechanism and multiprocessor LMs.
 
 .B shutdown_time
-can be set to apply a limit on the shutdown time for all VMs. This value is 
+can be set to apply a limit on the shutdown time for all LMs. This value is 
 used if it is ever earlier than the shutdown time calculated from the 
 machinetype's max_wallclock_seconds. In this case $MACHINEFEATURES/shutdowntime
-is updated for the VM and Vac will kill the VM if that shutdown time is
-reached. As shutdown_time is approached, VMs will be created with shorter
+is updated for the LM and Vac will kill the LM if that shutdown time is
+reached. As shutdown_time is approached, LMs will be created with shorter
 and shorter lifetimes if their min_wallclock_seconds settings permit.
 shutdown_time is given in Unix seconds since 00:00:00 UTC on 1st of January
 1970. If the shutdown time is being set in preparation for a reboot, then 
@@ -113,7 +120,7 @@ security and bugs at the versions currently in use. Defaults to 1.
 .B vacmon_hostport
 If set, this option gives a space-separated list of HOST:PORT to send 
 VacQuery UDP messages to. This can be used to monitor the ongoing status
-of factories and VMs via site or central VacMon services. The central
+of factories and LMs via site or central VacMon services. The central
 GridPP VacMon service is vacmon.gridpp.ac.uk:8884
 
 .B total_processors
@@ -122,28 +129,27 @@ set explicitly. If set, then it provides an additional limit on the number
 of processors which may be assigned to virtual machines. In turn this 
 limits the number of virtual machines which can be created. This allows 
 you to reduce the number of running VMs on a factory machine without having
-to kill running 
-VMs. Instead, they are allowed to finish one by one and are only recreated
-if total_processors allows.
+to kill running LMs. Instead, they are allowed to finish one by one and are 
+only recreated if total_processors allows.
 
 .B overload_per_processor
 sets the level of load per processor on the factory machine which will 
-temporarily prevent the creation of more VMs. The number of processors is
+temporarily prevent the creation of more LMs. The number of processors is
 counted using /proc/cpuinfo and the one minute load average is taken from 
-/proc/loadavg. VMs typically generate high loads during their initial
+/proc/loadavg. LMs typically generate high loads during their initial
 set up, and this mechanism throttles the VM creation rate in response
 to the current overall load figure. Values of around 2.0 are ok
-with well-behaved VMs, but the default is more cautious. Default 1.25.
+with well-behaved LMs, but the default is more cautious. Default 1.25.
 
 .B volume_group
 can be used to set the volume group in which a logical volume will
-be created for each VM. The logical volumes will have the
-VMs' fully qualified domain names as their names. For example, 
+be created for each LM. The logical volumes will have the
+LMs' fully qualified domain names as their names. For example, 
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
 factory1-00.example.com. Defaults to vac_volume_group.
 
 .B disk_gb_per_processor
-explicitly sets the size of disks to create for VMs in GB (1000^3). For
+explicitly sets the size of disks to create for LMs in GB (1000^3). For
 logical volumes, Vac normally calculates the disk size using the space 
 available to Vac in volume_group, total_processors, and the number of 
 processors allocated to the virtual machine. For file-backed virtual 
@@ -151,15 +157,15 @@ disks, the default value of 40 GB is used unless overriden by
 disk_gb_per_processor.
 
 .B root_public_key
-is the file name of a public key which will be offered to the VM if it
-exists. For most machinetypes this will allow root ssh access from the
-VM factory. Default /root/.ssh/id_rsa.pub
+is the file name of a public key which will be offered to VMs if it
+exists. For most VM machinetypes this will allow root ssh access from
+the factory. Default /root/.ssh/id_rsa.pub
 
 .B singularity_user
 is the username to use when creating Singularity containers, and must
-be given if those containers are to be used. Vac will kill processes
-running as this user which are not part of a valid Singularity container
-managed by Vac.
+be given if those containers are to be used. 
+.B Vac will kill processes running as this user
+which are not part of a valid Singularity container managed by Vac.
 
 .B fix_networking
 can be set to False to stop Vac trying to reset the lowlevel networking
@@ -183,10 +189,10 @@ value elsewhere in the configuration. See
 .B [MACHINETYPE ...] SECTIONS
 for the full syntax of these options.
 
-The VM names are formed by
-adding a hyphen and the VM number to the hostname component of its fully
+The LM names are formed by
+adding a hyphen and the LM number to the hostname component of its fully
 qualified domain name. For example, factory1.example.com would have
-factory1-00.example.com, factory1-01.example.com, ... as its VMs. MAC
+factory1-00.example.com, factory1-01.example.com, ... as its LMs. MAC
 addresses are formed with the prefix 56:4D as the first two bytes, and
 the four bytes of the IP address as the remaining four bytes. 
 
@@ -203,48 +209,48 @@ and
 are required. 
 
 .B target_share
-gives the desired share of the total VMs available in this space for this
+gives the desired share of the total LMs available in this space for this
 machinetype. The shares do not need to add up to 1.0, and if a share is not given
 for a machinetype, then it is set to 0. Vac factories consult these shares
-when deciding which machinetype to start as VMs become available.
+when deciding which machinetype to start as LMs become available.
 
 .B vacuum_pipe_url
 gives the HTTP(S) URL of a remote Vacuum Pipe file supplied by the VO which 
 contains details of the boot image, contextualization, and other options 
-needed to create VMs of this machinetype. 
+needed to create LMs of this machinetype. 
 
 The following options may be given in the Vac configuration to override defaults
 or values set in the Vacuum Pipe file. This should not be required in normal 
 operation.
 
 .B machines_dir_days
-sets the expiration time in days for per-VM directories created under
+sets the expiration time in days for per-LM directories created under
 /var/lib/vac/machines. Default 3.
 
 .B backoff_seconds
-is the delay after a VM of this machinetype aborts. If a VM aborts, then no new
-VMs of this type will be created for this amount of time. This can be used 
-to prevent the unnecessary creation of many VMs when no work is available,
+is the delay after a LM of this machinetype aborts. If a LM aborts, then no new
+LMs of this type will be created for this amount of time. This can be used 
+to prevent the unnecessary creation of many LMs when no work is available,
 and avoid overloading the matcher or task queue of the VO. 
 
 .B fizzle_seconds
 is used in three places within the backoff procedure and in two
 other parts of Vac:
 .br
-(1) First, if a VM finishes
+(1) First, if a LM finishes
 without producing a shutdown message code and has lasted less than 
 fizzle_seconds, then it is treated as aborted. 
 .br
 (2) Secondly, after the 
-backoff_seconds time has expired for a VM abort, once at least one VM has
-been started in this Vac space, then no more new VMs can be started for 
+backoff_seconds time has expired for a LM abort, once at least one LM has
+been started in this Vac space, then no more new LMs can be started for 
 another fizzle_seconds. 
 .br
-(3) Thirdly, these new VMs are identified because
+(3) Thirdly, these new LMs are identified because
 they are still in the starting phase of creating files, or because they
 have been running for less than fizzle_seconds. 
 .br
-(4) Additionally, when writing the accounting log files, any VMs which run for 
+(4) Additionally, when writing the accounting log files, any LMs which run for 
 less than fizzle_seconds are excluded. 
 .br
 (5) Finally, the heartbeat file
@@ -252,14 +258,14 @@ checking is only carried out once an initial period of fizzle_seconds
 has passed.
 
 .B max_wallclock_seconds
-gives the maximum lifetime of a VM. Vac will set 
-$MACHINEFEATURES/shutdowntime for the VM using this value to 
-communicate it to the VM. Vac will destroy the VM if it is still
+gives the maximum lifetime of a LM. Vac will set 
+$MACHINEFEATURES/shutdowntime for the LM using this value to 
+communicate it to the LM. Vac will destroy the LM if it is still
 running after this amount of time. Default 86400.
 
 .B min_wallclock_seconds
-gives the minimum remaining time required when creating a VM. This
-can be used to stop Vac creating VMs with short lifetimes when
+gives the minimum remaining time required when creating a LM. This
+can be used to stop Vac creating LMs with short lifetimes when
 shutdown_time has been set or when building superslots. Default 
 max_wallclock_seconds.
 
@@ -267,7 +273,7 @@ max_wallclock_seconds.
 and
 .B max_processors
 give the minimum and maximum number of logical processors which can be 
-allocated to VMs of this type when they are created.
+allocated to LMs of this type when they are created.
 
 .B accounting_fqan
 is used to specify a FQAN to include when writing APEL accounting 
@@ -275,18 +281,25 @@ records, to associate usage with particular experiments.
 
 .B machine_model
 is required and tells Vac how to configure the virtual hardware seen by
-the VMs of this machinetype. Currently cernvm3 or vm-raw. Default cernvm3.
+the LMs of this machinetype. Currently cernvm3, vm-raw, singularity,
+or docker. Default cernvm3.
+
+.B cvmfs_repositories
+is a spaced-separated list of CernVM-FS repositories in /cvmfs/
+to be provided to a Singularity or Docker Container by a bind mount
+of /cvmfs/ . Vac will refresh the repositories to keep them mounted
+in /cvmfs/ even if the host uses the automounter to manage CernVM-FS.
 
 .B heartbeat_file
 allows the machinetype to nominate a file which will be created in 
 $JOBOUTPUTS before fizzle_seconds has passed. If this file is
-not created by then and maintained for the lifetime of the VM, the 
-VM will be destroyed.
+not created by then and maintained for the lifetime of the LM, the 
+LM will be destroyed.
 
 .B heartbeat_seconds
 gives the frequency at which the heartbeat_file must be updated after
 fizzle_seconds has passed. If the file is not updated for 
-heartbeat_seconds then the VM will be destroyed. If heartbeat_seconds
+heartbeat_seconds then the LM will be destroyed. If heartbeat_seconds
 is 0, then only the existence of the file will be checked. Default 0.
 
 .B image_signing_dn
@@ -308,6 +321,11 @@ disk image. Default vda.
 is the device name exposed to the VM that is associated with a scratch
 logical volume in the vm-raw model. Ignored for CernVM. Default vdb.
 
+.B container_command
+is the command to run inside a Docker or Singularity container. Only
+the command itself may be given, with no command-line arguments.
+Default /user_data .
+
 .B legacy_proxy
 can be set to True to generate Globus legacy proxies rather than RFC 3820
 proxies. Default False.
@@ -318,13 +336,9 @@ machinetype's subdirectory of /var/lib/vac/machinetypes to be used
 to make a limited X.509 proxy. The two files can be
 identical if desired, and the X.509 certificate and RSA private key
 will be extracted from the files as appropriate. (Note that this location
-is one level above the files subdirectory in which the following options
-look by default.)
-
-.B container_command
-is the command to run inside a Docker or Singularity container. Only
-the command itself may be given, with no command-line arguments.
-Default /user_data .
+is one level 
+.B above 
+the files subdirectory in which the following options look by default.)
 
 For the remaining options, if the file name begins with '/', then it
 will be used as an absolute path; otherwise the path will be interpreted
@@ -334,35 +348,37 @@ For values supplied in a remote Vacuum Pipe file, only filenames
 without '/' characters and HTTP(S) URLs are allowed.
 
 .B root_image
-is the path to the image file from which the VM will boot. With the
-cernvm3 machine_model, this can also be a remote HTTP or HTTPS URL which Vac 
+is the path to the image file from which the LM will boot. With the
+cernVM3 machine_model, this can also be a remote HTTP or HTTPS URL which Vac
 will cache in /var/lib/vac/imagecache. The remote server must supply a
 Last-Modified timestamp and Vac will re-request the image each time a 
-VM starts using an If-Modified-Since request to minimise network load.
+LM starts using an If-Modified-Since request to minimise network load.
 Alternatively, the images may be files in the local filesystem.
 With cernvm3 machine_model, the files are ISO CDROM-style boot images; 
 with the cernvm2 machine_model, they are the root hard disk image itself.
 
 .B user_data
 is the path of a contextualization file provided by the VO and perhaps 
-modified by the site. If the path is a remote HTTP or HTTPS URL, Vac
-will fetch it over the network each time a VM is started. However the
+modified by Vac. If the path is a remote HTTP or HTTPS URL, Vac
+will fetch it over the network each time a LM is started. However the
 file is obtained, Vac will apply a series of default and locally defined 
 ##user_data___## substitutions to it. See USER_DATA SUBSTITUTIONS below
-for a list of the default substitutions.
+for a list of the default substitutions. For VMs, the file is supplied
+using the EC2/OpenStack HTTP procedure; for containers, the file is
+bind mounted at /user_data .
 
 .B user_data_option_XXX
 and
 .B user_data_file_XXX
 are locally defined substitutions which will be applied to the user_data
-file before the VM is started. user_data_option_XXX takes the string to 
+file before the LM is started. user_data_option_XXX takes the string to 
 be substituted. user_data_file_XXX takes the relative or absolute path to
 a file whose contents will be substituted for the pattern in the 
 user_data file.
 
 .SH USER_DATA SUBSTITUTIONS
 
-Before the user_data file is used in starting a VM, several pattern based
+Before the user_data file is used in starting a LM, several pattern based
 substitutions are performed by Vac. These patterns are in the form
 ##user_data___##. String values given to the option user_data_option_XXX
 replace patterns of the form ##user_data_option_XXX##. The contents of
@@ -378,7 +394,7 @@ Vac using data it holds internally:
 
 .br
 .B ##user_data_uuid##
-is the UUID assigned to the VM by Vac.
+is the UUID assigned to the LM by Vac or Docker.
 .br
 .B ##user_data_space##
 is the Vac space name.
@@ -393,19 +409,19 @@ and
 and
 .B ##user_data_joboutputs_url##
 are the values of $MACHINEFEATURES, $JOBFEATURES, and $JOBOUTPUTS to set
-within the VM.
+within the LM.
 .br
 .B ##user_data_machinetype## 
 and 
 .B ##user_data_vmtype## 
 (deprecated) 
-are the name of the machinetype of this VM.
+are the name of the machinetype of this LM.
 .br
 .B ##user_data_machine_hostname## 
 and
 .B ##user_data_vm_hostname## 
 (deprecated) 
-are the hostname given to the VM by Vac.
+are the hostname given to the LM by Vac.
 .br
 .B ##user_data_manager_version## 
 and 
@@ -419,19 +435,19 @@ and
 (deprecated) 
 are the hostname of the Vac factory machine.
 
-.SH SUPERSLOTS AND MULTIPROCESSOR VMs
+.SH SUPERSLOTS AND MULTIPROCESSOR LMs
 
 By setting processors_per_superslot in [settings] to a value greater than
-one, Vac will attempt to create VMs in groups with the same finishing time.
+one, Vac will attempt to create LMs in groups with the same finishing time.
 This causes groups of processors to become available at the same time
-which enables the creation of VMs which require multiple virtual 
-CPUs. When creating these VMs, the max_processors and min_processors values
-from the relevant machinetype section determine the VM's requirements.
+which enables the creation of LMs which require multiple virtual 
+CPUs. When creating these LMs, the max_processors and min_processors values
+from the relevant machinetype section determine the LM's requirements.
 processors_per_superslot also limits the largest number of processors which
-may be assigned to a single VM (which will occupy a whole superslot.)
+may be assigned to a single LM (which will occupy a whole superslot.)
 The min_wallclock_seconds value is used to determine whether there is 
-sufficient time left to create a VM of that machinetype. max_wallclock_seconds
-determines whether a sufficiently long-lived VM can be created to match the
+sufficient time left to create a LM of that machinetype. max_wallclock_seconds
+determines whether a sufficiently long-lived LM can be created to match the
 superslot.
 
 .SH VACUUM PIPES
@@ -442,7 +458,8 @@ is given within a machinetype as described above, then the corresponding
 file is fetched via HTTP(S) and used to obtain default values supplied by
 the VO associated with that machinetype. The following options are 
 supported within Vacuum Pipe files:
-.B accounting_fqan, backoff_seconds, fizzle_seconds, heartbeat_file,
+.B accounting_fqan, backoff_seconds, container_command,
+.B cvmfs_repositories, fizzle_seconds, heartbeat_file,
 .B heartbeat_seconds, image_signing_dn, legacy_proxy, machine_model,
 .B max_processors, max_wallclock_seconds, min_processors, 
 .B min_wallclock_seconds, root_device, root_image, scratch_device,
@@ -453,7 +470,7 @@ In addition
 in the Vacuum Pipe file sets the maximum time the file may be cached,
 and defaults to 3600 seconds if not set or the file has never been
 fetched successfully. As explained above, options referring to files
-on the VM factory may not specify filesystem paths if obtained from
+on the LM factory may not specify filesystem paths if obtained from
 the Vacuum Pipe file: only filenames within the 
 /var/lib/vac/machinetypes/MACHINETYPE/files directory are acceptable.
 

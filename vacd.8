@@ -1,4 +1,4 @@
-.TH VACD 8 "Nov 2015" "vacd" "Vac Manual"
+.TH VACD 8 "Sep 2017" "vacd" "Vac Manual"
 .SH NAME
 .B vacd
 \- Vac daemon
@@ -11,7 +11,8 @@ is a daemon which implements the Vacuum model on a factory (hypervisor) machine.
 When vacd starts, it forks itself into four daemons
 which change their process names to vacd-factory, vacd-responder,
 vacd-metadata, and vacd-mjf. The
-factory daemon is responsible for managing the life cycle of VMs. The responder
+factory daemon is responsible for managing the life cycle of VM and
+containers. The responder
 replies to queries from factories about what is currently running. The
 metadata and mjf daemons are HTTP servers which serve EC2 and OpenStack
 metadata, and Machine/Job Features files to the virtual machines.

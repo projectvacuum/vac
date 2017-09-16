@@ -404,6 +404,7 @@ def readConf(includePipes = False, updatePipes = False):
                                        'backoff_seconds',
                                        'cache_seconds',
                                        'container_command',
+                                       'cvmfs_repositories',
                                        'fizzle_seconds',
                                        'heartbeat_file',
                                        'heartbeat_seconds',
