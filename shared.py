@@ -417,6 +417,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                                        'container_command',
                                        'cvmfs_repositories',
                                        'fizzle_seconds',
+                                       'disk_gb_per_processor',
                                        'heartbeat_file',
                                        'heartbeat_seconds',
                                        'image_signing_dn',
@@ -539,6 +540,13 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
 
              if parser.has_option(sectionName, 'tmp_binds'):
                  machinetype['tmp_binds'] = parser.get(sectionName, 'tmp_binds')
+                 
+             if parser.has_option(sectionName, 'disk_gb_per_processor'):
+                 # Size in GB/cpu (1000^3) of disk assigned to machines
+                 try:
+                   machinetype['disk_gb_per_processor'] = int(parser.get(sectionName, 'disk_gb_per_processor').strip())
+                 except:
+                   pass
 
              if parser.has_option(sectionName, 'min_processors'):
                  machinetype['min_processors'] = int(parser.get(sectionName, 'min_processors'))
@@ -1559,6 +1567,12 @@ class VacSlot:
      # Always remove any leftover volume of the same name
      self.removeLogicalVolume()
 
+     if 'disk_gb_per_processor' in machinetypes[self.machinetypeName] and \
+          ((gbDiskPerProcessor is None) or (machinetypes[self.machinetypeName]['disk_gb_per_processor'] < gbDiskPerProcessor)):
+       gbDiskPerProcessorTmp = machinetypes[self.machinetypeName]['disk_gb_per_processor']
+     else:
+       gbDiskPerProcessorTmp = gbDiskPerProcessor
+
      try:
        vgsResult = measureVolumeGroup()
        vgTotalBytes = int(vgsResult[0])
@@ -1596,9 +1610,9 @@ class VacSlot:
      # Now try to create logical volume
      vac.vacutils.logLine('Trying to create logical volume for ' + self.name + ' in ' + volumeGroup)
 
-     if gbDiskPerProcessor:
+     if gbDiskPerProcessorTmp:
        # Fixed size has been given in configuration. Round down to match extent size.
-       sizeToCreate = ((gbDiskPerProcessor * self.processors * 1000000000) / vgExtentBytes) * vgExtentBytes
+       sizeToCreate = ((gbDiskPerProcessorTmp * self.processors * 1000000000) / vgExtentBytes) * vgExtentBytes
      else:
        # Not given, so calculate. Round down to match extent size.
        sizeToCreate = ((self.processors * (vgTotalBytes - vgNonVacBytes) / numProcessors) / vgExtentBytes) * vgExtentBytes

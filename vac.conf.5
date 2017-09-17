@@ -154,7 +154,7 @@ explicitly sets the size of disks to create for LMs in GB (1000^3). For
 logical volumes, Vac normally calculates the disk size using the space 
 available to Vac in volume_group, total_processors, and the number of 
 processors allocated to the virtual machine. For file-backed virtual 
-disks, the default value of 40 GB is used unless overriden by 
+disks for VMs, the default value of 40 GB is used unless overriden by
 disk_gb_per_processor.
 
 .B root_public_key
@@ -296,6 +296,13 @@ is a space-separated list of empty temporary or working directories to
 be created on the factory for each Docker container instance, and 
 shared into the container with a bind mount at the specified locations.
 This may be requested for performance reasons.
+
+.B disk_gb_per_processor
+explicitly sets the size of disks to create for LMs in GB (1000^3)
+and overrides the global calculated size or the size given in 
+[settings]. However, when there is insufficient space to create 
+logical volumes of that size, then LMs of this type will not be
+created.
 
 .B heartbeat_file
 allows the machinetype to nominate a file which will be created in 
@@ -466,10 +473,12 @@ file is fetched via HTTP(S) and used to obtain default values supplied by
 the VO associated with that machinetype. The following options are 
 supported within Vacuum Pipe files:
 .B accounting_fqan, backoff_seconds, container_command,
-.B cvmfs_repositories, fizzle_seconds, heartbeat_file,
+.B cvmfs_repositories, fizzle_seconds, 
+.B disk_gb_per_processor, heartbeat_file,
 .B heartbeat_seconds, image_signing_dn, legacy_proxy, machine_model,
 .B max_processors, max_wallclock_seconds, min_processors, 
 .B min_wallclock_seconds, root_device, root_image, scratch_device,
+.B tmp_binds,
 .B user_data, user_data_option_XXXX, user_data_file_XXXX,
 .B user_data_proxy.
 In addition 
