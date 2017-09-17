@@ -1568,7 +1568,7 @@ class VacSlot:
      self.removeLogicalVolume()
 
      if 'disk_gb_per_processor' in machinetypes[self.machinetypeName] and \
-          ((gbDiskPerProcessor is None) or (machinetypes[self.machinetypeName]['disk_gb_per_processor'] < gbDiskPerProcessor)):
+          ((gbDiskPerProcessor is None) or (machinetypes[self.machinetypeName]['disk_gb_per_processor'] <= gbDiskPerProcessor)):
        gbDiskPerProcessorTmp = machinetypes[self.machinetypeName]['disk_gb_per_processor']
      else:
        gbDiskPerProcessorTmp = gbDiskPerProcessor
