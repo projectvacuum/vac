@@ -41,6 +41,7 @@ import uuid
 import time
 import glob
 import errno
+import ctypes
 import base64
 import shutil
 import string
@@ -1973,6 +1974,15 @@ class VacSlot:
       
       if pid == 0:
         try:
+          # Create new UTS namespace and set hostname within it
+          try:
+            libc = ctypes.CDLL("libc.so.6")
+            libc.unshare(ctypes.c_int(0x04000000)) # = CLONE_NEWUTS
+            libc.sethostname(ctypes.c_char_p(self.name), ctypes.c_int(len(self.name)))
+            vac.vacutils.logLine('Set hostname to %s in UTS namespace ' % self.name)
+          except Exception as e:
+            vac.vacutils.logLine('Failed to set hostname to %s in UTS namespace (%s)' % (self.name, str(e)))
+
           # Set up CPU and memory cgroups
           pid = os.getpid()
           uuidStr = '%06d-%s' % (pid, uuidSuffix)
@@ -1982,14 +1992,14 @@ class VacSlot:
             f.write('%d\n' % pid)
 
           with open(cpuCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cpu.shares', 'w') as f:
-            f.write('%d\n' % self.processors * 1024)
+            f.write('%d\n' % (self.processors * 1024))
 
           os.makedirs(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
           with open(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr + '/cgroup.procs', 'a') as f:
             f.write('%d\n' % pid)
           
           with open(memoryCgroupFsRoot + '/vac/singularity-' + uuidStr + '/memory.soft_limit_in_bytes', 'w') as f:
-            f.write('%d\n' % self.processors * mbPerProcessor * 1048576)
+            f.write('%d\n' % (self.processors * mbPerProcessor * 1048576))
 
           # Start changing who we are
           os.chdir('/tmp')
@@ -2000,7 +2010,7 @@ class VacSlot:
           os.execv('/usr/bin/singularity', argsList)
 
         except Exception as e:
-          print str(e)
+          vac.vacutils.logLine('Forked subprocess for singularity command fails (%s)' % str(e))
           sys.exit(1)
 
       vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
