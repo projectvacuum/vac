@@ -429,6 +429,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                                        'root_device',
                                        'root_image',
                                        'scratch_device',
+                                       'tmp_binds',
                                        'user_data',
                                        'user_data_proxy'
                                      ]
@@ -535,6 +536,9 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                  machinetype['container_command'] = parser.get(sectionName, 'container_command')
              else:
                  machinetype['container_command'] = '/user_data'
+
+             if parser.has_option(sectionName, 'tmp_binds'):
+                 machinetype['tmp_binds'] = parser.get(sectionName, 'tmp_binds')
 
              if parser.has_option(sectionName, 'min_processors'):
                  machinetype['min_processors'] = int(parser.get(sectionName, 'min_processors'))
@@ -1883,6 +1887,12 @@ class VacSlot:
           raise VacError('Failed to mount filesystem: ' + str(e))
           
       rwBindsList = [[self.machinesDir() + '/joboutputs', '/var/spool/joboutputs']]
+      
+      if 'tmp_binds' in machinetypes[self.machinetypeName]:
+        for dir in machinetypes[self.machinetypeName]['tmp_binds']:
+          tmp = tempfile.mkdtemp(prefix = dir.replace('/','_')[:30], dir = self.machinesDir() + '/mnt')
+          os.chmod(self.machinesDir() + '/mnt/' + tmp, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+          rwBindsList.append([tmp, dir])
 
       roBindsList = []
       

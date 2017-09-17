@@ -286,10 +286,16 @@ the LMs of this machinetype. Currently cernvm3, vm-raw, singularity,
 or docker. Default cernvm3.
 
 .B cvmfs_repositories
-is a spaced-separated list of CernVM-FS repositories in /cvmfs/
+is a space-separated list of CernVM-FS repositories in /cvmfs/
 to be provided to a Singularity or Docker Container by a bind mount
 of /cvmfs/ . Vac will refresh the repositories to keep them mounted
 in /cvmfs/ even if the host uses the automounter to manage CernVM-FS.
+
+.B tmp_binds
+is a space-separated list of empty temporary or working directories to
+be created on the factory for each Docker container instance, and 
+shared into the container with a bind mount at the specified locations.
+This may be requested for performance reasons.
 
 .B heartbeat_file
 allows the machinetype to nominate a file which will be created in 
