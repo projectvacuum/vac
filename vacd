@@ -168,12 +168,12 @@ def vacOneCycle():
    # Update factory heartbeat file
    vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-   readConfError = vac.shared.readConf(includePipes = True, updatePipes = True)
+   readConfError = vac.shared.readConf(includePipes = True, updatePipes = True, checkVolumeGroup = True)
    
    if readConfError:
      vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
      return
-      
+
    # Check we can talk to the hypervisor
    # This is important at (re)start time and lets us wait till things are ok
    try:
@@ -185,7 +185,7 @@ def vacOneCycle():
      conn.close()
 
    vac.shared.setCgroupFsRoots()
-   
+
    vac.shared.cleanupOldMachines()
 
    if vac.shared.versionLogger:

@@ -146,7 +146,8 @@ can be used to set the volume group in which a logical volume will
 be created for each LM. The logical volumes will have the
 LMs' fully qualified domain names as their names. For example, 
 /dev/vac_volume_group/factory1-00.example.com/ would be used by the VM
-factory1-00.example.com. Defaults to vac_volume_group.
+factory1-00.example.com. Defaults to vac_volume_group if that volume
+group exists.
 
 .B disk_gb_per_processor
 explicitly sets the size of disks to create for LMs in GB (1000^3). For

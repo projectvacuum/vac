@@ -124,7 +124,7 @@ volumeGroup = None
 gbDiskPerProcessor = None
 machinefeaturesOptions = None
 
-def readConf(includePipes = False, updatePipes = False):
+def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False):
       global gocdbSitename, \
              factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
@@ -158,7 +158,7 @@ def readConf(includePipes = False, updatePipes = False):
       rootPublicKeyFile = '/root/.ssh/id_rsa.pub'
       singularityUser = None
         
-      volumeGroup = 'vac_volume_group'
+      volumeGroup = None
       machinefeaturesOptions = {}
       
       # Temporary dictionary of common user_data_option_XXX 
@@ -257,7 +257,17 @@ def readConf(includePipes = False, updatePipes = False):
       if parser.has_option('settings', 'volume_group'):
           # Volume group to search for logical volumes 
           volumeGroup = parser.get('settings','volume_group').strip()
-             
+
+      if checkVolumeGroup:
+          if volumeGroup:
+            if not measureVolumeGroup(volumeGroup):
+              # If volume_group is given, then it must exist
+              return 'Specified volume_group %s does not exist!' % volumeGroup
+          elif measureVolumeGroup('vac_volume_group'):
+              # If volume_group is not given, then it's ok if default does not exist
+              # but we use it if it does exist
+              volumeGroup = 'vac_volume_group'
+
       if parser.has_option('settings', 'scratch_gb'):
           # Deprecated
           gbDiskPerProcessor = int(parser.get('settings','scratch_gb').strip())
@@ -1523,7 +1533,7 @@ class VacSlot:
 
    def removeLogicalVolume(self):
    
-      if os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
+      if volumeGroup and os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
       
         # First try to unmount the logical volume in case used for Singularity
         try:
@@ -1540,19 +1550,13 @@ class VacSlot:
         vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
         os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
 
-   def measureVolumeGroup(self):
-     try:
-       return os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + volumeGroup, 'r').readline().strip().split()
-     except Exception as e:
-       return None
-
    def createLogicalVolume(self):
 
      # Always remove any leftover volume of the same name
      self.removeLogicalVolume()
 
      try:
-       vgsResult = self.measureVolumeGroup()
+       vgsResult = measureVolumeGroup()
        vgTotalBytes = int(vgsResult[0])
        vgExtentBytes = int(vgsResult[1])
      except Exception as e:
@@ -1659,7 +1663,7 @@ class VacSlot:
                            </disk>"""
 
         # For vm-raw, maybe we have logical volume to use as scratch too?
-        if volumeGroup and self.measureVolumeGroup():
+        if volumeGroup and measureVolumeGroup():
           try:
             self.createLogicalVolume()
           except Exception as e:
@@ -1701,7 +1705,7 @@ class VacSlot:
                             
         # Now the disk file or logical volume to provide the virtual hard drives
 
-        if volumeGroup and self.measureVolumeGroup():
+        if volumeGroup and measureVolumeGroup():
           # Create logical volume for CernVM: fail if not able to do this
 
           try:
@@ -1860,7 +1864,7 @@ class VacSlot:
       os.makedirs(self.machinesDir() + '/mnt',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      if volumeGroup and self.measureVolumeGroup():
+      if volumeGroup and measureVolumeGroup():
         # Create logical volume for Docker container
 
         try:
@@ -1926,7 +1930,7 @@ class VacSlot:
       os.makedirs(self.machinesDir() + '/mnt',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      if volumeGroup and self.measureVolumeGroup():
+      if volumeGroup and measureVolumeGroup():
         # Create logical volume for Singularity
 
         try:
@@ -2055,6 +2059,15 @@ class VacSlot:
            # Process in the process group of the SC head process, so kill it
            vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
            os.kill(int(pid), signal.SIG_KILL)
+
+def measureVolumeGroup(vg = volumeGroup):
+      if not vg:
+        return None
+   
+      try:
+        return os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + vg, 'r').readline().strip().split()
+      except Exception as e:
+        return None
 
 def dockerPsCommand():
       # Return a dictionary of currently defined Docker containers, filtered
