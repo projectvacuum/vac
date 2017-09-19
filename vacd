@@ -613,14 +613,16 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
        except:
          vac.vacutils.logLine('Failed to get ordinal from ' + str(self.client_address))
        else:
+         machineName = vac.shared.nameFromOrdinal(ordinal)
+       
          try:
-           createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
+           createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + name, 'r').read().split()
            created = int(createdStr)
          except Exception as e:
            vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')
          else:
            # makeBody comes from the correct subclass
-           body = self.makeGetBody(created, machinetypeName, self.path)
+           body = self.makeGetBody(created, machinetypeName, machineName, self.path)
 
      try:
        if body is None:
@@ -645,8 +647,8 @@ class mjfHttpdHandler(vacHttpdHandler):
 
    server_version = 'Vac mjf server'
       
-   def makeGetBody(self, created, machinetypeName, path):
-     return vac.shared.makeMjfBody(created, machinetypeName, path)
+   def makeGetBody(self, created, machinetypeName, machineName, path):
+     return vac.shared.makeMjfBody(created, machinetypeName, machineName, path)
 
    def do_PUT(self):
    
@@ -665,13 +667,15 @@ class mjfHttpdHandler(vacHttpdHandler):
          except:
            vac.vacutils.logLine('Failed to get ordinal from ' + str(self.client_address))
          else:
+           machineName = vac.shared.nameFromOrdinal(ordinal)
+         
            try:
-             createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + vac.shared.nameFromOrdinal(ordinal), 'r').read().split()
+             createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + machineName, 'r').read().split()
              created = int(createdStr)
            except Exception as e:
              vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')
            else:
-             success = vac.shared.writePutBody(created, machinetypeName, self.path, body)
+             success = vac.shared.writePutBody(created, machinetypeName, machineName, self.path, body)
 
      try:
        if success:
@@ -689,8 +693,8 @@ class metadataHttpdHandler(vacHttpdHandler):
 
  # def do_GET(self): is in the vacHttpdHandler class and calls makeGetBody() here
 
-   def makeGetBody(self, created, machinetypeName, path):
-      return vac.shared.makeMetadataBody(created, machinetypeName, path)
+   def makeGetBody(self, created, machinetypeName, machineName, path):
+      return vac.shared.makeMetadataBody(created, machinetypeName, machineName, path)
             
 class ForkingHTTPServer(SocketServer.ForkingMixIn, BaseHTTPServer.HTTPServer):
    

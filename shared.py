@@ -789,7 +789,7 @@ def killZombieVMs():
       else:
         try: 
           # Can't use self.machinesDir()
-          uuidStr = open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/jobfeatures/job_id', 'r').read().strip()
+          uuidStr = open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '_' + name + '/jobfeatures/job_id', 'r').read().strip()
         except:
           uuidStr = None
 
@@ -811,7 +811,7 @@ def killZombieVMs():
         vac.vacutils.logLine('UUID mismatch: %s (job_id) != %s (dom) for LM %s, killing zombie' % (str(uuidStr), dom.UUIDString(), name))
         killZombie = True
 
-      if not createdStr or not os.path.isdir('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName):
+      if not createdStr or not os.path.isdir('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '_' + name):
         # Our files say otherwise
         vac.vacutils.logLine('No created time (or missing machines dir), killing zombie')
         killZombie = True
@@ -849,7 +849,7 @@ def killZombieDCs():
        if machineModel in dcModels:
          # This slot IS a Docker container. So may not be a zombie!
          try:       
-           uuidStr = open('/var/lib/vac/machines/%s_%s/jobfeatures/job_id' % (createdStr, machinetypeName),'r').read().strip()
+           uuidStr = open('/var/lib/vac/machines/%s_%s_%s/jobfeatures/job_id' % (createdStr, machinetypeName, name),'r').read().strip()
          except Exception as e:
            # But no UUID/ID defined for the slot's container. A zombie!
            pass
@@ -885,12 +885,12 @@ def killZombieSCs():
          continue
 
        try: 
-         uuidStr = open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/jobfeatures/job_id', 'r').read().strip()
+         uuidStr = open('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '_' + name + '/jobfeatures/job_id', 'r').read().strip()
        except:
          uuidStr = None
          
        try:
-         finished = int(os.stat('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '/finished').st_ctime)
+         finished = int(os.stat('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '_' + name + '/finished').st_ctime)
        except:
          finished = None
                   
@@ -1152,7 +1152,7 @@ class VacSlot:
           pass
       
    def machinesDir(self):
-      return '/var/lib/vac/machines/' + str(self.created) + '_' + self.machinetypeName
+      return '/var/lib/vac/machines/' + str(self.created) + '_' + self.machinetypeName + '_' + self.name
 
    def createHeartbeatFile(self):
       self.heartbeat = int(time.time())
@@ -1187,7 +1187,7 @@ class VacSlot:
 
       # Update the file for this machinetype in the finishes directory, about the most recently created but already finished machine
 
-      finishedFilesList = glob.glob('/var/lib/vac/machines/*_' + self.machinetypeName + '/finished')
+      finishedFilesList = glob.glob('/var/lib/vac/machines/*_' + self.machinetypeName + '_*/finished')
      
       if finishedFilesList:
         finishedFilesList.sort()
@@ -1816,7 +1816,7 @@ class VacSlot:
       <filterref filter='clean-traffic'/>
     </interface>
     <serial type="file">
-      <source path="/var/lib/vac/machines/"""  + str(self.created) + '_' + self.machinetypeName + """/console.log"/>
+      <source path="/var/lib/vac/machines/"""  + str(self.created) + '_' + self.machinetypeName + '_' + self.name +"""/console.log"/>
       <target port="1"/>
     </serial>                    
     <graphics type='vnc' port='"""  + str(5900 + self.ordinal) + """' keymap='en-gb'><listen type='address' address='127.0.0.1'/></graphics>
@@ -2375,7 +2375,7 @@ def cleanupOldMachines():
    for machineDir in machinesList:
    
       try:   
-        createdStr, machinetypeName = machineDir.split(':')
+        createdStr, machinetypeName, name = machineDir.split('_')
       except:
         continue
 
@@ -2398,7 +2398,7 @@ def cleanupOldMachines():
         # Skip if no heartbeat yet
         continue
 
-def makeMjfBody(created, machinetypeName, path):
+def makeMjfBody(created, machinetypeName, machineName, path):
 
    if '/../' in path:
      # Obviously not ok
@@ -2413,7 +2413,7 @@ def makeMjfBody(created, machinetypeName, path):
      # Subdirectories are now allowed
      return None
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
+   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName + '_' + machineName
 
    if requestURI == '/machinefeatures/' or \
       requestURI == '/machinefeatures' or \
@@ -2442,9 +2442,9 @@ def makeMjfBody(created, machinetypeName, path):
 
    return None
 
-def makeMetadataBody(created, machinetypeName, path):
+def makeMetadataBody(created, machinetypeName, machineName, path):
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
+   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName + '_' + machineName
 
    # Fold // to /, and /latest/ to something that will match a dated version
    requestURI = path.replace('//','/').replace('/latest/','/0000-00-00/')
@@ -2519,7 +2519,7 @@ def makeMetadataBody(created, machinetypeName, path):
    # No body (and therefore 404) if we don't recognise the request
    return None
 
-def writePutBody(created, machinetypeName, path, body):
+def writePutBody(created, machinetypeName, machineName, path, body):
 
    # Fold // to /
    requestURI = path.replace('//','/')
@@ -2529,7 +2529,7 @@ def writePutBody(created, machinetypeName, path, body):
    if len(splitRequestURI) != 3 or splitRequestURI[1] != 'joboutputs' or not splitRequestURI[2]:
      return False
 
-   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
+   machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName + '_' + machineName
    
    try:
      vac.vacutils.createFile(machinesDir + '/joboutputs/' + splitRequestURI[2],
@@ -2879,7 +2879,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        if machinetypeNameTmp != machinetypeName:
          continue
 
-       machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName
+       machinesDir = '/var/lib/vac/machines/' + str(created) + '_' + machinetypeName + '_' + name
        if not os.path.isdir(machinesDir):
          # machines directory has been cleaned up?
          continue
