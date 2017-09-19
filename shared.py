@@ -462,13 +462,18 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                        print 'Option %s in %s cannot contain "/../" - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
 
-                     elif (option == 'user_data' or option == 'root_image') and \
-                        '/' in value and \
-                        not value.startswith('docker:') and \
+                     elif option == 'user_data' and '/' in value and \
+                        not value.startswith('http://') and \
+                        not value.startswith('https://'):
+                       print 'Option %s in %s cannot contain a "/" unless http(s)://... - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       continue
+
+                     elif option == 'root_image' and '/' in value and \
+                        not value.startswith('docker://') and \
                         not value.startswith('/cvmfs/') and \
                         not value.startswith('http://') and \
                         not value.startswith('https://'):
-                       print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... or docker:... - ignoring!' % (option, machinetype['vacuum_pipe_url'])
+                       print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... or docker://... - ignoring!' % (option, machinetype['vacuum_pipe_url'])
                        continue
 
                      # if all OK, then can set value as if from configuration files
@@ -503,9 +508,9 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
              if parser.has_option(sectionName, 'root_image'):
                  machinetype['root_image'] = parser.get(sectionName, 'root_image')
 
-                 if machinetype['root_image'].startswith('docker:') and \
-                    (machinetype['machine_model'] not in dcModels and machinetype['machine_model'] not in scModels):
-                   return 'Can only use a docker: image URI with Docker and Singularity machine models!'
+                 if machinetype['root_image'].startswith('docker://') and \
+                    machinetype['machine_model'] not in dcModels:
+                   return 'Can only use a docker:// image URI with Docker machine models!'
 
              if parser.has_option(sectionName, 'root_device'):
                if string.translate(parser.get(sectionName, 'root_device'), None, '0123456789abcdefghijklmnopqrstuvwxyz') != '':
@@ -1874,10 +1879,8 @@ class VacSlot:
 
       if machinetypes[self.machinetypeName]['root_image'].startswith('docker://'):
         image = machinetypes[self.machinetypeName]['root_image'][9:]
-      elif machinetypes[self.machinetypeName]['root_image'].startswith('docker:'):
-        image = machinetypes[self.machinetypeName]['root_image'][7:]
       else:
-        raise VacError('Docker root_image must begin with "docker:"')        
+        raise VacError('Docker root_image must begin with "docker://"')
 
       os.makedirs(self.machinesDir() + '/mnt',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1948,8 +1951,16 @@ class VacSlot:
       if not singularityUser:
         raise VacError('Cannot create Singularity Containers if singularity_user is undefined!')
       
-      if not machinetypes[self.machinetypeName]['root_image'].startswith('/cvmfs/'):
-        raise VacError('Singularity root_image must be directory hierarchy in /cvmfs/')
+      if machinetypes[self.machinetypeName]['root_image'].startswith('http://') or machinetypes[self.machinetypeName]['root_image'].startswith('https://'):
+        try:
+          image = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp', 'Vac ' + vacVersion)
+        except Exception as e:
+          raise VacError(str(e))
+      elif machinetypes[self.machinetypeName]['root_image'][0] == '/':
+        # With SC, this might be an image file or a directory hierarchy (perhaps in /cvmfs/...)
+        image = machinetypes[self.machinetypeName]['root_image']
+      else:
+        image = '/var/lib/vac/machinetypes/' + self.machinetypeName + '/files/' + machinetypes[self.machinetypeName]['root_image']
 
       os.makedirs(self.machinesDir() + '/mnt',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
@@ -1992,7 +2003,7 @@ class VacSlot:
                        '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
                        '--bind', self.machinesDir() + '/joboutputs:/tmp/joboutputs',
                        '--bind', self.machinesDir() + '/user_data:/user_data',
-                       machinetypes[self.machinetypeName]['root_image'], ## NEED TO ALLOW DOWNLOADED OR REMOTE/HUB IMAGES TOO HERE
+                       image,
                        machinetypes[self.machinetypeName]['container_command']]) 
 
       vac.vacutils.logLine('Creating SC with /usr/bin/singularity ' + ' '.join(argsList[1:]))

@@ -363,13 +363,17 @@ without '/' characters and HTTP(S) URLs are allowed.
 
 .B root_image
 is the path to the image file from which the LM will boot. With the
-cernVM3 machine_model, this can also be a remote HTTP or HTTPS URL which Vac
+VM and Singularity machine_models, this can also be a remote HTTP or HTTPS URL which Vac
 will cache in /var/lib/vac/imagecache. The remote server must supply a
 Last-Modified timestamp and Vac will re-request the image each time a 
 LM starts using an If-Modified-Since request to minimise network load.
 Alternatively, the images may be files in the local filesystem.
 With cernvm3 machine_model, the files are ISO CDROM-style boot images; 
-with the cernvm2 machine_model, they are the root hard disk image itself.
+with the cernvm2 machine_model, they are the root hard disk image itself;
+with Singularity they can be images or directory hierarchies, including
+ones under /cvmfs/... ; for Docker, root_image must begin with docker://
+and is interpreted by Docker as an image provided by a registry, either
+beginning with the registry host and port, or on Docker Hub itself.
 
 .B user_data
 is the path of a contextualization file provided by the VO and perhaps 
