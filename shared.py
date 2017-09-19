@@ -1508,9 +1508,6 @@ class VacSlot:
                               str(self.created) + ' ' + self.machinetypeName + ' ' + self.machineModel,
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-      vac.vacutils.createFile(self.machinesDir() + '/name', self.name,
-                              stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
-
       if 'accounting_fqan' in machinetypes[machinetypeName]:
         vac.vacutils.createFile(self.machinesDir() + '/accounting_fqan', machinetypes[machinetypeName]['accounting_fqan'],
                               stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
@@ -2474,13 +2471,8 @@ def makeMetadataBody(created, machinetypeName, machineName, path):
      else:
       metaData['uuid'] = uuidStr
 
-     try:
-       name = open(machinesDir + '/name', 'r').read()
-     except:
-       pass
-     else:
-       metaData['hostname'] = name
-       metaData['name']     = name
+     metaData['hostname'] = machineName
+     metaData['name']     = machineName
 
      metaData['meta'] = {
                            'machinefeatures' : 'http://' + mjfAddress + '/machinefeatures',
@@ -2935,15 +2927,15 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
 
      try:
        # Updated by createFinishedFile()
-       dir = '/var/lib/vac/machines/' + open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().replace(' ','_')
+       shutdownCreated, shutdownMachinetypeName, shutdownMachineName = open('/var/lib/vac/finishes/' + machinetypeName, 'r').readline().strip().split()
+       
      except:
        pass
      else:
        try:
-         shutdownMessage = open(dir + '/joboutputs/shutdown_message','r').readline().strip()
+         shutdownMessage = open('/var/lib/vac/machines/%s_%s_%s/joboutputs/shutdown_message' % (shutdownCreated, shutdownMachinetypeName, shutdownMachineName),'r').readline().strip()
          messageCode = int(shutdownMessage[0:3])
-         shutdownMessageTime = int(os.stat(dir + '/joboutputs/shutdown_message').st_ctime)
-         shutdownMachineName = open(dir + '/name','r').readline().strip()
+         shutdownMessageTime = int(os.stat('/var/lib/vac/machines/%s_%s_%s/joboutputs/shutdown_message' % (shutdownCreated, shutdownMachinetypeName, shutdownMachineName)).st_ctime)
        except:
          # No explicit shutdown message with a message code, so we make one up if necessary
          
@@ -2954,13 +2946,8 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
            pass
          else:
            if (timeHeartbeat - timeStarted) < machinetypes[machinetypeName]['fizzle_seconds']:
-             try:
-               shutdownMachineName = open(dir + '/name','r').readline().strip()
-             except:
-               pass
-             else:
-               shutdownMessageTime = timeHeartbeat
-               shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
+             shutdownMessageTime = timeHeartbeat
+             shutdownMessage = '300 Vac detects fizzle after ' + str(timeHeartbeat - timeStarted) + ' seconds'
 
      responseDict = {
                 'message_type'		: 'machinetype_status',
