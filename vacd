@@ -616,7 +616,7 @@ class vacHttpdHandler(BaseHTTPServer.BaseHTTPRequestHandler):
          machineName = vac.shared.nameFromOrdinal(ordinal)
        
          try:
-           createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + name, 'r').read().split()
+           createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + machineName, 'r').read().split()
            created = int(createdStr)
          except Exception as e:
            vac.vacutils.logLine('Failed to map ' + str(self.client_address) + ' to a machine slot (' + str(e) + ')')

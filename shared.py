@@ -929,17 +929,19 @@ def killZombieSCs():
    
    # Remove unused cgroups
 
-   for i in os.listdir(cpuCgroupFsRoot + '/vac'):
-     if i.startswith('singularity-'):
-       if len(open(cpuCgroupFsRoot + '/vac/' + i + '/cgroup.procs').read()) == 0:
-         vac.vacutils.logLine('Remove unused cgroup ' + cpuCgroupFsRoot + '/vac/' + i)
-         os.rmdir(cpuCgroupFsRoot + '/vac/' + i)       
-                              
-   for i in os.listdir(memoryCgroupFsRoot + '/vac'):
-     if i.startswith('singularity-'):
-       if len(open(memoryCgroupFsRoot + '/vac/' + i + '/cgroup.procs').read()) == 0:
-         vac.vacutils.logLine('Remove unused cgroup ' + memoryCgroupFsRoot + '/vac/' + i)
-         os.rmdir(memoryCgroupFsRoot + '/vac/' + i)       
+   if os.path.exists(cpuCgroupFsRoot + '/vac'):
+     for i in os.listdir(cpuCgroupFsRoot + '/vac'):
+       if i.startswith('singularity-'):
+         if len(open(cpuCgroupFsRoot + '/vac/' + i + '/cgroup.procs').read()) == 0:
+           vac.vacutils.logLine('Remove unused cgroup ' + cpuCgroupFsRoot + '/vac/' + i)
+           os.rmdir(cpuCgroupFsRoot + '/vac/' + i)       
+
+   if os.path.exists(memoryCgroupFsRoot + '/vac'):
+     for i in os.listdir(memoryCgroupFsRoot + '/vac'):
+       if i.startswith('singularity-'):
+         if len(open(memoryCgroupFsRoot + '/vac/' + i + '/cgroup.procs').read()) == 0:
+           vac.vacutils.logLine('Remove unused cgroup ' + memoryCgroupFsRoot + '/vac/' + i)
+           os.rmdir(memoryCgroupFsRoot + '/vac/' + i)       
 
 class VacState:
    unknown, shutdown, starting, running, paused, zombie = ('Unknown', 'Shut down', 'Starting', 'Running', 'Paused', 'Zombie')
