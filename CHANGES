@@ -7,6 +7,8 @@
 - Add Singularity and Docker Container machine models
 - Disable unset_merge_across_nodes in Puppet init.pp causes instability
 - If volume_group is given then it must exist for Vac to operate
+- os_issue now taken from /etc/redhat-release 
+  (or /etc/redhat-release.vac if present)
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]

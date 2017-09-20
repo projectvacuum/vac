@@ -3026,10 +3026,10 @@ def makeFactoryResponse(cookie, clientName = '-'):
      metadataHeartbeatTime = 0
 
    try:
-     osIssue = open('/etc/issue.vac','r').readline().strip()
+     osIssue = open('/etc/redhat-release.vac','r').readline().strip()
    except:
      try:
-       osIssue = open('/etc/issue','r').readline().strip()
+       osIssue = open('/etc/redhat-release','r').readline().strip()
      except:
        osIssue = os.uname()[2]
 
