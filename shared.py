@@ -80,6 +80,8 @@ dcModels = [ 'docker' ]                   # Docker Container models
 scModels = [ 'singularity' ]              # Singularity Container models
 lmModels = vmModels + dcModels + scModels # All Logical Machine models
 
+dockerPath	    = '/usr/bin/docker'
+singularityPath     = '/usr/bin/singularity'
 natNetwork          = '169.254.0.0'
 natNetmask          = '255.255.0.0'
 natPrefix           = '169.254.169.'
@@ -1622,7 +1624,7 @@ class VacSlot:
        sizeToCreate = ((self.processors * (vgTotalBytes - vgNonVacBytes) / numProcessors) / vgExtentBytes) * vgExtentBytes
      
      # Option -y means we wipe existing signatures etc
-     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate -y --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
+     os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvcreate --yes --name ' + self.name + ' -L ' + str(sizeToCreate) + 'B ' + volumeGroup + ' 2>&1')
 
      try:
        if not stat.S_ISBLK(os.stat('/dev/' + volumeGroup + '/' + self.name).st_mode):
@@ -1950,6 +1952,9 @@ class VacSlot:
       if not singularityUser:
         raise VacError('Cannot create Singularity Containers if singularity_user is undefined!')
       
+      if os.path.isfile(singularityPath) and os.access(singularityPath, os.X_OK):
+        raise VacError('Cannot create Singularity Containers if %s executable does not exist!' % singularityPath)
+      
       if machinetypes[self.machinetypeName]['root_image'].startswith('http://') or machinetypes[self.machinetypeName]['root_image'].startswith('https://'):
         try:
           image = vac.vacutils.getRemoteRootImage(machinetypes[self.machinetypeName]['root_image'], '/var/lib/vac/imagecache', '/var/lib/vac/tmp', 'Vac ' + vacVersion)
@@ -2005,7 +2010,7 @@ class VacSlot:
                        image,
                        machinetypes[self.machinetypeName]['container_command']]) 
 
-      vac.vacutils.logLine('Creating SC with /usr/bin/singularity ' + ' '.join(argsList[1:]))
+      vac.vacutils.logLine('Creating SC with ' + singularityPath + ' '.join(argsList[1:]))
      
       uuidSuffix = str(uuid.uuid4())
       pid = os.fork()
@@ -2045,7 +2050,7 @@ class VacSlot:
           os.setuid(singularityUid)
           
           # Run singularity
-          os.execv('/usr/bin/singularity', argsList)
+          os.execv(singularityPath, argsList)
 
         except Exception as e:
           vac.vacutils.logLine('Forked subprocess for singularity command fails (%s)' % str(e))
@@ -2107,11 +2112,14 @@ def dockerPsCommand():
       # Return a dictionary of currently defined Docker containers, filtered
       # by the pattern of names Vac creates on this host.
       # We use the docker command rather than the API for portability
+
+      if not os.path.isfile(dockerPath) or not os.access(dockerPath, os.X_OK):
+        return {}
       
       host,domain = os.uname()[1].split('.',1)
 
       # Get the output of docker ps
-      pp = subprocess.Popen('/usr/bin/docker ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
+      pp = subprocess.Popen(dockerPath + ' ps --all --no-trunc --format "{{.Names}} {{.ID}} {{.Image}} {{.Status}} ."', 
                             shell=True, stdout=subprocess.PIPE).stdout
 
       containers = {}
@@ -2129,7 +2137,7 @@ def dockerPsCommand():
       
       # Merge in values from the output of docker inspect
       if containers:
-        pp = subprocess.Popen('/usr/bin/docker inspect --format "{{.Name}} {{.State.Pid}}" ' + ' '.join([i for i in containers]),
+        pp = subprocess.Popen(dockerPath + ' inspect --format "{{.Name}} {{.State.Pid}}" ' + ' '.join([i for i in containers]),
                             shell=True, stdout=subprocess.PIPE).stdout
 
         for line in pp:
@@ -2161,7 +2169,7 @@ def dockerRunCommand(rwBindsList, roBindsList, name, image, script, cpuShares, m
       for i in roBindsList:
         binds += '-v %s:%s:ro ' % (i[0], i[1])
             
-      cmd = '/usr/bin/docker run --detach --cpu-shares %d --memory-reservation %d %s --name %s --hostname %s %s %s' % (cpuShares, memoryBytes, binds, name, name, image, script)
+      cmd = dockerPath + ' run --detach --cpu-shares %d --memory-reservation %d %s --name %s --hostname %s %s %s' % (cpuShares, memoryBytes, binds, name, name, image, script)
       vac.vacutils.logLine('Creating DC with ' + cmd)
 
       pp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout
@@ -2175,7 +2183,7 @@ def dockerRmCommand(name):
       # Remove Docker container by name
       # We use the docker command rather than the API for portability
       
-      subprocess.call('/usr/bin/docker rm --force %s' % name, shell=True)
+      subprocess.call(dockerPath + ' rm --force %s' % name, shell=True)
 
 def checkNetwork():
       # Check and if necessary create network and set its attributes
