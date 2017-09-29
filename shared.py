@@ -1952,7 +1952,7 @@ class VacSlot:
       if not singularityUser:
         raise VacError('Cannot create Singularity Containers if singularity_user is undefined!')
       
-      if os.path.isfile(singularityPath) and os.access(singularityPath, os.X_OK):
+      if not os.path.isfile(singularityPath) or not os.access(singularityPath, os.X_OK):
         raise VacError('Cannot create Singularity Containers if %s executable does not exist!' % singularityPath)
       
       if machinetypes[self.machinetypeName]['root_image'].startswith('http://') or machinetypes[self.machinetypeName]['root_image'].startswith('https://'):
