@@ -1198,7 +1198,7 @@ class VacSlot:
 
         try:
           vac.vacutils.createFile('/var/lib/vac/finishes/' + self.machinetypeName,
-                                  finishedFilesList[-1].split('/')[-2].replace(':',' '),
+                                  finishedFilesList[-1].split('/')[-2].replace('_',' '),
                                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
         except:
           vac.vacutils.logLine('Failed creating /var/lib/vac/finishes/' + self.machinetypeName)
