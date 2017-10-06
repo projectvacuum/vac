@@ -1580,7 +1580,7 @@ class VacSlot:
        gbDiskPerProcessorTmp = gbDiskPerProcessor
 
      try:
-       vgsResult = measureVolumeGroup()
+       vgsResult = measureVolumeGroup(volumeGroup)
        vgTotalBytes = int(vgsResult[0])
        vgExtentBytes = int(vgsResult[1])
      except Exception as e:
@@ -1687,7 +1687,7 @@ class VacSlot:
                            </disk>"""
 
         # For vm-raw, maybe we have logical volume to use as scratch too?
-        if volumeGroup and measureVolumeGroup():
+        if volumeGroup and measureVolumeGroup(volumeGroup):
           try:
             self.createLogicalVolume()
           except Exception as e:
@@ -1729,7 +1729,7 @@ class VacSlot:
                             
         # Now the disk file or logical volume to provide the virtual hard drives
 
-        if volumeGroup and measureVolumeGroup():
+        if volumeGroup and measureVolumeGroup(volumeGroup):
           # Create logical volume for CernVM: fail if not able to do this
 
           try:
@@ -1886,7 +1886,7 @@ class VacSlot:
       os.makedirs(self.machinesDir() + '/mnt',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      if volumeGroup and measureVolumeGroup():
+      if volumeGroup and measureVolumeGroup(volumeGroup):
         # Create logical volume for Docker container
 
         try:
@@ -1969,7 +1969,7 @@ class VacSlot:
       os.makedirs(self.machinesDir() + '/mnt',
                   stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
-      if volumeGroup and measureVolumeGroup():
+      if volumeGroup and measureVolumeGroup(volumeGroup):
         # Create logical volume for Singularity
 
         try:
@@ -2099,13 +2099,14 @@ class VacSlot:
            vac.vacutils.logLine('Kill Singularity Container process %s (%s)' % (pid, name))
            os.kill(int(pid), signal.SIG_KILL)
 
-def measureVolumeGroup(vg = volumeGroup):
+def measureVolumeGroup(vg):
       if not vg:
         return None
    
       try:
         return os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/vgs --noheadings --options vg_size,extent_size --units b --nosuffix ' + vg, 'r').readline().strip().split()
       except Exception as e:
+        vac.vacutils.logLine('Failed to measure size of volume group %s (%s)' % (vg, str(e)))
         return None
 
 def dockerPsCommand():
