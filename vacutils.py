@@ -119,7 +119,7 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
    try:
      pipeDict = json.load(open(pipeFile, 'r'))
    except:
-     logLine('Unable to read vacuum pipe file ' + pipeFile)
+     logLine('Unable to read and parse vacuum pipe file ' + pipeFile)
      pipeDict = { 'cache_seconds' : cacheSeconds }
      
      try:
@@ -864,7 +864,9 @@ def UpdateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
 
    except Exception as e:
       raise VacutilsError('Problem parsing XML tree (' + str(e) + ')')
-             
+
+   print machinetypes
+   return             
    # Now send the updates: service extensions first
  
    curl.setopt(curl.WRITEFUNCTION, sys.write)
