@@ -530,12 +530,10 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                   parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, option, value)
 
       if printConf:
-        print '==============================================================================='
         print 'Configuration including any machinetypes from Vacuum Pipes:'
         print
         parser.write(sys.stdout)        
         print
-        print '==============================================================================='
 
       # all other sections are machinetypes (other types of section are ignored)
       for sectionName in parser.sections():

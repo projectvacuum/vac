@@ -219,8 +219,9 @@ description of [machinetype ...] sections below explains how these paths
 may be needed by user_data substitutions.
 
 .B vacuum_pipe_url
-is required and gives the HTTP(S) URL of a remote Vacuum Pipe JSON document
-supplied by the VO which contains details of the boot images, contextualizations,
+is required in [vacuum_pipe ...] sections and gives the HTTP(S) URL of a 
+remote Vacuum Pipe JSON document supplied by the VO which contains details
+of the boot images, contextualizations,
 and other options needed to create one or more types of logical machine.
 
 .B target_share
@@ -497,31 +498,37 @@ superslot.
 
 .SH VACUUM PIPES
 
-If a 
+If 
 .B vacuum_pipe
-sections exist as described above, then the corresponding
-files are fetched via HTTP(S) and used to create machinetypes in the 
+sections exist as described above, then the corresponding JSON
+documents are fetched via HTTP(S) and used to create machinetypes in the 
 configuration using default values supplied by
-the VOs for those machinetypes. The following options are 
-supported within the machinetype dictionaries in the Vacuum Pipe JSON
-documents:
+the VOs for those machinetypes. The JSON documents contain a dictionary
+with keys 
+.B cache_seconds
+and
+.B machinetypes.
+cache_seconds sets the maximum time the JSON document may be cached,
+and defaults to 3600 seconds if not set or the document has never been
+fetched successfully. machinetypes is a list of machinetype dictionaries,
+in which the following options are 
+supported:
 .B accounting_fqan, backoff_seconds, container_command,
 .B cvmfs_repositories, fizzle_seconds, 
 .B disk_gb_per_processor, heartbeat_file,
 .B heartbeat_seconds, image_signing_dn, legacy_proxy, machine_model,
 .B max_processors, max_wallclock_seconds, min_processors, 
 .B min_wallclock_seconds, root_device, root_image, scratch_device,
+.B suffix,
+.B target_share,
 .B tmp_binds,
 .B user_data, user_data_option_XXXX, user_data_file_XXXX,
 .B user_data_proxy.
-In addition 
-.B cache_seconds
-in the Vacuum Pipe sets the maximum time the file may be cached,
-and defaults to 3600 seconds if not set or the file has never been
-fetched successfully. As explained above, options referring to files
+
+As explained above, options referring to files
 on the LM factory may not specify filesystem paths if obtained from
-the Vacuum Pipe file: only filenames within the 
-/var/lib/vac/machinetypes/MACHINETYPE/files directory are acceptable.
+a Vacuum Pipe: only filenames within the 
+/var/lib/vac/machinetypes/MACHINETYPEPREFIX/files directory are acceptable.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>
