@@ -168,7 +168,7 @@ def vacOneCycle():
    # Update factory heartbeat file
    vac.vacutils.createFile('/var/lib/vac/factory-heartbeat', str(int(time.time())) + '\n', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
-   readConfError = vac.shared.readConf(includePipes = True, updatePipes = True, checkVolumeGroup = True)
+   readConfError = vac.shared.readConf(includePipes = True, updatePipes = True, checkVolumeGroup = True, printConf = True)
    
    if readConfError:
      vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
@@ -210,8 +210,6 @@ def vacOneCycle():
       return
 
    vac.vacutils.logLine('At most ' + str(vac.shared.numMachineSlots) + ' LMs can be created on this factory')
-   vac.vacutils.logLine('Machine types configuration: ' + str(vac.shared.machinetypes))
-   vac.vacutils.logLine('Factories in the space ' + vac.shared.spaceName + ': ' + str(vac.shared.factories))
    
    # These are updated at the END of each cycle of the for loop
    # --> So we do not use  continue  within this loop! <--

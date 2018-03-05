@@ -183,6 +183,9 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
 
      createFile(pipeFile, json.dumps(pipeDict), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
 
+   if 'machinetypes' not in pipeDict:
+     pipeDict['machinetypes'] = []
+
    return pipeDict
 
 def createUserData(shutdownTime, machinetypePath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr, 
