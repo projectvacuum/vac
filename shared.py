@@ -3213,13 +3213,13 @@ def updateSpaceCensus():
    try:
      responses = vac.shared.sendFactoriesRequests()
    except Exception as e:
-     logLine('Failed to gather factory responses for space census ("' + str(e) + '")')
+     vac.vacutils.logLine('Failed to gather factory responses for space census ("' + str(e) + '")')
    else:
      for factoryName in responses:   
        try:
          vac.vacutils.createFile('/var/lib/vac/census/' + factoryName, json.dumps(responses[factoryName]), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
        except Exception as e:
-         logLine('Failed write census response from ' + factoryName + ' ("' + str(e) + '")')
+         vac.vacutils.logLine('Failed write census response from ' + factoryName + ' ("' + str(e) + '")')
    
    # Go through the factory files, counting recent ones and deleting old ones
    censusCount = 0
@@ -3235,7 +3235,7 @@ def updateSpaceCensus():
          censusCount += 1
        elif now > factoryTime + 2 * gocdbUpdateSeconds:
          # Use twice the update frequency for debugging at the command line
-         logLine('Removed expired space census file for factory ' + factoryName)
+         vac.vacutils.logLine('Removed expired space census file for factory ' + factoryName)
          os.remove('/var/lib/vac/census/' + factoryName)
          
    return censusCount
@@ -3260,16 +3260,16 @@ def updateGOCDB():
            maxMachines += factoryResponse['max_machines']
            maxHS06 += factoryResponse['max_hs06']
          except Exception as e:
-           logLine('Failed to parse census response from ' + factoryName + ' ("' + str(e) + '")')
+           vac.vacutils.logLine('Failed to parse census response from ' + factoryName + ' ("' + str(e) + '")')
 
    policyRules = ''
    
    for machinetypeName in machinetypes:
      if 'accounting_fqan' in machinetypes[machinetypeName]:
        policyRules += 'VOMS:' + machinetypes[machinetypeName]['accounting_fqan'] + ','
-
-   print policyRules
      
+   vac.vacutils.logLine('Updating GOCDB')
+
    vac.vacutils.updateSpaceInGOCDB(
      gocdbSitename,
      spaceName,
@@ -3310,7 +3310,7 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
      return True
      
    except Exception as e:
-     logLine('createFile(' + targetname + ',...) fails with "' + str(e) + '"')
+     vac.vacutils.logLine('createFile(' + targetname + ',...) fails with "' + str(e) + '"')
      
      try:
        os.remove(ftup[1])

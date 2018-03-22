@@ -820,17 +820,11 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
    except Exception as e:
      raise VacutilsError('Failed to read service data (' + str(e) + ')')
 
-   print str(buffer.getvalue())
-
    try:
      serviceEndpoint = xml.etree.cElementTree.fromstring(buffer.getvalue()).find('SERVICE_ENDPOINT')
    except Exception as e:
      raise VacutilsError('Failed to extract serviceEndpoint (' + str(e) + ')')
             
-   xml.etree.ElementTree.dump(serviceEndpoint)
-
-   print serviceEndpoint.tag
-
    try:
       id = serviceEndpoint.attrib['PRIMARY_KEY'].split('G')[0]
 
@@ -873,12 +867,8 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
    except Exception as e:
       raise VacutilsError('Problem parsing XML tree (' + str(e) + ')')
 
-   print machinetypes
-   # Now send the updates: service extensions first
-
-   print spaceValues
- 
-   curl.setopt(curl.VERBOSE, 2)
+   # Now send the updates: service extensions first 
+   curl.setopt(curl.VERBOSE, 1)
    curl.setopt(curl.CUSTOMREQUEST, 'PUT')
    curl.setopt(curl.POSTFIELDS, json.dumps(spaceValues))
    curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/Service/%s/ExtensionProperties' % id)
