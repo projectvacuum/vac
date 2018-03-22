@@ -210,8 +210,13 @@ def vacOneCycle():
       vac.vacutils.createFile('/var/lib/vac/census-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       censusCount = vac.shared.updateSpaceCensus()
       
-      if not os.path.exists('/var/lib/vac/gocdb-updated') or \
-         time.time() > (os.stat('/var/lib/vac/gocdb-updated').st_ctime + vac.shared.gocdbUpdateSeconds * censusCount):
+      if vac.shared.gocdbCertFile and not os.path.exists(vac.shared.gocdbCertFile):      
+        vac.vacutils.logLine('gocdb_cert_file = ' + gocdbCertFile + ' does not exist. Not updating GOCDB.')
+      elif vac.shared.gocdbKeyFile and not os.path.exists(vac.shared.gocdbKeyFile):
+        vac.vacutils.logLine('gocdb_key_file = ' + gocdbKeyFile + ' does not exist. Not updating GOCDB.')      
+      elif vac.shared.gocdbCertFile and vac.shared.gocdbKeyFile and \
+          (not os.path.exists('/var/lib/vac/gocdb-updated') or \
+          time.time() > (os.stat('/var/lib/vac/gocdb-updated').st_ctime + vac.shared.gocdbUpdateSeconds * censusCount)):
         vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
         vac.shared.updateGOCDB()
 
@@ -376,6 +381,9 @@ def vacOneCycle():
    elif vac.shared.shutdownTime and (vac.shared.shutdownTime < int(time.time())):
      # check against the global shutdowntime
      vac.vacutils.logLine('LM not created as shutdown_time = ' + str(vac.shared.shutdownTime) + ' has already passed')
+   elif vac.shared.draining:
+     # no new LMs if draining
+     vac.vacutils.logLine('LM not created as in draining mode')
    elif runningProcessors >= vac.shared.numProcessors:
      # numProcessors is the number of logical processors which can be allocated to LMs
      vac.vacutils.logLine('LM not created due to total_processors or /proc/cpuinfo limit (' + str(vac.shared.numProcessors) + ')')

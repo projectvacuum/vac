@@ -110,6 +110,7 @@ mbPerProcessor = None
 fixNetworking = None
 forwardDev = None
 shutdownTime = None
+draining = None
 
 numMachineSlots = None
 numProcessors = None
@@ -132,7 +133,7 @@ machinefeaturesOptions = None
 
 def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False, printConf = False):
       global gocdbSitename, gocdbCertFile, gocdbKeyFile, \
-             factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
+             factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, draining, \
              numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
              processorsPerSuperslot, versionLogger, machinetypes, vacmons, rootPublicKeyFile, \
              singularityUser, singularityUid, singularityGid, \
@@ -150,6 +151,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
       fixNetworking = True
       forwardDev = None
       shutdownTime = None
+      draining = False
 
       processorCount = countProcProcessors()
       numMachineSlots = processorCount
@@ -362,6 +364,10 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
           shutdownTime = int(parser.get('settings','shutdown_time'))
         except:
           return 'Failed to parse shutdown_time (must be a Unix time seconds date/time)'
+
+      if parser.has_option('settings', 'draining'):
+        if parser.get('settings','draining').lower() == 'yes':
+          draining = True
 
       if parser.has_option('settings', 'hs06_per_cpu'):
           hs06PerProcessor = float(parser.get('settings','hs06_per_cpu'))
@@ -3260,7 +3266,7 @@ def updateGOCDB():
    
    for machinetypeName in machinetypes:
      if 'accounting_fqan' in machinetypes[machinetypeName]:
-       policyRules += 'VOMS:' + machinetypes[machinetypeName]['accounting_fqan'] + ' '
+       policyRules += 'VOMS:' + machinetypes[machinetypeName]['accounting_fqan'] + ','
 
    print policyRules
      
@@ -3281,7 +3287,7 @@ def updateGOCDB():
        'BenchmarkType':				'specint2000',
        'BenchmarkValue':			maxHS06 * 250.0,
        'PolicyScheme':				'org.glite.standard',
-       'PolicyRule':				policyRules.strip()
+       'PolicyRule':				policyRules.strip(',')
      },
      None # ONCE GOCDB ALLOWS API CREATION OF ENDPOINTS WE CAN PUT MORE INFO (eg wallclock limits) THERE
           # ONE ENDPOINT OF THE VAC SERVICE PER MACHINETYPE

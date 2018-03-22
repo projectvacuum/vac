@@ -97,6 +97,10 @@ creating an additional [settings] section in /var/run/vac.conf just containing
 the shutdown_time option may be helpful, as this will be automatically be
 deleted during the reboot.
 
+.B draining
+takes the values yes or no. If set to yes, then no more LMs are created
+but existing ones are allowed to finish naturally. Default no.
+
 .B gocdb_sitename
 gives the GOCDB site name to use when writing APEL 
 accounting record files to /var/lib/vac/apel-outgoing and 
@@ -127,10 +131,7 @@ GridPP VacMon service is vacmon.gridpp.ac.uk:8884
 is derived from /proc/cpuinfo by default and does not usually need to be 
 set explicitly. If set, then it provides an additional limit on the number 
 of processors which may be assigned to virtual machines. In turn this 
-limits the number of virtual machines which can be created. This allows 
-you to reduce the number of running VMs on a factory machine without having
-to kill running LMs. Instead, they are allowed to finish one by one and are 
-only recreated if total_processors allows.
+limits the number of virtual machines which can be created. 
 
 .B overload_per_processor
 sets the level of load per processor on the factory machine which will 
