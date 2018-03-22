@@ -2,7 +2,7 @@
 #  shared.py - common functions, classes, and variables for Vac
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-7. All rights reserved.
+#  Copyright (c) 2013-8. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -51,6 +51,7 @@ import subprocess
 import StringIO
 import urllib
 import datetime
+import email.utils
 import tempfile
 import socket
 import stat
@@ -99,6 +100,9 @@ memoryCgroupFsRoot  = None
 
 overloadPerProcessor = None
 gocdbSitename = None
+gocdbCertFile = None
+gocdbKeyFile = None
+gocdbUpdateSeconds = 86400
 
 factories = None
 hs06PerProcessor = None
@@ -127,7 +131,7 @@ gbDiskPerProcessor = None
 machinefeaturesOptions = None
 
 def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False, printConf = False):
-      global gocdbSitename, \
+      global gocdbSitename, gocdbCertFile, gocdbKeyFile, \
              factories, hs06PerProcessor, mbPerProcessor, fixNetworking, forwardDev, shutdownTime, \
              numMachineSlots, numProcessors, processorCount, spaceName, spaceDesc, udpTimeoutSeconds, vacVersion, \
              processorsPerSuperslot, versionLogger, machinetypes, vacmons, rootPublicKeyFile, \
@@ -137,6 +141,8 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
       # reset to defaults
       overloadPerProcessor = 1.5
       gocdbSitename = None
+      gocdbCertFile = None
+      gocdbKeyFile = None
 
       factories = []
       hs06PerProcessor = None
@@ -210,6 +216,12 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
         
       if parser.has_option('settings', 'gocdb_sitename'):
         gocdbSitename = parser.get('settings','gocdb_sitename').strip()
+        
+      if parser.has_option('settings', 'gocdb_cert_file'):
+        gocdbCertFile = parser.get('settings','gocdb_cert_file').strip()
+        
+      if parser.has_option('settings', 'gocdb_key_file'):
+        gocdbKeyFile = parser.get('settings','gocdb_key_file').strip()
         
       if parser.has_option('settings', 'domain_type'):
           print 'domain_type is deprecated - please remove from the Vac configuration!'          
@@ -3181,7 +3193,100 @@ def makeFactoryResponse(cookie, clientName = '-'):
 
    return json.dumps(responseDict)
 
+def updateSpaceCensus():
+   # Update the files in /var/lib/vac/census, one per working factory in this space,
+   # based on VacQuery responses. Returns the number of factory responses in that 
+   # directory dated within the last gocdbUpdateSeconds.
+   
+   try:
+     os.makedirs('/var/lib/vac/census', 
+                 stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+   except:
+     pass
 
+   try:
+     responses = vac.shared.sendFactoriesRequests()
+   except Exception as e:
+     logLine('Failed to gather factory responses for space census ("' + str(e) + '")')
+   else:
+     for factoryName in responses:   
+       try:
+         vac.vacutils.createFile('/var/lib/vac/census/' + factoryName, json.dumps(responses[factoryName]), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+       except Exception as e:
+         logLine('Failed write census response from ' + factoryName + ' ("' + str(e) + '")')
+   
+   # Go through the factory files, counting recent ones and deleting old ones
+   censusCount = 0
+   now = int(time.time())
+   
+   for factoryName in os.listdir('/var/lib/vac/census'):
+     try:
+       factoryTime = int(os.stat('/var/lib/vac/census/' + factoryName).st_ctime)
+     except:
+       continue
+     else:
+       if now < factoryTime + gocdbUpdateSeconds:
+         censusCount += 1
+       elif now > factoryTime + 2 * gocdbUpdateSeconds:
+         # Use twice the update frequency for debugging at the command line
+         logLine('Removed expired space census file for factory ' + factoryName)
+         os.remove('/var/lib/vac/census/' + factoryName)
+         
+   return censusCount
+
+def updateGOCDB():
+
+   maxProcessors = 0
+   maxMachines = 0
+   maxHS06 = 0
+   now = int(time.time())
+
+   for factoryName in os.listdir('/var/lib/vac/census'):
+     try:
+       factoryTime = int(os.stat('/var/lib/vac/census/' + factoryName).st_ctime)
+     except:
+       continue
+     else:
+       if now < factoryTime + gocdbUpdateSeconds:
+         try:
+           factoryResponse = json.loads(open('/var/lib/vac/census/' + factoryName, 'r').read())
+           maxProcessors += factoryResponse['max_processors']
+           maxMachines += factoryResponse['max_machines']
+           maxHS06 += factoryResponse['max_hs06']
+         except Exception as e:
+           logLine('Failed to parse census response from ' + factoryName + ' ("' + str(e) + '")')
+
+   policyRules = ''
+   
+   for machinetypeName in machinetypes:
+     if 'accounting_fqan' in machinetypes[machinetypeName]:
+       policyRules += 'VOMS:' + machinetypes[machinetypeName]['accounting_fqan'] + ' '
+
+   print policyRules
+     
+   vac.vacutils.updateSpaceInGOCDB(
+     gocdbSitename,
+     spaceName,
+     'uk.ac.gridpp.vac',
+     gocdbCertFile,
+     gocdbKeyFile,
+     '/etc/grid-security/certificates',
+     'Vac ' + vacVersion,
+     {
+       'UpdatedInGOCDB':			email.utils.formatdate(timeval=None, localtime=False, usegmt=True),
+       'ComputingManagerProductName':		'Vac',
+       'ComputingManagerProductVersion':	vacVersion,
+       'ComputingManagerTotalLogicalCPUs':	maxProcessors,
+       'ComputingManagerTotalSlots':		maxMachines,
+       'BenchmarkType':				'specint2000',
+       'BenchmarkValue':			maxHS06 * 250.0,
+       'PolicyScheme':				'org.glite.standard',
+       'PolicyRule':				policyRules.strip()
+     },
+     None # ONCE GOCDB ALLOWS API CREATION OF ENDPOINTS WE CAN PUT MORE INFO (eg wallclock limits) THERE
+          # ONE ENDPOINT OF THE VAC SERVICE PER MACHINETYPE
+     )
+     
 def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP):
    # Create a temporary text file containing contents then move
    # it into place. Rename is an atomic operation in POSIX,

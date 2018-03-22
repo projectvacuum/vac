@@ -204,6 +204,17 @@ def vacOneCycle():
            except:
              pass
 
+   # Update census for this space every hour
+   if not os.path.exists('/var/lib/vac/census-updated') or \
+        time.time() > (os.stat('/var/lib/vac/census-updated').st_ctime + 3600.0):
+      vac.vacutils.createFile('/var/lib/vac/census-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+      censusCount = vac.shared.updateSpaceCensus()
+      
+      if not os.path.exists('/var/lib/vac/gocdb-updated') or \
+         time.time() > (os.stat('/var/lib/vac/gocdb-updated').st_ctime + vac.shared.gocdbUpdateSeconds * censusCount):
+        vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+        vac.shared.updateGOCDB()
+
    # Check and possibly (re)create Vac NAT network
    if not vac.shared.checkNetwork():
       # In case of unresolvable problems, we end this cycle
@@ -529,7 +540,7 @@ def vacResponder():
              time.sleep(60.0)
              continue
    
-         readConfError = vac.shared.readConf(includePipes = True)
+         readConfError = vac.shared.readConf(includePipes = False)
   
          if readConfError:
            vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)

@@ -794,11 +794,11 @@ def memInfo():
    else:
      return None
 
-def UpdateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPath, versionString, spaceValues, machinetypesValues):
+def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPath, versionString, spaceValues, machinetypesValues):
 
    id            = None
    keys          = {}
-   machinetypes  = []
+   machinetypes  = {}
    curl          = pycurl.Curl()
    
    # First get the current state from GOCDB
@@ -844,6 +844,7 @@ def UpdateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
 
           for endpoint in i:
             endpointDict = {}
+            endpointName = None
 
             for j in endpoint:
 
@@ -854,10 +855,14 @@ def UpdateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
                 for ext in j:
                   endpointDict[ext.find('KEY').text] = ext.find('VALUE').text
               
+              elif j.tag == 'NAME':
+                endpointName = j.text.strip()
+
               else:
                 endpointDict[j.tag] = j.text.strip()
 
-            machinetypes.append(endpointDict)
+            if endpointName:
+              machinetypes[endpointName] = endpointDict
 
         elif i.text is None:
           keys[i.tag] = None
@@ -869,24 +874,39 @@ def UpdateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
       raise VacutilsError('Problem parsing XML tree (' + str(e) + ')')
 
    print machinetypes
-   return             
    # Now send the updates: service extensions first
+
+   print spaceValues
  
-   curl.setopt(curl.WRITEFUNCTION, sys.write)
+   curl.setopt(curl.VERBOSE, 2)
    curl.setopt(curl.CUSTOMREQUEST, 'PUT')
-   curl.setopt(curl.POSTFIELDS, json.loads(spaceValues))
-   curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/Service/%d/ExtensionProperties' % id)
+   curl.setopt(curl.POSTFIELDS, json.dumps(spaceValues))
+   curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/Service/%s/ExtensionProperties' % id)
 
    try:
      curl.perform()
    except Exception as e:
-      raise VacutilsError('Failed to update service data (' + str(e) + ')')
+     raise VacutilsError('Failed to update service data (' + str(e) + ')')
 
-   # Next the endpoint
-   
-   for i in machinetypesValues:
-     # need to get the endpointId from machinetypes
-     
-     curl.setopt(curl.POSTFIELDS, json.loads(i))
-     curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/EndPoint/%d/ExtensionProperties' % endpointId)
-     
+# WE DON'T DO THIS YET SINCE GOCDB DOES NOT SUPPORT CREATING ENDPOINTS THROUGH THE API!
+#
+#   # Next the endpoint
+#   
+#   for machinetypeName in machinetypesValues:
+#     # need to get the endpointId from machinetypes
+#     
+#     try:
+#       endpointID = machinetypes[machinetypeName]['ID']
+#     except:
+#       raise VacutilsError('Cannot get endpoint ID for %s' % machinetypeName)
+#       
+#     print endpointID,machinetypeName,machinetypesValues[machinetypeName]
+#     
+#     curl.setopt(curl.POSTFIELDS, json.dumps(machinetypesValues[machinetypeName]))
+#     curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/EndPoint/%s/ExtensionProperties' % endpointID )
+#
+#     try:
+#       curl.perform()
+#     except Exception as e:
+#       raise VacutilsError('Failed to update service data (' + str(e) + ')')
+
