@@ -206,7 +206,7 @@ def vacOneCycle():
 
    # Update census for this space every hour
    if not os.path.exists('/var/lib/vac/census-updated') or \
-        time.time() > (os.stat('/var/lib/vac/census-updated').st_ctime + 3600.0):
+        time.time() > (os.stat('/var/lib/vac/census-updated').st_ctime + vac.shared.censusUpdateSeconds):
       vac.vacutils.createFile('/var/lib/vac/census-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       censusCount = vac.shared.updateSpaceCensus()
       
@@ -215,9 +215,9 @@ def vacOneCycle():
       elif vac.shared.gocdbKeyFile and not os.path.exists(vac.shared.gocdbKeyFile):
         vac.vacutils.logLine('gocdb_key_file = ' + gocdbKeyFile + ' does not exist. Not updating GOCDB.')      
       elif vac.shared.gocdbCertFile and vac.shared.gocdbKeyFile and \
-          (not os.path.exists('/var/lib/vac/gocdb-updated') or \
-          time.time() > (os.stat('/var/lib/vac/gocdb-updated').st_ctime + vac.shared.gocdbUpdateSeconds * censusCount)):
-        vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+           random.randint(1, (censusCount * vac.shared.gocdbUpdateSeconds) / vac.shared.censusUpdateSeconds) == 1:
+           # This means we randomly do GOCDB updates, but at a frequency that means 
+           # on average one factory per space does an update each day
         vac.shared.updateGOCDB()
 
    # Check and possibly (re)create Vac NAT network

@@ -103,6 +103,7 @@ gocdbSitename = None
 gocdbCertFile = None
 gocdbKeyFile = None
 gocdbUpdateSeconds = 86400
+censusUpdateSeconds = 3600
 
 factories = None
 hs06PerProcessor = None

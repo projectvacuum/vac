@@ -127,6 +127,17 @@ VacQuery UDP messages to. This can be used to monitor the ongoing status
 of factories and LMs via site or central VacMon services. The central
 GridPP VacMon service is vacmon.gridpp.ac.uk:8884
 
+.B gocdb_cert_file
+and
+.B gocdb_key_file
+are the absolute paths of an X.509 certificate and private key which
+are authorized to update the GOCDB service information for this space.
+These updates are based on a census of the factories in this space
+which each Vac factory does every hour. Responses in this census expire
+after 24 hours. Each factory sends updates to GOCDB at a frequency based
+on the number of responding factories so that on average GOCDB receives
+one update about the space per day.
+
 .B total_processors
 is derived from /proc/cpuinfo by default and does not usually need to be 
 set explicitly. If set, then it provides an additional limit on the number 
