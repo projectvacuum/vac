@@ -3263,11 +3263,36 @@ def updateGOCDB():
          except Exception as e:
            vac.vacutils.logLine('Failed to parse census response from ' + factoryName + ' ("' + str(e) + '")')
 
+   voShares = {}
    policyRules = ''
-   
+   sharesTotal = 0.0
+
    for machinetypeName in machinetypes:
      if 'accounting_fqan' in machinetypes[machinetypeName]:
        policyRules += 'VOMS:' + machinetypes[machinetypeName]['accounting_fqan'] + ','
+
+       try:
+         targetShare = float(machinetypes[machinetypeName]['target_share'])
+       except:
+         targetShare = 0.0
+         
+       if targetShare:
+         try:
+           voName = machinetypes[machinetypeName]['accounting_fqan'].split('/')[1]
+         except:
+           pass
+         else:
+           if vo in voShares:
+             voShares[voName] += targetShare
+           else:
+             voShares[voName] = targetShare
+           
+           sharesTotal += targetShare
+           
+   otherInfo = ''
+   
+   for voName in voShares:
+     otherInfo += 'Share=%s:%0.2f,' % (voName, voShares[voName] / sharesTotal)
      
    vac.vacutils.logLine('Updating GOCDB')
 
@@ -3285,6 +3310,7 @@ def updateGOCDB():
        'ComputingManagerProductVersion':	vacVersion,
        'ComputingManagerTotalLogicalCPUs':	maxProcessors,
        'ComputingManagerTotalSlots':		maxMachines,
+       'ComputingManagerOtherInfo':		otherInfo.strip(',')
        'BenchmarkType':				'specint2000',
        'BenchmarkValue':			maxHS06 * 250.0,
        'PolicyScheme':				'org.glite.standard',

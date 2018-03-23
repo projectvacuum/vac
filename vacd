@@ -210,15 +210,23 @@ def vacOneCycle():
       vac.vacutils.createFile('/var/lib/vac/census-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
       censusCount = vac.shared.updateSpaceCensus()
       
-      if vac.shared.gocdbCertFile and not os.path.exists(vac.shared.gocdbCertFile):      
-        vac.vacutils.logLine('gocdb_cert_file = ' + gocdbCertFile + ' does not exist. Not updating GOCDB.')
-      elif vac.shared.gocdbKeyFile and not os.path.exists(vac.shared.gocdbKeyFile):
-        vac.vacutils.logLine('gocdb_key_file = ' + gocdbKeyFile + ' does not exist. Not updating GOCDB.')      
-      elif vac.shared.gocdbCertFile and vac.shared.gocdbKeyFile and \
-           random.randint(1, (censusCount * vac.shared.gocdbUpdateSeconds) / vac.shared.censusUpdateSeconds) == 1:
-           # This means we randomly do GOCDB updates, but at a frequency that means 
-           # on average one factory per space does an update each day
-        vac.shared.updateGOCDB()
+      if vac.shared.gocdbCertFile and vac.shared.gocdbKeyFile:      
+
+
+        if not os.path.exists(vac.shared.gocdbCertFile):
+          vac.vacutils.logLine('gocdb_cert_file = ' + gocdbCertFile + ' does not exist. Not updating GOCDB.')
+        elif not os.path.exists(vac.shared.gocdbKeyFile):
+          vac.vacutils.logLine('gocdb_key_file = ' + gocdbKeyFile + ' does not exist. Not updating GOCDB.')
+        else:
+          now = time.time()
+
+          if not os.path.exists('/var/lib/vac/gocdb-updated':
+            vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+            os.utime('/var/lib/vac/gocdb-updated', (now, now - random.uniform(0, vac.shared.gocdbUpdateSeconds)))
+          
+          if now > (os.stat('/var/lib/vac/gocdb-updated').st_mtime + vac.shared.gocdbUpdateSeconds):
+            vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+            vac.shared.updateGOCDB()
 
    # Check and possibly (re)create Vac NAT network
    if not vac.shared.checkNetwork():

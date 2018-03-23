@@ -134,9 +134,8 @@ are the absolute paths of an X.509 certificate and private key which
 are authorized to update the GOCDB service information for this space.
 These updates are based on a census of the factories in this space
 which each Vac factory does every hour. Responses in this census expire
-after 24 hours. Each factory sends updates to GOCDB at a frequency based
-on the number of responding factories so that on average GOCDB receives
-one update about the space per day.
+after 24 hours. Each factory chooses one hour of the day and sends one 
+update to GOCDB for the whole space at that hour each day. 
 
 .B total_processors
 is derived from /proc/cpuinfo by default and does not usually need to be 
