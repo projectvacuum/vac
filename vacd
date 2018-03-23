@@ -220,7 +220,7 @@ def vacOneCycle():
         else:
           now = time.time()
 
-          if not os.path.exists('/var/lib/vac/gocdb-updated':
+          if not os.path.exists('/var/lib/vac/gocdb-updated'):
             vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
             os.utime('/var/lib/vac/gocdb-updated', (now, now - random.uniform(0, vac.shared.gocdbUpdateSeconds)))
           

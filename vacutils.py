@@ -868,7 +868,6 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
       raise VacutilsError('Problem parsing XML tree (' + str(e) + ')')
 
    # Now send the updates: service extensions first 
-   curl.setopt(curl.VERBOSE, 1)
    curl.setopt(curl.CUSTOMREQUEST, 'PUT')
    curl.setopt(curl.POSTFIELDS, json.dumps(spaceValues))
    curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/Service/%s/ExtensionProperties' % id)

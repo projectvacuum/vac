@@ -51,7 +51,6 @@ import subprocess
 import StringIO
 import urllib
 import datetime
-import email.utils
 import tempfile
 import socket
 import stat
@@ -3243,6 +3242,7 @@ def updateSpaceCensus():
 
 def updateGOCDB():
 
+   factoriesCount = 0
    maxProcessors = 0
    maxMachines = 0
    maxHS06 = 0
@@ -3260,8 +3260,11 @@ def updateGOCDB():
            maxProcessors += factoryResponse['max_processors']
            maxMachines += factoryResponse['max_machines']
            maxHS06 += factoryResponse['max_hs06']
+           factoriesCount += 1
          except Exception as e:
            vac.vacutils.logLine('Failed to parse census response from ' + factoryName + ' ("' + str(e) + '")')
+
+   vac.vacutils.logLine('Updating GOCDB')
 
    voShares = {}
    policyRules = ''
@@ -3272,7 +3275,7 @@ def updateGOCDB():
        policyRules += 'VOMS:' + machinetypes[machinetypeName]['accounting_fqan'] + ','
 
        try:
-         targetShare = float(machinetypes[machinetypeName]['target_share'])
+         targetShare = float(machinetypes[machinetypeName]['share'])
        except:
          targetShare = 0.0
          
@@ -3282,7 +3285,7 @@ def updateGOCDB():
          except:
            pass
          else:
-           if vo in voShares:
+           if voName in voShares:
              voShares[voName] += targetShare
            else:
              voShares[voName] = targetShare
@@ -3292,9 +3295,25 @@ def updateGOCDB():
    otherInfo = ''
    
    for voName in voShares:
-     otherInfo += 'Share=%s:%0.2f,' % (voName, voShares[voName] / sharesTotal)
+     otherInfo += 'Share=%s:%d,' % (voName, int(0.5 + (100 * voShares[voName]) / sharesTotal))
+
+   spaceValues = {
+       'ComputingManagerCreationTime':		datetime.datetime.utcnow().replace(microsecond = 0).isoformat() + 'Z',
+       'ComputingManagerProductName':		'Vac',
+       'ComputingManagerProductVersion':	vacVersion,
+       'ComputingManagerTotalLogicalCPUs':	maxProcessors,
+       'ComputingManagerTotalSlots':		maxMachines,
+       'ComputingManagerTotalPhysicalCPUs':	factoriesCount, # factories, not really physical CPUs (x2 ?)
+       'BenchmarkType':				'specint2000',
+       'BenchmarkValue':			maxHS06 * 250.0
+     }
      
-   vac.vacutils.logLine('Updating GOCDB')
+   if otherInfo:
+     spaceValues['ComputingManagerOtherInfo'] = otherInfo.strip(',')
+     
+   if policyRules:
+     spaceValues['PolicyRule'] = policyRules.strip(',')
+     spaceValues['PolicyScheme'] = 'org.glite.standard'
 
    vac.vacutils.updateSpaceInGOCDB(
      gocdbSitename,
@@ -3304,18 +3323,7 @@ def updateGOCDB():
      gocdbKeyFile,
      '/etc/grid-security/certificates',
      'Vac ' + vacVersion,
-     {
-       'UpdatedInGOCDB':			email.utils.formatdate(timeval=None, localtime=False, usegmt=True),
-       'ComputingManagerProductName':		'Vac',
-       'ComputingManagerProductVersion':	vacVersion,
-       'ComputingManagerTotalLogicalCPUs':	maxProcessors,
-       'ComputingManagerTotalSlots':		maxMachines,
-       'ComputingManagerOtherInfo':		otherInfo.strip(',')
-       'BenchmarkType':				'specint2000',
-       'BenchmarkValue':			maxHS06 * 250.0,
-       'PolicyScheme':				'org.glite.standard',
-       'PolicyRule':				policyRules.strip(',')
-     },
+     spaceValues,
      None # ONCE GOCDB ALLOWS API CREATION OF ENDPOINTS WE CAN PUT MORE INFO (eg wallclock limits) THERE
           # ONE ENDPOINT OF THE VAC SERVICE PER MACHINETYPE
      )
