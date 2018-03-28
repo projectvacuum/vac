@@ -877,6 +877,9 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
    except Exception as e:
      raise VacutilsError('Failed to update service data (' + str(e) + ')')
 
+   if curl.getinfo(pycurl.RESPONSE_CODE) / 100 != 2:
+     raise VacutilsError('PUT %s fails with HTTP code %d!' % (curl.URL, curl.getinfo(pycurl.RESPONSE_CODE)))
+     
 # WE DON'T DO THIS YET SINCE GOCDB DOES NOT SUPPORT CREATING ENDPOINTS THROUGH THE API!
 #
 #   # Next the endpoint

@@ -3200,12 +3200,12 @@ def makeFactoryResponse(cookie, clientName = '-'):
    return json.dumps(responseDict)
 
 def updateSpaceCensus():
-   # Update the files in /var/lib/vac/census, one per working factory in this space,
+   # Update the files in /var/lib/vac/space-census, one per working factory in this space,
    # based on VacQuery responses. Returns the number of factory responses in that 
    # directory dated within the last gocdbUpdateSeconds.
    
    try:
-     os.makedirs('/var/lib/vac/census', 
+     os.makedirs('/var/lib/vac/space-census', 
                  stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
    except:
      pass
@@ -3217,7 +3217,7 @@ def updateSpaceCensus():
    else:
      for factoryName in responses:   
        try:
-         vac.vacutils.createFile('/var/lib/vac/census/' + factoryName, json.dumps(responses[factoryName]), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+         vac.vacutils.createFile('/var/lib/vac/space-census/' + factoryName, json.dumps(responses[factoryName]), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
        except Exception as e:
          vac.vacutils.logLine('Failed write census response from ' + factoryName + ' ("' + str(e) + '")')
    
@@ -3225,9 +3225,9 @@ def updateSpaceCensus():
    censusCount = 0
    now = int(time.time())
    
-   for factoryName in os.listdir('/var/lib/vac/census'):
+   for factoryName in os.listdir('/var/lib/vac/space-census'):
      try:
-       factoryTime = int(os.stat('/var/lib/vac/census/' + factoryName).st_ctime)
+       factoryTime = int(os.stat('/var/lib/vac/space-census/' + factoryName).st_ctime)
      except:
        continue
      else:
@@ -3236,35 +3236,64 @@ def updateSpaceCensus():
        elif now > factoryTime + 2 * gocdbUpdateSeconds:
          # Use twice the update frequency for debugging at the command line
          vac.vacutils.logLine('Removed expired space census file for factory ' + factoryName)
-         os.remove('/var/lib/vac/census/' + factoryName)
+         os.remove('/var/lib/vac/space-census/' + factoryName)
          
    return censusCount
 
 def updateGOCDB():
 
+   vac.vacutils.logLine('Updating GOCDB')
+
+   # Initialisations
    factoriesCount = 0
    maxProcessors = 0
    maxMachines = 0
    maxHS06 = 0
    now = int(time.time())
+   spaceCatalogue = {}
 
-   for factoryName in os.listdir('/var/lib/vac/census'):
+   # First load a static catalogue of factories if it exists 
+   #
+   # A JSON dictionary of dictionaries, with this format: 
+   #
+   #   {'vac01.example.com': {'max_processors':2, 'max_machines':1, 'max_hs06':20.0},
+   #    'vac02.example.com': {'max_processors':3, 'max_machines':2, 'max_hs06':30.0} }
+   # 
+   if os.path.exists('/var/lib/vac/space-catalogue.json'):
      try:
-       factoryTime = int(os.stat('/var/lib/vac/census/' + factoryName).st_ctime)
+       spaceCatalogue = json.loads(open('/var/lib/vac/space-catalogue.json', 'r').read())
+     except Exception as e:
+       vac.vacutils.logLine('Failed to parse space-catalogue.json (' + str(e) + ')')
+     else:
+       for factoryName in spaceCatalogue:
+         try:
+           maxProcessors += spaceCatalogue[factoryName]['max_processors']
+           maxMachines += spaceCatalogue[factoryName]['max_machines']
+           maxHS06 += spaceCatalogue[factoryName]['max_hs06']
+           factoriesCount += 1
+         except:
+           vac.vacutils.logLine('Failed to parse space-catalogue.json item ' + str(spaceCatalogue[factoryName]))
+
+   # Then go through the dynamic responses, for factories not already counted
+   for factoryName in os.listdir('/var/lib/vac/space-census'):
+     if factoryName in spaceCatalogue:
+       # Don't double count factories also in the static catalogue file
+       continue
+   
+     try:
+       factoryTime = int(os.stat('/var/lib/vac/space-census/' + factoryName).st_ctime)
      except:
        continue
      else:
        if now < factoryTime + gocdbUpdateSeconds:
          try:
-           factoryResponse = json.loads(open('/var/lib/vac/census/' + factoryName, 'r').read())
+           factoryResponse = json.loads(open('/var/lib/vac/space-census/' + factoryName, 'r').read())
            maxProcessors += factoryResponse['max_processors']
            maxMachines += factoryResponse['max_machines']
            maxHS06 += factoryResponse['max_hs06']
            factoriesCount += 1
          except Exception as e:
            vac.vacutils.logLine('Failed to parse census response from ' + factoryName + ' ("' + str(e) + '")')
-
-   vac.vacutils.logLine('Updating GOCDB')
 
    voShares = {}
    policyRules = ''
@@ -3315,19 +3344,27 @@ def updateGOCDB():
      spaceValues['PolicyRule'] = policyRules.strip(',')
      spaceValues['PolicyScheme'] = 'org.glite.standard'
 
-   vac.vacutils.updateSpaceInGOCDB(
-     gocdbSitename,
-     spaceName,
-     'uk.ac.gridpp.vac',
-     gocdbCertFile,
-     gocdbKeyFile,
-     '/etc/grid-security/certificates',
-     'Vac ' + vacVersion,
-     spaceValues,
-     None # ONCE GOCDB ALLOWS API CREATION OF ENDPOINTS WE CAN PUT MORE INFO (eg wallclock limits) THERE
-          # ONE ENDPOINT OF THE VAC SERVICE PER MACHINETYPE
-     )
-     
+   vac.vacutils.logLine('Space info for Vac service %s in GOCDB site %s: %s' 
+                          % (spaceName, gocdbSitename, str(spaceValues)))
+
+   try:
+     vac.vacutils.updateSpaceInGOCDB(
+       gocdbSitename,
+       spaceName,
+       'uk.ac.gridpp.vac',
+       gocdbCertFile,
+       gocdbKeyFile,
+       '/etc/grid-security/certificates',
+       'Vac ' + vacVersion,
+       spaceValues,
+       None # ONCE GOCDB ALLOWS API CREATION OF ENDPOINTS WE CAN PUT MORE INFO (eg wallclock limits) THERE
+            # ONE ENDPOINT OF THE VAC SERVICE PER MACHINETYPE
+       )
+   except Exception as e:
+     vac.vacutils.logLine('Failed to update space info in GOCDB: ' + str(e))
+   else:
+     vac.vacutils.logLine('Successfully updated space info in GOCDB')
+    
 def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP):
    # Create a temporary text file containing contents then move
    # it into place. Rename is an atomic operation in POSIX,

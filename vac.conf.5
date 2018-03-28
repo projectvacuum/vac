@@ -131,11 +131,10 @@ GridPP VacMon service is vacmon.gridpp.ac.uk:8884
 and
 .B gocdb_key_file
 are the absolute paths of an X.509 certificate and private key which
-are authorized to update the GOCDB service information for this space.
-These updates are based on a census of the factories in this space
-which each Vac factory does every hour. Responses in this census expire
-after 24 hours. Each factory chooses one hour of the day and sends one 
-update to GOCDB for the whole space at that hour each day. 
+are authorized to update the GOCDB capacity and VO information for this
+space. See 
+.B SPACE CENSUS AND GOCDB
+for more about this feature.
 
 .B total_processors
 is derived from /proc/cpuinfo by default and does not usually need to be 
@@ -540,6 +539,42 @@ As explained above, options referring to files
 on the LM factory may not specify filesystem paths if obtained from
 a Vacuum Pipe: only filenames within the 
 /var/lib/vac/machinetypes/MACHINETYPEPREFIX/files directory are acceptable.
+
+.SH SPACE CENSUS AND GOCDB
+
+If the options
+.B gocdb_cert_file
+and
+.B gocdb_key_file
+are set, then Vac will attempt to update GOCDB with 
+information about this Vac space. The space must already exist in GOCDB
+as part of the site with name given by 
+.B gocdb_sitename.
+The list of VOs with machinetypes in this space is taken from the 
+Vac configuration, with FQANs given by 
+.B accounting_fqan.
+Both machinetypes defined locally and those from remote vacuum pipes 
+are included. 
+Capacity information for the whole space is combined from a static file and
+a dynamic census of the other Vac factories in this space.
+
+Static information is taken from the file /var/lib/vac/space-catalogue.json
+if it exists. This JSON file consists of a dictionary with factory names 
+as the keys and dictionaries of key/value pairs for each factory. For
+example:
+{'vac01.example.com': {'max_processors':2, 'max_machines':1, 'max_hs06':20.0}, 'vac02.example.com': {'max_processors':3, 'max_machines':2, 'max_hs06':30.0} }
+
+Each Vac factory also maintains a census of all factories in this space
+by sending VacQuery messages every hour and recording
+the results in /var/lib/vac/space-census/ . Results more than one day old are
+ignored, and then deleted after two days (to allow debugging.) 
+
+Each Vac factory sends one update to GOCDB for the whole space once per day
+if there are 24 or fewer factories responding in the census. If there are more
+factories, then the time between updates is increased in proportion to
+the number of factories in the census. The update information
+sent is based on both space-catalogue.json and the census. If a factory
+is described in space-catalogue.json then its census results are ignored.
 
 .SH AUTHOR
 Andrew McNab <Andrew.McNab@cern.ch>

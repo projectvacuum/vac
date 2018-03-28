@@ -212,7 +212,6 @@ def vacOneCycle():
       
       if vac.shared.gocdbCertFile and vac.shared.gocdbKeyFile:      
 
-
         if not os.path.exists(vac.shared.gocdbCertFile):
           vac.vacutils.logLine('gocdb_cert_file = ' + gocdbCertFile + ' does not exist. Not updating GOCDB.')
         elif not os.path.exists(vac.shared.gocdbKeyFile):
@@ -220,11 +219,18 @@ def vacOneCycle():
         else:
           now = time.time()
 
+          if censusCount <= 24:
+            # If have 24 factories, then each factory updates every gocdbUpdateSeconds
+            updateSeconds = vac.shared.gocdbUpdateSeconds
+          else:
+            # If have more than 24 factories, then each factory updates less frequently
+            updateSeconds = vac.shared.gocdbUpdateSeconds * censusCount / 24.0
+
           if not os.path.exists('/var/lib/vac/gocdb-updated'):
             vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
-            os.utime('/var/lib/vac/gocdb-updated', (now, now - random.uniform(0, vac.shared.gocdbUpdateSeconds)))
+            os.utime('/var/lib/vac/gocdb-updated', (now, now - random.uniform(0, updateSeconds)))
           
-          if now > (os.stat('/var/lib/vac/gocdb-updated').st_mtime + vac.shared.gocdbUpdateSeconds):
+          if now > (os.stat('/var/lib/vac/gocdb-updated').st_mtime + updateSeconds):
             vac.vacutils.createFile('/var/lib/vac/gocdb-updated', '', stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
             vac.shared.updateGOCDB()
 
