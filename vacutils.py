@@ -13,11 +13,11 @@
 #
 #    o Redistributions of source code must retain the above
 #      copyright notice, this list of conditions and the following
-#      disclaimer. 
+#      disclaimer.
 #    o Redistributions in binary form must reproduce the above
 #      copyright notice, this list of conditions and the following
 #      disclaimer in the documentation and/or other materials
-#      provided with the distribution. 
+#      provided with the distribution.
 #
 #  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
 #  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
@@ -69,11 +69,11 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
 
    if tmpDir is None:
      tmpDir = os.path.dirname(targetname)
-   
+
    try:
      ftup = tempfile.mkstemp(prefix = 'temp', dir = tmpDir, text = True)
      os.write(ftup[0], contents)
-       
+
      if mode:
        os.fchmod(ftup[0], mode)
 
@@ -82,7 +82,7 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
      return True
    except Exception as e:
      logLine('createFile(' + targetname + ',...) fails with "' + str(e) + '"')
-     
+
      try:
        os.remove(ftup[1])
      except:
@@ -99,7 +99,7 @@ def secondsToString(timeStamp):
 
    if timeStamp is None or timeStamp == 0:
      return ' - '
-  
+
    seconds = int(time.time() - timeStamp)
 
    if seconds < 120:
@@ -121,7 +121,7 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
    except:
      logLine('Unable to read and parse vacuum pipe file ' + pipeFile)
      pipeDict = { 'cache_seconds' : cacheSeconds }
-     
+
      try:
        f = open(pipeFile, 'w')
      except:
@@ -151,7 +151,7 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
      c.setopt(c.FOLLOWLOCATION, True)
      c.setopt(c.SSL_VERIFYPEER, 1)
      c.setopt(c.SSL_VERIFYHOST, 2)
-               
+
      if os.path.isdir('/etc/grid-security/certificates'):
        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
      else:
@@ -188,9 +188,9 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
 
    return pipeDict
 
-def createUserData(shutdownTime, machinetypePath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr, 
-                   machinefeaturesURL = None, jobfeaturesURL = None, joboutputsURL = None, rootImageURL = None):
-   
+def createUserData(shutdownTime, machinetypePath, options, versionString, spaceName, machinetypeName, userDataPath, hostName, uuidStr,
+                   machinefeaturesURL = None, jobfeaturesURL = None, joboutputsURL = None, rootImageURL = None, heartbeatMachinesURL = None):
+
    # Get raw user_data template file, either from network ...
    if (userDataPath[0:7] == 'http://') or (userDataPath[0:8] == 'https://'):
      buffer = StringIO.StringIO()
@@ -202,7 +202,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      c.setopt(c.FOLLOWLOCATION, True)
      c.setopt(c.SSL_VERIFYPEER, 1)
      c.setopt(c.SSL_VERIFYHOST, 2)
-               
+
      if os.path.isdir('/etc/grid-security/certificates'):
        c.setopt(c.CAPATH, '/etc/grid-security/certificates')
      else:
@@ -246,10 +246,13 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
      userDataContents = userDataContents.replace('##user_data_jobfeatures_url##', jobfeaturesURL)
 
    if joboutputsURL:
-     userDataContents = userDataContents.replace('##user_data_joboutputs_url##', joboutputsURL)     
+     userDataContents = userDataContents.replace('##user_data_joboutputs_url##', joboutputsURL)
 
-   if rootImageURL :
+   if rootImageURL:
      userDataContents = userDataContents.replace('##user_data_root_image_url##', rootImageURL)
+
+   if heartbeatMachinesURL:
+     userDataContents = userDataContents.replace('##user_data_heartbeat_machines_url##', heartbeatMachinesURL)
 
    # Deprecated vmtype/VM/VMLM terminology
    userDataContents = userDataContents.replace('##user_data_vmtype##',           machinetypeName)
@@ -285,7 +288,7 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
              f = open(oneValue, 'r')
            else:
              f = open(machinetypePath + '/files/' + oneValue, 'r')
-             
+
            fileContents = f.read()
            f.close()
 
@@ -296,11 +299,11 @@ def createUserData(shutdownTime, machinetypePath, options, versionString, spaceN
            userDataContents = userDataContents.replace('##user_data_option_' + oneOption[15:] + '##', fileContents)
 
         except:
-           raise VacutilsError('Failed to read ' + oneValue + ' for ' + oneOption)          
+           raise VacutilsError('Failed to read ' + oneValue + ' for ' + oneOption)
 
    # Remove any unused patterns from the template
-   userDataContents = re.sub('##user_data_[a-z,0-9,_]*##', '', userDataContents)       
-   
+   userDataContents = re.sub('##user_data_[a-z,0-9,_]*##', '', userDataContents)
+
    return userDataContents
 
 def emptyCallback1(p1):
@@ -310,7 +313,7 @@ def emptyCallback2(p1, p2):
    return
 
 def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=None):
-   # Return a PEM-encoded limited proxy as a string in either Globus Legacy 
+   # Return a PEM-encoded limited proxy as a string in either Globus Legacy
    # or RFC 3820 format. Checks that the existing cert/proxy expires after
    # the given expirationTime, but no other checks are done.
 
@@ -336,17 +339,17 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
      except:
        certBIO.close()
        break
-   
+
    if len(oldCerts) == 0:
      raise VacutilsError('Failed get certificate from ' + certPath)
 
    # Check the expirationTime
-   
+
    if int(calendar.timegm(time.strptime(str(oldCerts[0].get_not_after()), "%b %d %H:%M:%S %Y %Z"))) < expirationTime:
      raise VacutilsError('Cert/proxy ' + certPath + ' expires before given expiration time ' + str(expirationTime))
 
    # Create the public/private keypair for the new proxy
-   
+
    newKey = M2Crypto.EVP.PKey()
    newKey.assign_rsa(M2Crypto.RSA.gen_key(1024, 65537, emptyCallback2))
 
@@ -367,32 +370,32 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
      newSubject.add_entry_by_txt(field = "CN",
                                  type  = 0x1001,
                                  entry = 'limited proxy',
-                                 len   = -1, 
-                                 loc   = -1, 
+                                 len   = -1,
+                                 loc   = -1,
                                  set   = 0)
    elif cn:
      # RFC proxy, probably with machinetypeName as proxy CN
      newSubject.add_entry_by_txt(field = "CN",
                                  type  = 0x1001,
                                  entry = cn,
-                                 len   = -1, 
-                                 loc   = -1, 
+                                 len   = -1,
+                                 loc   = -1,
                                  set   = 0)
    else:
      # RFC proxy, with Unix time as CN
      newSubject.add_entry_by_txt(field = "CN",
                                  type  = 0x1001,
                                  entry = str(int(time.time() * 100)),
-                                 len   = -1, 
-                                 loc   = -1, 
+                                 len   = -1,
+                                 loc   = -1,
                                  set   = 0)
 
    newCert.set_subject_name(newSubject)
-   
+
    # Set start and finish times
-   
+
    newNotBefore = M2Crypto.ASN1.ASN1_UTCTIME()
-   newNotBefore.set_time(int(time.time())) 
+   newNotBefore.set_time(int(time.time()))
    newCert.set_not_before(newNotBefore)
 
    newNotAfter = M2Crypto.ASN1.ASN1_UTCTIME()
@@ -400,7 +403,7 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
    newCert.set_not_after(newNotAfter)
 
    # Add extensions, possibly including RFC-style proxyCertInfo
-   
+
    newCert.add_ext(M2Crypto.X509.new_extension("keyUsage", "Digital Signature, Key Encipherment, Key Agreement", 1))
 
    if not isLegacyProxy:
@@ -408,17 +411,17 @@ def makeX509Proxy(certPath, keyPath, expirationTime, isLegacyProxy=False, cn=Non
 
    # Sign the certificate with the old private key
    oldKeyEVP = M2Crypto.EVP.PKey()
-   oldKeyEVP.assign_rsa(oldKey) 
+   oldKeyEVP.assign_rsa(oldKey)
    newCert.sign(oldKeyEVP, 'sha256')
 
    # Return proxy as a string of PEM blocks
-   
+
    proxyString = newCert.as_pem() + newKey.as_pem(cipher = None)
 
    for oneOldCert in oldCerts:
      proxyString += oneOldCert.as_pem()
 
-   return proxyString 
+   return proxyString
 
 def getCernvmImageData(fileName):
 
@@ -427,9 +430,9 @@ def getCernvmImageData(fileName):
    try:
      length = os.stat(fileName).st_size
    except Exception as e:
-     logLine('Failed to get CernVM image size (' + str(e) + ')')     
+     logLine('Failed to get CernVM image size (' + str(e) + ')')
      return data
-   
+
    if length <= 65536:
      logLine('CernVM image only ' + str(length) + ' bytes long: must be more than 65536')
      return data
@@ -503,11 +506,11 @@ def getCernvmImageData(fileName):
        else:
          data['verified'] = True
          data['dn']       = dn
-         
+
    except Exception as e:
      logLine('Failed to run /usr/bin/openssl verify command (' + str(e) + ')')
      return data
-   
+
    return data
 
 def getRemoteRootImage(url, imageCache, tmpDir, versionString):
@@ -516,16 +519,16 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
      f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
    except Exception as e:
      VacutilsError('Failed to create temporary image file in ' + tmpDir)
-        
+
    ff = os.fdopen(f, 'wb')
-   
+
    c = pycurl.Curl()
    c.setopt(c.USERAGENT, versionString)
    c.setopt(c.URL, url)
    c.setopt(c.WRITEDATA, ff)
 
    urlEncoded = urllib.quote(url,'')
-       
+
    try:
      # For existing files, we get the mtime and only fetch the image itself if newer.
      # We check mtime not ctime since we will set it to remote Last-Modified: once downloaded
@@ -541,7 +544,7 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
    c.setopt(c.OPT_FILETIME,   1)
    c.setopt(c.SSL_VERIFYPEER, 1)
    c.setopt(c.SSL_VERIFYHOST, 2)
-        
+
    if os.path.isdir('/etc/grid-security/certificates'):
      c.setopt(c.CAPATH, '/etc/grid-security/certificates')
    else:
@@ -567,7 +570,7 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
        # We fail rather than use a server that doesn't give Last-Modified:
        raise VacutilsError('Failed to get last modified time for ' + url)
      else:
-       # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent 
+       # We set mtime to Last-Modified: in case our system clock is very wrong, to prevent
        # continually downloading the image based on our faulty filesystem timestamps
        os.utime(tempName, (time.time(), lastModified))
 
@@ -578,14 +581,14 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
          os.remove(tempName)
        except:
          pass
-           
+
        raise VacutilsError('Failed renaming new image ' + imageCache + '/' + urlEncoded)
 
      logLine('New ' + url + ' put in ' + imageCache)
 
    else:
      logLine('No new version of ' + url + ' found and existing copy not replaced')
-     
+
    c.close()
    return imageCache + '/' + urlEncoded
 
@@ -594,13 +597,13 @@ def splitCommaHeaders(inputList):
    outputList = []
 
    for x in inputList:
-   
+
      if ',' in x:
        for y in re.split(r', *', x):
          outputList.append(y.strip())
      else:
        outputList.append(x.strip())
-       
+
    return outputList
 
 def setProcessName(processName):
@@ -614,14 +617,14 @@ def setProcessName(processName):
      s.value = processName
 
      # PR_SET_NAME=15 in /usr/include/linux/prctl.h
-     libc.prctl(15, ctypes.byref(s), 0, 0, 0) 
+     libc.prctl(15, ctypes.byref(s), 0, 0, 0)
 
    except:
      logLine('Failed setting process name to ' + processName + ' using prctl')
      return
-              
+
    try:
-     # Now find argv[] so we can overwrite it too     
+     # Now find argv[] so we can overwrite it too
      argc_t = ctypes.POINTER(ctypes.c_char_p)
 
      Py_GetArgcArgv = ctypes.pythonapi.Py_GetArgcArgv
@@ -664,49 +667,49 @@ def makeSyncRecord(dirPrefix, targetYearMonth, tmpDir):
    except:
       print 'Cannot parse as YYYYMM: ' + targetYearMonth
       return 1
-      
+
    numberJobs = 0
    site       = None
    submitHost = None
 
    recordsList = glob.glob(dirPrefix + '/apel-archive/' + targetYearMonth + '*/*')
-   # We go backwards in time, assuming that site and SubmitHost for 
+   # We go backwards in time, assuming that site and SubmitHost for
    # the most recent record are correct
    recordsList.sort(reverse=True)
 
    for fileName in recordsList:
       thisSite = None
       thisSubmitHost = None
-    
+
       for line in open(fileName, 'r'):
         if line.startswith('Site:'):
           thisSite = line[5:].strip()
         elif line.startswith('SubmitHost:'):
           thisSubmitHost = line[11:].strip()
-    
+
         if thisSite and thisSubmitHost:
-          break  
+          break
 
       if thisSite is None:
         print 'No Site given in ' + fileName + ' !! - please fix this - skipping'
         continue
-      
+
       if thisSubmitHost is None:
         print 'No SubmitHost given in ' + fileName + ' !! - please fix this - skipping'
         continue
-      
+
       if site is None:
         site = thisSite
       elif site != thisSite:
         print 'Site changes from ' + site + ' to ' + thisSite + ' - please fix ' + fileName + ' - skipping'
         continue
-      
+
       if submitHost is None:
         submitHost = thisSubmitHost
       elif submitHost != thisSubmitHost:
         print 'SubmitHost changes from ' + submitHost + ' to ' + thisSubmitHost + ' - please fix ' + fileName + ' - skipping'
         continue
-      
+
       numberJobs += 1
 
    syncRecord = 'APEL-sync-message: v0.1\n'               \
@@ -746,7 +749,7 @@ def makeSshFingerprint(pubFileLine):
 def loadAvg(which = None):
    # By default, use maximum load average
    # which = 1, 2, or 3
-      
+
    try:
      load0,load1,load2 = open('/proc/loadavg').readline().split()[0:3]
      loadList = [float(load0),float(load1),float(load2)]
@@ -762,7 +765,7 @@ def loadAvg(which = None):
 def memInfo():
    # Get some interesting quantities out of /proc/meminfo
    result = {}
-   
+
    try:
      f = open('/proc/meminfo', 'r')
    except:
@@ -771,10 +774,10 @@ def memInfo():
 
    while True:
      fields = f.readline().split()
-     
+
      if len(fields) == 0:
        break
-     
+
      if fields[0] == 'SwapTotal:':
        result['SwapTotal'] = int(fields[1])
      elif fields[0] == 'SwapFree:':
@@ -800,9 +803,9 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
    keys          = {}
    machinetypes  = {}
    curl          = pycurl.Curl()
-   
+
    # First get the current state from GOCDB
-    
+
    buffer = StringIO.StringIO()
    curl.setopt(curl.WRITEFUNCTION, buffer.write)
    curl.setopt(curl.USERAGENT, versionString)
@@ -824,7 +827,7 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
      serviceEndpoint = xml.etree.cElementTree.fromstring(buffer.getvalue()).find('SERVICE_ENDPOINT')
    except Exception as e:
      raise VacutilsError('Failed to extract serviceEndpoint (' + str(e) + ')')
-            
+
    try:
       id = serviceEndpoint.attrib['PRIMARY_KEY'].split('G')[0]
 
@@ -842,13 +845,13 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
 
             for j in endpoint:
 
-              if j.text is None:            
+              if j.text is None:
                 endpointDict[j.tag] = j.text
-                
+
               elif j.tag == 'EXTENSIONS':
                 for ext in j:
                   endpointDict[ext.find('KEY').text] = ext.find('VALUE').text
-              
+
               elif j.tag == 'NAME':
                 endpointName = j.text.strip()
 
@@ -867,7 +870,7 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
    except Exception as e:
       raise VacutilsError('Problem parsing XML tree (' + str(e) + ')')
 
-   # Now send the updates: service extensions first 
+   # Now send the updates: service extensions first
    curl.setopt(curl.CUSTOMREQUEST, 'PUT')
    curl.setopt(curl.POSTFIELDS, json.dumps(spaceValues))
    curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/Service/%s/ExtensionProperties' % id)
@@ -879,21 +882,21 @@ def updateSpaceInGOCDB(siteName, spaceName, serviceType, certPath, keyPath, caPa
 
    if curl.getinfo(pycurl.RESPONSE_CODE) / 100 != 2:
      raise VacutilsError('PUT %s fails with HTTP code %d!' % (curl.URL, curl.getinfo(pycurl.RESPONSE_CODE)))
-     
+
 # WE DON'T DO THIS YET SINCE GOCDB DOES NOT SUPPORT CREATING ENDPOINTS THROUGH THE API!
 #
 #   # Next the endpoint
-#   
+#
 #   for machinetypeName in machinetypesValues:
 #     # need to get the endpointId from machinetypes
-#     
+#
 #     try:
 #       endpointID = machinetypes[machinetypeName]['ID']
 #     except:
 #       raise VacutilsError('Cannot get endpoint ID for %s' % machinetypeName)
-#       
+#
 #     print endpointID,machinetypeName,machinetypesValues[machinetypeName]
-#     
+#
 #     curl.setopt(curl.POSTFIELDS, json.dumps(machinetypesValues[machinetypeName]))
 #     curl.setopt(curl.URL, 'https://goc.egi.eu/gocdbpi/v5/EndPoint/%s/ExtensionProperties' % endpointID )
 #
