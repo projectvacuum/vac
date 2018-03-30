@@ -444,6 +444,7 @@ def vacOneCycle():
        if not chosenMachinetypeName and freeProcessors > 0:
          for machinetypeName in eligibleMachinetypeNames:
            # Check machinetype processor and time limits, and LM size limit from processorsPerSuperslot
+           # We always create the largest machine we can given the free processors in the superslot
            if min(freeProcessors, vac.shared.processorsPerSuperslot) >= vac.shared.machinetypes[machinetypeName]['min_processors']:
              # Found a match, so record this
              chosenMachinetypeName = machinetypeName
