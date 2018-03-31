@@ -2592,7 +2592,7 @@ def makeMetadataBody(created, machinetypeName, machineName, path):
        return None
 
    # meta-data directory listing
-   if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/$|^/openstack/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/$', requestURI):
+   if re.search('^/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/?$|^/openstack/[0-9]{4}-[0-9]{2}-[0-9]{2}/meta-data/?$', requestURI):
      body = ''
 
      for fileName in ['public-keys/0/openssh-key', 'ami-id', 'instance-id']:

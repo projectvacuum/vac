@@ -13,6 +13,8 @@
 - vacuum_pipe sections replace vacuum_pipe_url option in machinetypes
 - Add updateSpaceInGOCDB() utility to vacutils.py
 - Add gocdb_cert/key_file and GOCDB capacity updating to vacd
+- Return an EC2/OpenStack meta-data directory listing even if the URL
+  lacks the trailing slash. This is needed by a bug in Cloud Init 0.7.5
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]
