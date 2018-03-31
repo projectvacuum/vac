@@ -15,6 +15,8 @@
 - Add gocdb_cert/key_file and GOCDB capacity updating to vacd
 - Return an EC2/OpenStack meta-data directory listing even if the URL
   lacks the trailing slash. This is needed by a bug in Cloud Init 0.7.5
+- Install Python modules in /usr/lib/pythonVERSION/site-packages/vac
+  not /usr/lib64/pythonVERSION/site-packages/vac
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]

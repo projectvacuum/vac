@@ -28,7 +28,7 @@ The vac-command RPM provides the vac command line tool but not the vacd daemon.
 %build
 
 %install
-make install PYTHON_SITEARCH=%{python_sitearch} 
+make install PYTHON_SITELIB=%{python_sitelib} 
 
 %preun
 if [ "$1" = "0" ] ; then
@@ -56,7 +56,7 @@ echo '0 12 * * * root /usr/sbin/vac apel-sync >>/var/log/vac-ssmsend 2>&1' >>/et
 /usr/share/man/man5/*
 /usr/share/man/man8/*
 /usr/share/doc/vac-%{version}
-%{python_sitearch}/vac
+%{python_sitelib}/vac
 /var/lib/vac
 /etc/rc.d/init.d/*
 /etc/logrotate.d/vacd
@@ -74,5 +74,5 @@ echo '0 12 * * * root /usr/sbin/vac apel-sync >>/var/log/vac-ssmsend 2>&1' >>/et
 /usr/share/doc/vac-%{version}/vac.1
 /usr/share/doc/vac-%{version}/vac.conf.5
 /var/lib/vac/VERSION
-%{python_sitearch}/vac
+%{python_sitelib}/vac
 /etc/vac.d

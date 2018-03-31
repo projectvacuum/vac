@@ -119,6 +119,7 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
    try:
      pipeDict = json.load(open(pipeFile, 'r'))
    except:
+     # No pipe file found, so create a placeholder file
      logLine('Unable to read and parse vacuum pipe file ' + pipeFile)
      pipeDict = { 'cache_seconds' : cacheSeconds }
 

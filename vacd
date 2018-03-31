@@ -562,9 +562,12 @@ def vacResponder():
              vac.vacutils.logLine('Failed to bind to vac responder port 995: ' + str(e))
              time.sleep(60.0)
              continue
-   
-         readConfError = vac.shared.readConf(includePipes = False)
-  
+
+         # Load the configuration including vacuum pipes expanded into machinetypes.
+         # updatePipes is False though, so only pipes cached by vacd-factory are
+         # included. This should be fine though as it runs every couple of minutes.
+         readConfError = vac.shared.readConf(includePipes = True, updatePipes = False, printConf = True)
+
          if readConfError:
            vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
            time.sleep(60.0)
