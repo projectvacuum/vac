@@ -1,4 +1,6 @@
 ==================== Changes in Vac version 02.00.03 ===================
+- Return an EC2/OpenStack meta-data directory listing even if the URL
+  lacks the trailing slash. This is needed by a bug in Cloud Init 0.7.5
 ==================== Changes in Vac version 02.00.02 ===================
 - Disable unset_merge_across_nodes in Puppet init.pp causes instability
 ==================== Changes in Vac version 02.00.01 ===================
