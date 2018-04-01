@@ -1,3 +1,6 @@
+==================== Changes in Vac version 00.21.05 ===================
+- Return an EC2/OpenStack meta-data directory listing even if the URL
+  lacks the trailing slash. This is needed by a bug in Cloud Init 0.7.5
 ==================== Changes in Vac version 00.21.04 =================== 
 - Use HS06 per processor for ServiceLevel in APEL accounting records
 ==================== Changes in Vac version 00.21.03 =================== 
