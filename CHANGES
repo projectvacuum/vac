@@ -1,3 +1,4 @@
+==================== Changes in Vac version 02.00.03 ===================
 ==================== Changes in Vac version 02.00.02 ===================
 - Disable unset_merge_across_nodes in Puppet init.pp causes instability
 ==================== Changes in Vac version 02.00.01 ===================
