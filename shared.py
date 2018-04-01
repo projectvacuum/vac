@@ -431,8 +431,10 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
               print "Cannot read vacuum_pipe_url (" + vacuumPipeURL + ": " + str(e) + ") - no machinetypes created!"
 
             else:
+              if not 'machinetypes' in vacuumPipe:
+                continue
+            
               # Process the contents of this pipe: "machinetypes" is a list of dictionaries, one per machinetype
-              
               totalPipeTargetShare = 0.0
               
               # First pass to get total target shares

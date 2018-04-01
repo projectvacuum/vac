@@ -121,8 +121,12 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
    except:
      # No pipe file found, so create a placeholder file
      logLine('Unable to read and parse vacuum pipe file ' + pipeFile)
-     pipeDict = { 'cache_seconds' : cacheSeconds }
+     pipeDict = { 'cache_seconds' : cacheSeconds, 'machinetypes' : [] }
 
+     if not updatePipes:
+       # if not updating then nothing further we can do
+       return pipeDict
+     
      try:
        f = open(pipeFile, 'w')
      except:
@@ -130,8 +134,9 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
      else:
        json.dump(pipeDict, f)
        f.close()
-       # still force an attempt to fetch remote file
-       cacheSeconds = 0
+
+     # but still force an attempt to fetch remote file
+     cacheSeconds = 0
 
    else:
      try:
@@ -141,7 +146,8 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
 
    # Check if cache seconds has expired
    if updatePipes and \
-      int(os.stat(pipeFile).st_mtime) < time.time() - cacheSeconds and \
+      (cacheSeconds == 0 or 
+       int(os.stat(pipeFile).st_mtime) <= time.time() - cacheSeconds) and \
       ((pipeURL[0:7] == 'http://') or (pipeURL[0:8] == 'https://')):
      buffer = StringIO.StringIO()
      c = pycurl.Curl()
@@ -183,9 +189,6 @@ def readPipe(pipeFile, pipeURL, versionString, updatePipes = False):
          logLine('Saved ' + pipeURL + ' as ' + pipeFile)
 
      createFile(pipeFile, json.dumps(pipeDict), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH)
-
-   if 'machinetypes' not in pipeDict:
-     pipeDict['machinetypes'] = []
 
    return pipeDict
 

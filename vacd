@@ -565,8 +565,8 @@ def vacResponder():
 
          # Load the configuration including vacuum pipes expanded into machinetypes.
          # updatePipes is False though, so only pipes cached by vacd-factory are
-         # included. This should be fine though as it runs every couple of minutes.
-         readConfError = vac.shared.readConf(includePipes = True, updatePipes = False, printConf = True)
+         # included. But this should be fine as vacd-factory runs every couple of minutes.
+         readConfError = vac.shared.readConf(includePipes = True, updatePipes = False, printConf = False)
 
          if readConfError:
            vac.vacutils.logLine('Reading configuration fails with: ' + readConfError)
