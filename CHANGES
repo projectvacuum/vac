@@ -10,13 +10,15 @@
 - If volume_group is given then it must exist for Vac to operate
 - os_issue now taken from /etc/redhat-release 
   (or /etc/redhat-release.vac if present)
-- vacuum_pipe sections replace vacuum_pipe_url option in machinetypes
+- vacuum_pipe sections replace vacuum_pipe_url option in machinetypes,
+  with options inherited from vacuum_pipe sections by their machinetypes
 - Add updateSpaceInGOCDB() utility to vacutils.py
 - Add gocdb_cert/key_file and GOCDB capacity updating to vacd
 - Return an EC2/OpenStack meta-data directory listing even if the URL
   lacks the trailing slash. This is needed by a bug in Cloud Init 0.7.5
 - Install Python modules in /usr/lib/pythonVERSION/site-packages/vac
   not /usr/lib64/pythonVERSION/site-packages/vac
+- Include example vacuum pipe: example.pipe
 ==================== Changes in Vac version 02.00.00 =================== 
 - Replace cpu(s) with processor(s) in configuration options
 - Add max_processors, min_processors, machinegroup to [machinetype ...]

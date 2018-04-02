@@ -429,41 +429,48 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
             except Exception as e:
               # If a vacuum pipe is given but cannot be read then skip
               print "Cannot read vacuum_pipe_url (" + vacuumPipeURL + ": " + str(e) + ") - no machinetypes created!"
+              continue
 
-            else:
-              if not 'machinetypes' in vacuumPipe:
-                continue
+            if not 'machinetypes' in vacuumPipe:
+              continue
             
-              # Process the contents of this pipe: "machinetypes" is a list of dictionaries, one per machinetype
-              totalPipeTargetShare = 0.0
+            # Process the contents of this pipe: "machinetypes" is a list of dictionaries, one per machinetype
+            totalPipeTargetShare = 0.0
               
-              # First pass to get total target shares
-              for pipeMachinetype in vacuumPipe['machinetypes']:
-                try:
-                  totalPipeTargetShare += float(pipeMachinetype['target_share'])
-                except:
-                  pass
+            # First pass to get total target shares
+            for pipeMachinetype in vacuumPipe['machinetypes']:
+              try:
+                totalPipeTargetShare += float(pipeMachinetype['target_share'])
+              except:
+                pass
                   
-              # Second pass to add options to the relevant machinetype sections
-              for pipeMachinetype in vacuumPipe['machinetypes']:
+            # Second pass to add options to the relevant machinetype sections
+            for pipeMachinetype in vacuumPipe['machinetypes']:
 
-                try:
-                  suffix = str(pipeMachinetype['suffix'])
-                except:
-                  print "suffix is missing from one machinetype within " + vacuumPipeURL + " - skipping!"
-                  continue
+              try:
+                suffix = str(pipeMachinetype['suffix'])
+              except:
+                print "suffix is missing from one machinetype within " + vacuumPipeURL + " - skipping!"
+                continue
                 
-                try:
-                  parser.add_section('machinetype ' + machinetypeNamePrefix + '-' + suffix)
-                except:
-                  # Ok if it already exists
-                  pass
+              try:
+                parser.add_section('machinetype ' + machinetypeNamePrefix + '-' + suffix)
+              except:
+                # Ok if it already exists
+                pass
+
+              # Copy almost all options from vacuum_pipe section to this new machinetype
+              # unless they have already been given. Skip vacuum_pipe_url and target_share                  
+              for n,v in parser.items(sectionName):
+                if n != 'vacuum_pipe_url' and n != 'target_share' and \
+                   not parser.has_option('machinetype ' + machinetypeNamePrefix + '-' + suffix, n):
+                  parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, n, v)
+                                    
+              # Record path to machinetype used to find the files on local disk
+              parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, 
+                         'machinetype_path', '/var/lib/vac/machinetypes/' + machinetypeNamePrefix)
                 
-                # Record path to machinetype used to find the files on local disk
-                parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, 
-                           'machinetype_path', '/var/lib/vac/machinetypes/' + machinetypeNamePrefix)
-                
-                acceptedOptions = [
+              acceptedOptions = [
                                     'accounting_fqan',
                                     'backoff_seconds',
                                     'container_command',
@@ -487,67 +494,67 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                                     'tmp_binds',
                                     'user_data',
                                     'user_data_proxy'
-                                  ]
+                                ]
 
-                # Go through vacuumPipe adding options if not already present from configuration files
-                for optionRaw in pipeMachinetype:
-                  option = str(optionRaw)
-                  value  = str(pipeMachinetype[optionRaw])
+              # Go through vacuumPipe adding options if not already present from configuration files
+              for optionRaw in pipeMachinetype:
+                option = str(optionRaw)
+                value  = str(pipeMachinetype[optionRaw])
                 
-                  # Skip if option already exists - configuration files take precedence
-                  if parser.has_option('machinetype ' + machinetypeNamePrefix + '-' + suffix, option):
-                    continue
+                # Skip if option already exists - configuration files take precedence
+                if parser.has_option('machinetype ' + machinetypeNamePrefix + '-' + suffix, option):
+                  continue
                     
-                  # Already dealt with
-                  if option == 'suffix':
-                    continue
+                # Already dealt with
+                if option == 'suffix':
+                  continue
                     
-                  # Deal with subdividing the total target share for this vacuum pipe here
-                  # Each machinetype gets a share based on its target_share within the pipe
-                  # We do the normalisation of the pipe target_shares here
-                  if option == 'target_share':
-                    try:
-                      targetShare = totalTargetShare * (float(value) / totalPipeTargetShare)
-                    except:
-                      targetShare = 0.0
-                  
-                    parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, 'target_share', str(targetShare))
-                    continue
+                # Deal with subdividing the total target share for this vacuum pipe here
+                # Each machinetype gets a share based on its target_share within the pipe
+                # We do the normalisation of the pipe target_shares here
+                if option == 'target_share':
+                  try:
+                    targetShare = totalTargetShare * (float(value) / totalPipeTargetShare)
+                  except:
+                    targetShare = 0.0
+
+                  parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, 'target_share', str(targetShare))
+                  continue
                     
-                  # Check option is one we accept
-                  if not option.startswith('user_data_file_' ) and \
-                     not option.startswith('user_data_option_' ) and \
-                     not option in acceptedOptions:
-                    print 'Option %s is not accepted from vacuum pipe - ignoring!' % option
-                    continue
+                # Check option is one we accept
+                if not option.startswith('user_data_file_' ) and \
+                   not option.startswith('user_data_option_' ) and \
+                   not option in acceptedOptions:
+                  print 'Option %s is not accepted from vacuum pipe - ignoring!' % option
+                  continue
                       
-                  # Any options which specify filenames on the hypervisor must be checked here  
-                  if (option.startswith('user_data_file_' )  or
-                      option ==         'cvmfs_repositories' or
-                      option ==         'heartbeat_file'   ) and '/' in value:
-                    print 'Option %s in %s cannot contain a "/" - ignoring!' % (option, vacuumPipeURL)
-                    continue
+                # Any options which specify filenames on the hypervisor must be checked here  
+                if (option.startswith('user_data_file_' )  or
+                    option ==         'cvmfs_repositories' or
+                    option ==         'heartbeat_file'   ) and '/' in value:
+                  print 'Option %s in %s cannot contain a "/" - ignoring!' % (option, vacuumPipeURL)
+                  continue
 
-                  elif (option == 'user_data' or option == 'root_image') and '/../' in value:
-                    print 'Option %s in %s cannot contain "/../" - ignoring!' % (option, vacuumPipeURL)
-                    continue
+                elif (option == 'user_data' or option == 'root_image') and '/../' in value:
+                  print 'Option %s in %s cannot contain "/../" - ignoring!' % (option, vacuumPipeURL)
+                  continue
 
-                  elif option == 'user_data' and '/' in value and \
-                       not value.startswith('http://') and \
-                       not value.startswith('https://'):
-                    print 'Option %s in %s cannot contain a "/" unless http(s)://... - ignoring!' % (option, vacuumPipeURL)
-                    continue
+                elif option == 'user_data' and '/' in value and \
+                     not value.startswith('http://') and \
+                     not value.startswith('https://'):
+                  print 'Option %s in %s cannot contain a "/" unless http(s)://... - ignoring!' % (option, vacuumPipeURL)
+                  continue
 
-                  elif option == 'root_image' and '/' in value and \
-                       not value.startswith('docker://') and \
-                       not value.startswith('/cvmfs/') and \
-                       not value.startswith('http://') and \
-                       not value.startswith('https://'):
-                    print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... or docker://... - ignoring!' % (option, vacuumPipeURL)
-                    continue
+                elif option == 'root_image' and '/' in value and \
+                     not value.startswith('docker://') and \
+                     not value.startswith('/cvmfs/') and \
+                     not value.startswith('http://') and \
+                     not value.startswith('https://'):
+                  print 'Option %s in %s cannot contain a "/" unless http(s)://... or /cvmfs/... or docker://... - ignoring!' % (option, vacuumPipeURL)
+                  continue
 
-                  # if all OK, then can set value as if from configuration files
-                  parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, option, value)
+                # if all OK, then can set value as if from configuration files
+                parser.set('machinetype ' + machinetypeNamePrefix + '-' + suffix, option, value)
 
       if printConf:
         print 'Configuration including any machinetypes from Vacuum Pipes:'

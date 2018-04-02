@@ -244,6 +244,10 @@ to add up to 1.0, and if a share is not given, then it is set
 to 0. Vac factories consult these shares when deciding which machinetype to 
 start as LMs become available.
 
+Other options permitted in a machinetype section may be given in
+a vacuum_pipe section, from where they will be copied to each
+machinetype created due to that vacuum pipe.
+
 .SH [MACHINETYPE ...] SECTIONS
 
 In addition to Vacuum Pipes, [machinetype ...] sections can be included in

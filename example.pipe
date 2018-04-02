@@ -1,0 +1,18 @@
+{
+  "cache_seconds": 3600,
+  "machinetypes":
+  [
+   {
+    "backoff_seconds": 600,
+    "fizzle_seconds": 600,
+    "machine_model": "cernvm3",
+    "min_wallclock_seconds": 9000,
+    "max_wallclock_seconds": 86400,
+    "max_processors": 1,
+    "root_image": "https://repo.gridpp.ac.uk/vacproject/example/cernvm3.iso",
+    "suffix": "prod",
+    "target_share": 1.0,
+    "user_data": "https://repo.gridpp.ac.uk/vacproject/example/user_data"
+   }
+  ]
+}
