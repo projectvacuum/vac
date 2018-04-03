@@ -12,6 +12,7 @@
   (or /etc/redhat-release.vac if present)
 - vacuum_pipe sections replace vacuum_pipe_url option in machinetypes,
   with options inherited from vacuum_pipe sections by their machinetypes
+- Vacuum pipes are cached in /var/lib/vac/pipescache
 - Add updateSpaceInGOCDB() utility to vacutils.py
 - Add gocdb_cert/key_file and GOCDB capacity updating to vacd
 - Return an EC2/OpenStack meta-data directory listing even if the URL

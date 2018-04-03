@@ -424,7 +424,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
               totalTargetShare = 0.0
 
             try:
-              vacuumPipe = vac.vacutils.readPipe('/var/lib/vac/machinetypes/' + machinetypeNamePrefix + '/vacuum.pipe',
+              vacuumPipe = vac.vacutils.readPipe('/var/lib/vac/pipescache/' + machinetypeNamePrefix + '.pipe',
                                                   vacuumPipeURL, 'Vac ' + vacVersion, updatePipes = updatePipes)
             except Exception as e:
               # If a vacuum pipe is given but cannot be read then skip
