@@ -1,6 +1,6 @@
-########################################################
-###  Puppet Module for Vac 00.20 or later on SL 6.x  ###
-########################################################
+############################################################
+###  Puppet Module for Vac 03.00 or later on CentOS 7.x  ###
+############################################################
 #
 # This file, init.pp, is sufficient to create a Vac module in your Puppet
 # set up. It should be installed in the modules part of your tree:
@@ -197,32 +197,32 @@ class vac ($space              = "vac01.${domain}",
              enable => true,
              ensure => "running",
           }
-  service { 'cgconfig':
-             enable  => true,
-             ensure  => "running",
-             notify  => Service['libvirtd'],
-          }
-  service { 'numad':
-             enable => true,
-             ensure => "running",
-             require => Service['cgconfig'],
-          }
+#  service { 'cgconfig':
+#             enable  => true,
+#             ensure  => "running",
+#             notify  => Service['libvirtd'],
+#          }
+#  service { 'numad':
+#             enable => true,
+#             ensure => "running",
+#             require => Service['cgconfig'],
+#          }
 # This causes instability with 2.6.32-642 kernels?
 #  exec    { 'unset_merge_across_nodes':
 #            command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
 #            unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
 #            before  => Service['ksm'],
 #          }
-  service { 'ksm':
-             enable => true,
-             ensure => "running",
-             require => Service['numad'],
-          }
-  service { 'ksmtuned':
-             enable  => true,
-             ensure  => "running",
-             require => Service['ksm'],
-          }
+#  service { 'ksm':
+#             enable => true,
+#             ensure => "running",
+#             require => Service['numad'],
+#          }
+#  service { 'ksmtuned':
+#             enable  => true,
+#             ensure  => "running",
+#             require => Service['ksm'],
+#          }
 
   # "Network As A Service"!
   # This allows us to restart networking after making changes
