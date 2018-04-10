@@ -110,6 +110,15 @@ If gocdb_sitename is not given, then records are only written to
 apel-archive and the domain name of the Vac space name is used as a 
 placeholder in the files.
 
+.B gocdb_cert_file
+and
+.B gocdb_key_file
+are the absolute paths of an X.509 certificate and private key which
+are authorized to update the GOCDB capacity and VO information for this
+space. See 
+.B SPACE CENSUS AND GOCDB
+for more about this feature.
+
 .B description
 optionally gives a short description of the space which can be included
 in logging and monitoring.
@@ -126,15 +135,6 @@ If set, this option gives a space-separated list of HOST:PORT to send
 VacQuery UDP messages to. This can be used to monitor the ongoing status
 of factories and LMs via site or central VacMon services. The central
 GridPP VacMon service is vacmon.gridpp.ac.uk:8884
-
-.B gocdb_cert_file
-and
-.B gocdb_key_file
-are the absolute paths of an X.509 certificate and private key which
-are authorized to update the GOCDB capacity and VO information for this
-space. See 
-.B SPACE CENSUS AND GOCDB
-for more about this feature.
 
 .B total_processors
 is derived from /proc/cpuinfo by default and does not usually need to be 

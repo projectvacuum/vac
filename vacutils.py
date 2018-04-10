@@ -55,12 +55,18 @@ import pycurl
 import base64
 import M2Crypto
 
+logStream = sys.stdout
+
 class VacutilsError(Exception):
    pass
 
+def logToStderr():
+   global logStream
+   logStream = sys.stderr
+
 def logLine(text):
-   print time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text
-   sys.stdout.flush()
+   logStream.write(time.strftime('%b %d %H:%M:%S [') + str(os.getpid()) + ']: ' + text + '\n')
+   logStream.flush()
 
 def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP, tmpDir = None):
    # Create a temporary text file containing contents then move
