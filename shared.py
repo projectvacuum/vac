@@ -1975,7 +1975,7 @@ class VacSlot:
         time.sleep(30.0)
         dom.destroy()
       except Exception as e:
-        raise VacError('failed to destroy %s (%s)' % (self.name, str(e)))
+        vac.vacutils.logLine('Failed to destroy %s (%s)' % (self.name, str(e))) 
       finally:
         conn.close()
 
