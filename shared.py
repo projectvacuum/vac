@@ -1581,7 +1581,7 @@ class VacSlot:
       elif self.machineModel in scModels:
         self.destroySC()
       else:
-        vac.vacutils.logLine('Machinemodel %s is not supported - try to destory anyway' % self.machineModel)
+        vac.vacutils.logLine('Machinemodel %s is not supported - cleaning up anyway' % self.machineModel)
 
       # Common finalization
 
@@ -1975,7 +1975,7 @@ class VacSlot:
         time.sleep(30.0)
         dom.destroy()
       except Exception as e:
-        raise VacError('failed to destroy %s (%s)' % (self.name, str(e)))
+        vac.vacutils.logLine('Failed to destroy %s (%s)' % (self.name, str(e)))
       finally:
         conn.close()
 

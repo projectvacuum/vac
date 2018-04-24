@@ -197,6 +197,10 @@ class vac ($space              = "vac01.${domain}",
              enable => true,
              ensure => "running",
           }
+  exec    { 'overcommit_memory':
+            command => '/bin/echo 1 > /proc/sys/vm/overcommit_memory',
+            unless  => '/usr/bin/test `/bin/cat /proc/sys/vm/overcommit_memory` = 1'
+          }
 #  service { 'cgconfig':
 #             enable  => true,
 #             ensure  => "running",
