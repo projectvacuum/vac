@@ -457,11 +457,11 @@ def vacOneCycle():
          lmSlot = vac.shared.VacSlot(lowestFreeSlot)
 
          vac.vacutils.logLine('Creating ' + lmSlot.name + ' with machinetype ' + chosenMachinetypeName + ', ' + str(chosenProcessors) + ' processor(s), finishing at ' + str(chosenShutdownTime))
-         createError = lmSlot.create(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
-
-         if createError:
-           vac.vacutils.logLine('LM creation fails with: ' + createError)
-           vac.vacutils.createFile('/var/lib/vac/factory-error', 'LM creation fails with: ' + createError, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
+         try:
+           lmSlot.create(chosenMachinetypeName, chosenProcessors, chosenShutdownTime)
+         except Exception as e:
+           vac.vacutils.logLine('LM creation fails with: ' + str(e))
+           vac.vacutils.createFile('/var/lib/vac/factory-error', 'LM creation fails with: ' + str(e), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
          else:
            # We update factory heartbeat after creating a LM in case that took a while
            vac.vacutils.logLine('LM ' + lmSlot.name + ' created')
