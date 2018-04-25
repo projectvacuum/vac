@@ -197,32 +197,52 @@ class vac ($space              = "vac01.${domain}",
              enable => true,
              ensure => "running",
           }
+  exec    { 'overcommit_memory':
+            command => '/bin/echo 1 > /proc/sys/vm/overcommit_memory',
+            unless  => '/usr/bin/test `/bin/cat /proc/sys/vm/overcommit_memory` = 1'
+          }
 #  service { 'cgconfig':
 #             enable  => true,
 #             ensure  => "running",
 #             notify  => Service['libvirtd'],
 #          }
-#  service { 'numad':
-#             enable => true,
-#             ensure => "running",
-#             require => Service['cgconfig'],
-#          }
+  service { 'numad':
+             enable => true,
+             ensure => "running",
+          }
 # This causes instability with 2.6.32-642 kernels?
-#  exec    { 'unset_merge_across_nodes':
-#            command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
-#            unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
-#            before  => Service['ksm'],
-#          }
-#  service { 'ksm':
-#             enable => true,
-#             ensure => "running",
-#             require => Service['numad'],
-#          }
-#  service { 'ksmtuned':
-#             enable  => true,
-#             ensure  => "running",
-#             require => Service['ksm'],
-#          }
+  exec    { 'unset_merge_across_nodes':
+            command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
+            unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
+            before  => Service['ksm'],
+          }
+  service { 'ksm':
+             enable => true,
+             ensure => "running",
+             require => Service['numad'],
+          }
+  service { 'ksmtuned':
+             enable  => true,
+             ensure  => "running",
+             require => Service['ksm'],
+          }
+
+  file { '/etc/ksmtuned.conf':
+         ensure  => 'file',
+         content => "LOGFILE=/var/log/ksmtuned\nDEBUG=1\n",
+         owner   => 'root',
+         group   => 'root',
+         mode    => '0644',
+         notify  => Service['ksmtuned'],
+       }
+
+  file { '/etc/logrotate.d/ksmtuned':
+         ensure  => 'file',
+         content => "/var/log/ksmtuned\n{\ndaily\nmissingok\nrotate 3\n}\n",
+         owner   => 'root',
+         group   => 'root',
+         mode    => '0644',
+       }
 
   # "Network As A Service"!
   # This allows us to restart networking after making changes
@@ -230,6 +250,7 @@ class vac ($space              = "vac01.${domain}",
 
   #
   # Use /etc/sysconfig/pcmcia to hand NOZEROCONF=yes to /etc/rc.d/init.d/network
+  # (Not needed for CentOS 7?)
   #
   file { '/etc/sysconfig/pcmcia':
          ensure  => 'file',
@@ -311,15 +332,18 @@ class vac ($space              = "vac01.${domain}",
                 enable  => true,
                 ensure  => "running",
                 require => Package['squid','vac'],
+                subscribe => File['/etc/squid/squid.conf'],
               }
 
       exec    { 'make_squid_conf':
                 command => "/usr/sbin/vac squid-conf /etc/squid/squid.conf.vac /etc/squid/squid.conf",
                 require => Package['squid','vac'],
+                before => File['/etc/squid/squid.conf'],
               }
 
       file    { "/etc/squid/squid.conf":
-                notify => Service['squid'],
+                audit => content,
+#                notify => Service['squid'],
               }
     }
 }
