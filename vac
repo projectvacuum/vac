@@ -425,6 +425,6 @@ if __name__ == '__main__':
               print 'squid-conf command requires input and output filename arguments!'
               sys.exit(2)
 
-    print 'Must give command argument to vac!'
+    print 'Must give a recognised command argument to vac!'
     sys.exit(1)
                                                                       
