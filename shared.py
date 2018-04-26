@@ -140,7 +140,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
              volumeGroup, gbDiskPerProcessor, overloadPerProcessor, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
-      overloadPerProcessor = 1.5
+      overloadPerProcessor = 1.25
       gocdbSitename = None
       gocdbCertFile = None
       gocdbKeyFile = None
@@ -1581,7 +1581,7 @@ class VacSlot:
       elif self.machineModel in scModels:
         self.destroySC()
       else:
-        vac.vacutils.logLine('Machinemodel %s is not supported - try to destory anyway' % self.machineModel)
+        vac.vacutils.logLine('Machinemodel %s is not supported - cleaning up anyway' % self.machineModel)
 
       # Common finalization
 
@@ -1971,13 +1971,18 @@ class VacSlot:
         
       try:
         dom.shutdown()
+      except Exception as e:
+        vac.vacutils.logLine('Failed to shutdown %s (%s) - already gone? paused?' % (self.name, str(e)))
+      else:
         # 30s delay for any ACPI handler in the VM
         time.sleep(30.0)
+
+      try:
         dom.destroy()
       except Exception as e:
-        vac.vacutils.logLine('Failed to destroy %s (%s)' % (self.name, str(e))) 
-      finally:
-        conn.close()
+        vac.vacutils.logLine('Failed to destroy %s (%s)' % (self.name, str(e)))
+
+      conn.close()
 
    def createDC(self):
       # Create a Docker Container instance in this logical machine slot
