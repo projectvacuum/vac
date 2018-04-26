@@ -925,7 +925,7 @@ def killZombieVMs():
       if killZombie:
         try:
           dom.shutdown()
-        except:
+        except Exception as e:
           vac.vacutils.logLine('Failed to shutdown %s (%s)' % (name, str(e)))
         else:
           # 30s delay for any ACPI handler in the VM
