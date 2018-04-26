@@ -229,7 +229,7 @@ class vac ($space              = "vac01.${domain}",
 
   file { '/etc/ksmtuned.conf':
          ensure  => 'file',
-         content => "LOGFILE=/var/log/ksmtuned\nDEBUG=1\n",
+         content => "LOGFILE=/var/log/ksmtuned\nDEBUG=1\nKSM_THRES_COEF=66\n",
          owner   => 'root',
          group   => 'root',
          mode    => '0644',
