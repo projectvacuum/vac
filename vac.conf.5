@@ -144,10 +144,12 @@ limits the number of virtual machines which can be created.
 
 .B overload_per_processor
 sets the level of load per processor on the factory machine which will 
-temporarily prevent the creation of more LMs. The number of processors is
-counted using /proc/cpuinfo and the one minute load average is taken from 
-/proc/loadavg. LMs typically generate high loads during their initial
-set up, and this mechanism throttles the VM creation rate in response
+temporarily prevent the creation of more LMs. The number of running
+processors allocated to LMs is used, if five or more.
+Otherwise the total logical processors is counted in /proc/cpuinfo.
+The maximum load average given in /proc/loadavg is used. 
+LMs typically generate high loads during their initial
+set up, and this mechanism throttles the LM creation rate in response
 to the current overall load figure. Values of around 2.0 are ok
 with well-behaved LMs, but the default is more cautious. Default 1.25.
 
