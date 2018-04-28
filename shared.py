@@ -140,7 +140,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
              volumeGroup, gbDiskPerProcessor, overloadPerProcessor, fixNetworking, machinefeaturesOptions
 
       # reset to defaults
-      overloadPerProcessor = 1.25
+      overloadPerProcessor = 1.5
       gocdbSitename = None
       gocdbCertFile = None
       gocdbKeyFile = None
