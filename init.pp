@@ -201,16 +201,12 @@ class vac ($space              = "vac01.${domain}",
             command => '/bin/echo 1 > /proc/sys/vm/overcommit_memory',
             unless  => '/usr/bin/test `/bin/cat /proc/sys/vm/overcommit_memory` = 1'
           }
-#  service { 'cgconfig':
-#             enable  => true,
-#             ensure  => "running",
-#             notify  => Service['libvirtd'],
-#          }
   service { 'numad':
              enable => true,
              ensure => "running",
           }
-# This causes instability with 2.6.32-642 kernels?
+
+# This caused instability with 2.6.32-642 kernels?
   exec    { 'unset_merge_across_nodes':
             command => '/bin/echo 2 > /sys/kernel/mm/ksm/run; /bin/echo 0 > /sys/kernel/mm/ksm/merge_across_nodes; /bin/echo 1 > /sys/kernel/mm/ksm/run',
             unless  => '/usr/bin/test `/bin/cat /sys/kernel/mm/ksm/merge_across_nodes` = 0',
@@ -343,7 +339,6 @@ class vac ($space              = "vac01.${domain}",
 
       file    { "/etc/squid/squid.conf":
                 audit => content,
-#                notify => Service['squid'],
               }
     }
 }
