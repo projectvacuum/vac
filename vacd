@@ -385,17 +385,17 @@ def vacOneCycle():
 
    # Try to create new LM
    loadAvg = vac.vacutils.loadAvg()
-   vac.vacutils.logLine('Start a LM creation attempt (only one this cycle). Load average is ' + str(loadAvg))   
+   vac.vacutils.logLine('Start a LM creation attempt (only one this cycle). Load average is %.2f' % loadAvg)
    vac.vacutils.logLine('Superslots: ' + str(superslots))
  
    # See if we can start a LM 
    if runningProcessors > 4 and vac.vacutils.loadAvg() > (vac.shared.overloadPerProcessor * runningProcessors):
      # this avoids creating lots of LMs on empty many-processor factories, which then all get busy during startup
-     vac.vacutils.logLine('LM not created as load average (%f) > overload_per_processor (%f) * runningProcessors (%d)'
+     vac.vacutils.logLine('LM not created as load average (%.2f) > overload_per_processor (%.2f) * runningProcessors (%d)'
                           % (loadAvg, vac.shared.overloadPerProcessor, runningProcessors))
    elif vac.vacutils.loadAvg() > (vac.shared.overloadPerProcessor * vac.shared.processorCount):
      # processorCount is all logical processors on this factory
-     vac.vacutils.logLine('LM not created as load average (%f) > overload_per_processor (%f) * processorCount (%d)'
+     vac.vacutils.logLine('LM not created as load average (%.2f) > overload_per_processor (%.2f) * processorCount (%d)'
                           % (loadAvg, vac.shared.overloadPerProcessor, vac.shared.processorCount))
    elif vac.shared.shutdownTime and (vac.shared.shutdownTime < int(time.time())):
      # check against the global shutdowntime
