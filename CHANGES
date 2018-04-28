@@ -1,4 +1,4 @@
-==================== Changes in Vac version 04.00.00 =================== 
+==================== Changes in Vac version 03.01.00 =================== 
 ==================== Changes in Vac version 03.00.00 =================== 
 - Shutdown messages >= 700 now also count as aborts and trigger backoff
 - vacd started at 56 during the SysV boot up
