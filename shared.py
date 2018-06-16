@@ -650,7 +650,7 @@ def readConf(includePipes = False, updatePipes = False, checkVolumeGroup = False
                  machinetype['container_command'] = '/user_data'
 
              if parser.has_option(sectionName, 'tmp_binds'):
-                 machinetype['tmp_binds'] = parser.get(sectionName, 'tmp_binds')
+                 machinetype['tmp_binds'] = set(parser.get(sectionName, 'tmp_binds').strip().split())
                  
              if parser.has_option(sectionName, 'disk_gb_per_processor'):
                  # Size in GB/cpu (1000^3) of disk assigned to machines
@@ -2023,7 +2023,7 @@ class VacSlot:
       if 'tmp_binds' in machinetypes[self.machinetypeName]:
         for dir in machinetypes[self.machinetypeName]['tmp_binds']:
           tmp = tempfile.mkdtemp(prefix = dir.replace('/','_')[:30], dir = self.machinesDir() + '/mnt')
-          os.chmod(self.machinesDir() + '/mnt/' + tmp, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
+          os.chmod(tmp, stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
           rwBindsList.append([tmp, dir])
 
       roBindsList = []
