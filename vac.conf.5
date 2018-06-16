@@ -338,7 +338,8 @@ in /cvmfs/ even if the host uses the automounter to manage CernVM-FS.
 is a space-separated list of empty temporary or working directories to
 be created on the factory for each Docker container instance, and 
 shared into the container with a bind mount at the specified locations.
-This may be requested for performance reasons.
+The full path requested inside the container, beginning with /, must
+be given. Volumes are used for better performance and space management.
 
 .B disk_gb_per_processor
 explicitly sets the size of disks to create for LMs in GB (1000^3)
