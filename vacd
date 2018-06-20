@@ -381,7 +381,10 @@ def vacOneCycle():
 
    # Make sure all cvmfs repos used by running containers stay mounted
    for repo in allCvmfsRepositories:
-     os.listdir('/cvmfs/' + repo)
+     try:
+       os.listdir('/cvmfs/' + repo)
+     except Exception as e:
+       vac.vacutils.logLine('Listing /cvmfs/' + repo + ' fails: ' + str(e))
 
    # Try to create new LM
    loadAvg = vac.vacutils.loadAvg()
