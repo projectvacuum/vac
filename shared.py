@@ -2037,7 +2037,10 @@ class VacSlot:
 
         # Make sure the requested cvmfs repositories are mounted
         for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
-          os.listdir('/cvmfs/' + repo)
+          try:
+            os.listdir('/cvmfs/' + repo)
+          except:
+            pass
 
       roBindsList.extend([[self.machinesDir() + '/machinefeatures', '/etc/machinefeatures' ],
                           [self.machinesDir() + '/jobfeatures',     '/etc/jobfeatures'     ]])
@@ -2115,7 +2118,10 @@ class VacSlot:
         argsList.extend(['--bind', '/cvmfs:/cvmfs'])
         # Make sure the requested cvmfs repositories are mounted
         for repo in machinetypes[self.machinetypeName]['cvmfs_repositories']:
-          os.listdir('/cvmfs/' + repo)
+          try:
+            os.listdir('/cvmfs/' + repo)
+          except:
+            pass
              
       argsList.extend(['--bind', self.machinesDir() + '/machinefeatures:/tmp/machinefeatures',
                        '--bind', self.machinesDir() + '/jobfeatures:/tmp/jobfeatures',
