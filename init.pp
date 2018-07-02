@@ -150,7 +150,9 @@ class vac ($space              = "vac01.${domain}",
 
   #
   # Install site-wide or increasingly specific machinetype files (probably hostcert.pem
-  # and hostkey.pem) under /var/lib/vac/machinetypes/...
+  # and hostkey.pem in a files subdirectory) under /var/lib/vac/machinetypes/...
+  # The files and directory hierarchy in your puppet files areas are recreated by this
+  # section.
   #
   file { '/var/lib/vac/machinetypes':
          require => Package['vac'],
