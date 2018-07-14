@@ -5,6 +5,7 @@
 - Example Puppet init.pp has been updated for highly loaded factories
   with ksm enabled by default and aggressive ksmtuned settings
 - Protect against cvmfs problems on factory
+- Add cernvm4 as an alias for cernvm3 machine model
 ==================== Changes in Vac version 03.00.00 =================== 
 - Shutdown messages >= 700 now also count as aborts and trigger backoff
 - vacd started at 56 during the SysV boot up

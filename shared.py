@@ -75,10 +75,10 @@ class VacError(Exception):
 # 01.03 adds machine_model to machine_status 
 vacQueryVersion = '01.03'
 
-vmModels = [ 'cernvm3', 'vm-raw' ]        # Virtual Machine models
-dcModels = [ 'docker' ]                   # Docker Container models
-scModels = [ 'singularity' ]              # Singularity Container models
-lmModels = vmModels + dcModels + scModels # All Logical Machine models
+vmModels = [ 'cernvm3', 'cernvm4', 'vm-raw' ] # Virtual Machine models
+dcModels = [ 'docker' ]                       # Docker Container models
+scModels = [ 'singularity' ]                  # Singularity Container models
+lmModels = vmModels + dcModels + scModels     # All Logical Machine models
 
 dockerPath	    = '/usr/bin/docker'
 singularityPath     = '/usr/bin/singularity'
