@@ -862,8 +862,13 @@ def setSockBufferSize(sock):
      vac.vacutils.logLine('Failed setting SNDBUF to %d' % udpBufferSize)
      
 def canonicalFQDN(hostName):
+
+   if hostName == '.':
+     # . is replaced with local hostname
+     return os.uname()[1]
+
    if '.' in hostName:
-     # Assume ok if already contains '.'
+     # Otherwise assume ok if already contains '.'
      return hostName
      
    try:
