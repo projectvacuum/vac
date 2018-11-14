@@ -864,7 +864,7 @@ def setSockBufferSize(sock):
 def canonicalFQDN(hostName):
 
    if hostName == '.':
-     # . is replaced with local hostname
+     # . is replaced with local hostname
      return os.uname()[1]
 
    if '.' in hostName:
