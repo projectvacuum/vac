@@ -46,7 +46,8 @@ which machinetypes are running and where, and the outcomes of virtual machines
 that are currently shut down. By default all factories in the current
 space are contacted, but this can be limited to one or more by giving the
 hostnames of factory machines on the command line. Hostnames will be
-canonicalised if the FQDN isn't given.
+canonicalised if the FQDN isn't given, and \(dq.\(dq by itself is replaced
+with the local hostname.
 
 For running machines, the time running, the lifetime CPU efficiency, and
 the recent CPU efficiency are shown. The CPU efficiency is CPU time used
@@ -68,7 +69,8 @@ HS06 of running logical machiness.
 Outputs the responses from one or more factory machines, running/total CPUs,
 running/total LM slots, 15 minute CPU load average, free space on the disk(s)
 containing / and /var/lib/vac, the used/total memory, and the Vac version 
-of the factory.
+of the factory. Hostnames will be canonicalised if the FQDN isn't given, and
+\(dq.\(dq by itself is replaced with the local hostname.
 
 .HP
 .B "proxy-init"
