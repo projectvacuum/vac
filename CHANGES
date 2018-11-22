@@ -7,6 +7,8 @@
 - Protect against cvmfs problems on factory
 - Add cernvm4 as an alias for cernvm3 machine model
 - . in lists of factories replaced with the local hostname
+- Add min/max_wallclock_seconds, min/max_processors, bytes_per_processor
+  to machinetypes VacQuery responses
 ==================== Changes in Vac version 03.00.00 =================== 
 - Shutdown messages >= 700 now also count as aborts and trigger backoff
 - vacd started at 56 during the SysV boot up
