@@ -3097,6 +3097,7 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
                 'time_sent'		: timeNow,
 
                 'machinetype'		: machinetypeName,
+                'bytes_per_processor'	: mbPerProcessor * 1048576,
                 'running_hs06'        	: runningHS06,
                 'running_machines'      : runningMachines,
                 'running_cpus'          : runningProcessors, # removed in Vacuum Platform 2.0 spec
@@ -3114,6 +3115,16 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
        
      try:
        responseDict['fqan'] = machinetypes[machinetypeName]['accounting_fqan']
+     except:
+       pass
+
+     try:
+       responseDict['max_wallclock_seconds'] = machinetypes[machinetypeName]['max_wallclock_seconds']
+     except:
+       pass
+
+     try:
+       responseDict['max_processors'] = machinetypes[machinetypeName]['max_processors']
      except:
        pass
 
