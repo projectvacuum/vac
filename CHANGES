@@ -3,7 +3,7 @@
 - Protect against cvmfs problems on factory
 - . is replaced with local hostname in factory lists
 - Add min/max_wallclock_seconds, min/max_processors, bytes_per_processor
-  localhost.work: head -30 /tmp/CHANGES 
+  to machinetypes VacQuery responses
 ==================== Changes in Vac version 03.00.01 ===================
 - Resilience for CentOS7 operation: properly destroy VMs in the paused
   state; deal with exceptions when destorying VMs due to QEMU errors;
