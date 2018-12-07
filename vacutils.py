@@ -77,7 +77,7 @@ def createFile(targetname, contents, mode=stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP
      tmpDir = os.path.dirname(targetname)
 
    try:
-     ftup = tempfile.mkstemp(prefix = 'temp', dir = tmpDir, text = True)
+     ftup = tempfile.mkstemp(prefix = 'createFile-', dir = tmpDir, text = True)
      os.write(ftup[0], contents)
 
      if mode:
@@ -526,7 +526,7 @@ def getCernvmImageData(fileName):
 def getRemoteRootImage(url, imageCache, tmpDir, versionString):
 
    try:
-     f, tempName = tempfile.mkstemp(prefix = 'tmp', dir = tmpDir)
+     f, tempName = tempfile.mkstemp(prefix = 'getRemoteRootImage-', dir = tmpDir)
    except Exception as e:
      VacutilsError('Failed to create temporary image file in ' + tmpDir)
 
@@ -573,10 +573,12 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
      try:
        lastModified = float(c.getinfo(c.INFO_FILETIME))
      except:
+       os.remove(tempName)
        # We fail rather than use a server that doesn't give Last-Modified:
        raise VacutilsError('Failed to get last modified time for ' + url)
 
      if lastModified < 0.0:
+       os.remove(tempName)
        # We fail rather than use a server that doesn't give Last-Modified:
        raise VacutilsError('Failed to get last modified time for ' + url)
      else:
@@ -598,6 +600,7 @@ def getRemoteRootImage(url, imageCache, tmpDir, versionString):
 
    else:
      logLine('No new version of ' + url + ' found and existing copy not replaced')
+     os.remove(tempName)
 
    c.close()
    return imageCache + '/' + urlEncoded
