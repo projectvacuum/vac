@@ -257,7 +257,7 @@ def vacOneCycle():
    vac.shared.killZombieVMs()
    vac.shared.killZombieDCs()
    vac.shared.killZombieSCs()
-      
+
    lowestFreeSlot = None
       
    for ordinal in range(vac.shared.numMachineSlots):
@@ -386,6 +386,9 @@ def vacOneCycle():
      except Exception as e:
        vac.vacutils.logLine('Listing /cvmfs/' + repo + ' fails: ' + str(e))
 
+   # Remove zombie logical volumes, including any created during the scan
+   vac.shared.removeZombieLVs()
+      
    # Try to create new LM
    loadAvg = vac.vacutils.loadAvg()
    vac.vacutils.logLine('Start a LM creation attempt (only one this cycle). Load average is %.2f' % loadAvg)

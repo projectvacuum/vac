@@ -4,6 +4,7 @@
 - . is replaced with local hostname in factory lists
 - Add min/max_wallclock_seconds, min/max_processors, bytes_per_processor
   to machinetypes VacQuery responses
+- Remove zombie Vac logical volumes with no occupied machine slot
 ==================== Changes in Vac version 03.00.01 ===================
 - Resilience for CentOS7 operation: properly destroy VMs in the paused
   state; deal with exceptions when destorying VMs due to QEMU errors;

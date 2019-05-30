@@ -878,6 +878,68 @@ def canonicalFQDN(hostName):
      # If failed, then just return what we were given
      return hostName
 
+def removeLogicalVolume(name):
+   
+   if volumeGroup: 
+     # Just check for VG existing. The LV path will not exist if the LV is inactive!
+   
+     if os.path.exists('/dev/' + str(volumeGroup) + '/' + name):
+      
+       # First try to unmount the logical volume in case used for Singularity
+       try:
+         # Kill any processes still using the filesystem
+         os.system('/usr/sbin/fuser --kill --mount /dev/' + str(volumeGroup) + '/' + name)
+         # Unmount the filesystem itself
+         os.system('/usr/bin/umount /dev/' + str(volumeGroup) + '/' + name)
+       except:
+         pass
+       else:
+         vac.vacutils.logLine('Unmount logical volume /dev/' + volumeGroup + '/' + name)
+
+     # Now try to remove the logical volume itself
+     vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + name + ' if it exists')
+     try:
+       os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + name + ' 2>&1')
+     except:
+       pass
+
+def removeZombieLVs():
+   # Look for Vac logical volumes which are not properly associated with
+   # logical machine slots and remove them
+
+   try:
+     f = os.popen('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvs --noheadings --units B --nosuffix --options lv_name,lv_size ' + volumeGroup, 'r')
+   except Exception as e:
+     raise VacError('Checking for zombies in logical volumes in ' + volumeGroup + ' fails with ' + str(e))
+
+   nameParts = os.uname()[1].split('.',1)
+   domainRegex = nameParts[1].replace('.','\.')
+
+   while True:
+     try:
+       name,sizeStr = f.readline().strip().split()
+       size = int(sizeStr)
+     except:
+       break
+
+     if re.search('^' + nameParts[0] + '-[0-9][0-9]\.' + domainRegex + '$', name) is not None:
+       # from the name, this is a Vac LV
+       try:
+         createdStr, machinetypeName, machineModel = open('/var/lib/vac/slots/' + name,'r').read().split()
+       except:
+         createdStr      = None
+         machinetypeName = None
+         machineModel    = None
+         
+       if not createdStr or \
+          not os.path.isdir('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '_' + name) or \
+          os.path.exists('/var/lib/vac/machines/' + createdStr + '_' + machinetypeName + '_' + name + '/finished'):
+
+         vac.vacutils.logLine('No created time or missing machines dir or already finished: remove zombie logical volume ' + name)
+         removeLogicalVolume(name)
+
+   f.close()
+   
 def killZombieVMs():
    # Look for VMs which are not properly associated with
    # logical machine slots and kill them
@@ -1596,7 +1658,7 @@ class VacSlot:
       # Common finalization
 
       self.state = VacState.shutdown
-      self.removeLogicalVolume()
+      removeLogicalVolume(self.name)
 
       if shutdownMessage and not os.path.exists(self.machinesDir() + '/joboutputs/shutdown_message'):
         try:
@@ -1663,29 +1725,10 @@ class VacSlot:
       vac.vacutils.createFile(self.machinesDir() + '/heartbeat',
                  '0.0 0.0\n', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH, '/var/lib/vac/tmp')
 
-   def removeLogicalVolume(self):
-   
-      if volumeGroup and os.path.exists('/dev/' + str(volumeGroup) + '/' + self.name):
-      
-        # First try to unmount the logical volume in case used for Singularity
-        try:
-          # Kill any processes still using the filesystem
-          os.system('/usr/sbin/fuser --kill --mount /dev/' + str(volumeGroup) + '/' + self.name)
-          # Unmount the filesystem itself
-          os.system('/usr/bin/umount /dev/' + str(volumeGroup) + '/' + self.name)
-        except:
-          pass
-        else:
-          vac.vacutils.logLine('Unmount logical volume /dev/' + volumeGroup + '/' + self.name)
-
-        # Now remove the logical volume itself
-        vac.vacutils.logLine('Remove logical volume /dev/' + volumeGroup + '/' + self.name)
-        os.system('LVM_SUPPRESS_FD_WARNINGS=1 /sbin/lvremove -f ' + volumeGroup + '/' + self.name + ' 2>&1')
-
    def createLogicalVolume(self):
 
      # Always remove any leftover volume of the same name
-     self.removeLogicalVolume()
+     removeLogicalVolume(self.name)
 
      if 'disk_gb_per_processor' in machinetypes[self.machinetypeName] and \
           ((gbDiskPerProcessor is None) or (machinetypes[self.machinetypeName]['disk_gb_per_processor'] <= gbDiskPerProcessor)):
