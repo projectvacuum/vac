@@ -2,7 +2,7 @@
 #  shared.py - common functions, classes, and variables for Vac
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-8. All rights reserved.
+#  Copyright (c) 2013-9. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -1566,6 +1566,9 @@ class VacSlot:
       vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/jobstart_secs',
                  str(int(time.time())), stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
+      if self.uuidStr:
+        vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
+                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
 
       # Job=VM so per-job HEPSPEC06 is same as hs06
@@ -1674,7 +1677,7 @@ class VacSlot:
       self.created         = int(time.time())
       self.shutdownTime    = machineShutdownTime
       self.machinetypeName = machinetypeName
-      self.uuidStr         = None
+      self.uuidStr         = str(uuid.uuid4())
 
       os.makedirs(self.machinesDir(), stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH)
 
@@ -1804,9 +1807,6 @@ class VacSlot:
 
       scratch_disk_xml = ""
       cernvm_cdrom_xml = ""
-      self.uuidStr     = str(uuid.uuid4())
-      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
-                              self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
 
       if self.machineModel == 'vm-raw':
         # non-CernVM VM model
@@ -2226,11 +2226,6 @@ class VacSlot:
 
       vac.vacutils.logLine('Singularity subprocess ' + str(pid) + ' for ' + self.name)
       createFile(self.machinesDir() + '/pid', str(pid))
-
-      # Set job_id/UUID, always starting with PID for debugging
-      self.uuidStr = '%06d-%s' % (pid, uuidSuffix)
-      vac.vacutils.createFile(self.machinesDir() + '/jobfeatures/job_id',
-                 self.uuidStr, stat.S_IWUSR + stat.S_IRUSR + stat.S_IRGRP + stat.S_IROTH, '/var/lib/vac/tmp')
              
    def destroySC(self, shutdownMessage = None):
      # Destroy the Singularity Container instance in this logical machine slot
@@ -3023,7 +3018,7 @@ def makeMachineResponse(cookie, ordinal, clientName = '-', timeNow = None):
 
    return json.dumps(responseDict)
 
-def makeMachinetypeResponses(cookie, clientName = '-'):
+def makeMachinetypeResponses(cookie, clientName = '-', suppressInactive = False):
    # Send back machinetype messages to the querying factory or client
    responses = []
    timeNow = int(time.time())
@@ -3055,6 +3050,11 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          # machines directory has been cleaned up?
          continue
 
+       try:                  
+         numProcessors = float(open(machinesDir + '/jobfeatures/allocated_cpu', 'r').readline())
+       except:
+         numProcessors = 1
+
        try:
          timeStarted = int(os.stat(machinesDir + '/started').st_ctime)
        except:
@@ -3064,11 +3064,6 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
          timeHeartbeat = int(os.stat(machinesDir + '/heartbeat').st_ctime)
        except:
          timeHeartbeat = None
-
-       try:                  
-         numProcessors = float(open(machinesDir + '/jobfeatures/allocated_cpu', 'r').readline())
-       except:
-         numProcessors = 1
 
        try:                  
          hs06 = float(open(machinesDir + '/jobfeatures/hs06_job', 'r').readline())
@@ -3171,7 +3166,9 @@ def makeMachinetypeResponses(cookie, clientName = '-'):
      except:
        pass
 
-     responses.append(json.dumps(responseDict))
+     # Only include this machinetype if any machines are currently running or have stopped in the last 24 hours
+     if (not suppressInactive and shutdownMessageTime and shutdownMessageTime > timeNow - 86400) or runningProcessors > 0:
+       responses.append(json.dumps(responseDict))
 
    return responses
    
