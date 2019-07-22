@@ -117,12 +117,12 @@ def secondsToString(timeStamp):
    else:
      return '%dd' % (seconds / 86400)
 
-def readPipe(pipeDir, pipeURL, versionString, updatePipes = False):
+def readPipe(pipesCache, pipeURL, versionString, updatePipes = False):
 
    # Default value in case not given in file
    cacheSeconds = 3600
 
-   pipeFile = pipeDir + '/' + urllib.quote(pipeURL, '')
+   pipeFile = pipesCache + '/' + urllib.quote(pipeURL, '')
 
    try:
      pipeDict = json.load(open(pipeFile, 'r'))
