@@ -390,7 +390,7 @@ def vacOneCycle():
    vac.shared.removeZombieLVs()
       
    # Try to create new LM
-   loadAvg = vac.vacutils.loadAvg()
+   loadAvg = vac.vacutils.loadAvg(0)
    vac.vacutils.logLine('Start a LM creation attempt (only one this cycle). Load average is %.2f' % loadAvg)
    vac.vacutils.logLine('Superslots: ' + str(superslots))
  

@@ -763,7 +763,7 @@ def makeSshFingerprint(pubFileLine):
 
 def loadAvg(which = None):
    # By default, use maximum load average
-   # which = 1, 2, or 3
+   # which = 0, 1, or 2
 
    try:
      load0,load1,load2 = open('/proc/loadavg').readline().split()[0:3]
