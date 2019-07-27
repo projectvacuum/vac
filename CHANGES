@@ -7,6 +7,7 @@
 - Remove zombie Vac logical volumes with no occupied machine slot
 - Fix missing UUID in user_data template substitutions
 - Send machinetype messages less often about unused machinetypes
+- Only use 1 minute load average when throttling machine creation rate
 ==================== Changes in Vac version 03.00.01 ===================
 - Resilience for CentOS7 operation: properly destroy VMs in the paused
   state; deal with exceptions when destorying VMs due to QEMU errors;
