@@ -1637,7 +1637,8 @@ class VacSlot:
                                                machinefeaturesURL = machinefeaturesURL,
                                                jobfeaturesURL     = jobfeaturesURL,
                                                joboutputsURL      = joboutputsURL,
-                                               rootImageURL       = rootImageURL )
+                                               rootImageURL       = rootImageURL,
+                                               gocdbSitename      = gocdbSitename )
       except Exception as e:
         raise VacError('Failed to read ' + machinetypes[self.machinetypeName]['user_data'] + ' (' + str(e) + ')')
 

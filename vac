@@ -3,7 +3,7 @@
 #  vac - Vac command line utility
 #
 #  Andrew McNab, University of Manchester.
-#  Copyright (c) 2013-7. All rights reserved.
+#  Copyright (c) 2013-9. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or
 #  without modification, are permitted provided that the following
@@ -425,6 +425,6 @@ if __name__ == '__main__':
               print 'squid-conf command requires input and output filename arguments!'
               sys.exit(2)
 
-    print 'Must give command argument to vac!'
+    print 'Must give a recognised command argument to vac!'
     sys.exit(1)
                                                                       
