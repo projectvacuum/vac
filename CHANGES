@@ -9,6 +9,7 @@
 - Send machinetype messages less often about unused machinetypes
 - Only use 1 minute load average when throttling machine creation rate
 - Add ##user_data_site## with GOCDB sitename
+- Fix for Squid vulnerability CVE-2019-12526
 ==================== Changes in Vac version 03.00.01 ===================
 - Resilience for CentOS7 operation: properly destroy VMs in the paused
   state; deal with exceptions when destorying VMs due to QEMU errors;
