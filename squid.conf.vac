@@ -38,6 +38,10 @@ http_access deny !Safe_ports
 # Deny CONNECT to other than secure SSL ports
 http_access deny CONNECT !SSL_ports
 
+# Deny URN for CVE-2019-12526
+acl URN proto URN
+http_access deny URN
+
 # We strongly recommend the following be uncommented to protect innocent
 # web applications running on the proxy server who think the only
 # one who can access services on "localhost" is a local user
